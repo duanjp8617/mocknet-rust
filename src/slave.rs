@@ -7,7 +7,7 @@ pub mod hello_world {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = GreeterClient::connect("http://[::1]:50051").await?;
+    let mut client = GreeterClient::connect("http://192.171.1.2:50051").await?;
 
     let request = tonic::Request::new(HelloRequest {
         name: "Tonic".into(),
@@ -15,7 +15,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client.say_hello(request).await?;
 
-    println!("RESPONSE={:?}", response);
+    println!(" wtf RESPONSE={:?}", response);
 
     Ok(())
+
+    
 }

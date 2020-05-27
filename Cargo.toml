@@ -1,15 +1,15 @@
 [package]
-name = "helloworld-tonic"
+name = "mocknet"
 version = "0.1.0"
 edition = "2018"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
-name = "helloworld-server"
-path = "src/server.rs"
+name = "mocknet-master"
+path = "src/master.rs"
 
 [[bin]] # Bin to run the HelloWorld gRPC client
-name = "helloworld-client"
-path = "src/client.rs"
+name = "mocknet-slave"
+path = "src/slave.rs"
 
 [dependencies]
 tonic = "0.2"
