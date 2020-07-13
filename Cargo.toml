@@ -11,10 +11,14 @@ path = "src/master.rs"
 name = "mocknet-slave"
 path = "src/slave.rs"
 
+[[bin]] # Bin to run a test file
+name = "cmd_test"
+path = "src/cmd_test.rs"
+
 [dependencies]
 tonic = "0.2"
 prost = "0.6"
-tokio = { version = "0.2", features = ["macros"] }
+tokio = { version = "0.2", features = ["macros", "process"] }
 
 [build-dependencies]
 tonic-build = "0.2"
