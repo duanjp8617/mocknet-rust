@@ -1,14 +1,14 @@
 [package]
-name = "mocknet"
+name = "mocknet_rust"
 version = "0.1.0"
 edition = "2018"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
-name = "mocknet-master"
+name = "mater"
 path = "src/master.rs"
 
 [[bin]] # Bin to run the HelloWorld gRPC client
-name = "mocknet-slave"
+name = "slave"
 path = "src/slave.rs"
 
 [[bin]] # Bin to run a test file

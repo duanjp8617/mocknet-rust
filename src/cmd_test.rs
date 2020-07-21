@@ -22,7 +22,7 @@ impl DockerPs {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cmd = DockerPs::new(String::from("ps"));
-
+    
     // Make sure our child succeeded in spawning and process the result
     let output = cmd.run().await?;
 
