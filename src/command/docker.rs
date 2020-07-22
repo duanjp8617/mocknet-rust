@@ -40,3 +40,4 @@ pub async fn remove_container(name: &str) -> Result<(), Error> {
 
     Ok(())
 }
+ 
