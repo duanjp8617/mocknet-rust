@@ -1,5 +1,5 @@
 [package]
-name = "mocknet_rust"
+name = "mocknet"
 version = "0.1.0"
 edition = "2018"
 

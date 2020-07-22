@@ -1,33 +1,30 @@
-use tokio::process::Command;
-
-struct DockerPs {
-    cmd : Command
-}
-
-impl DockerPs {
-    pub fn new(temp : String) -> Self {
-        let mut cmd = Command::new("docker");
-        cmd.arg(temp).arg("-a");
-        
-        DockerPs {
-            cmd : cmd
-        }
-    }
-
-    async fn run(mut self) -> Result<std::process::Output, std::io::Error> {
-        self.cmd.output().await
-    }
-}
+use mocknet::command::docker;
+use mocknet::command::system;
+use std::io::ErrorKind;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let cmd = DockerPs::new(String::from("ps"));
-    
-    // Make sure our child succeeded in spawning and process the result
-    let output = cmd.run().await?;
+    let res = system::create_dir("/var/run/netns").await;
+    match res {
+        Err(io_err) if io_err.kind() == ErrorKind::InvalidData => {},
+        Err(io_err) => {
+            return Err(io_err.into());
+        }
+        Ok(_) => {}
+    };
 
-    // Await until the future (and the command) completes
-    println!("{}", String::from_utf8(output.stdout.clone()).unwrap());
+    let pid_c1 = docker::launch_container("c1", "ubuntu").await?;
+    println!("pid is {}", pid_c1);
+    system::link_netns(pid_c1).await?;
+
+
+    let pid_c2 = docker::launch_container("c2", "ubuntu").await?;
+    println!("pid is {}", pid_c2);
+    system::link_netns(pid_c2).await?;
+
+
+    // docker::remove_container("c1").await?;
+    // docker::remove_container("c2").await?;
 
     Ok(())
 }
