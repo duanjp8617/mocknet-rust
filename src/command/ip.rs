@@ -12,6 +12,14 @@ pub async fn create_veth_pair(name: &str, peer: &str) -> Result<(), Error> {
     Ok(())
 }
 
+pub async fn delete_veth_dev(dev: &str) -> Result<(), Error> {
+    let mut cmd = Command::new("ip");
+    cmd.arg("link").arg("delete").arg(dev);
+    cmd_runner(cmd).await?;
+    
+    Ok(())
+}
+
 pub async fn netns_add_dev(netns: &str, dev: &str) -> Result<(), Error> {
     let mut cmd = Command::new("ip");
     cmd.arg("link").arg("set").arg(dev).arg("netns").arg(netns);
