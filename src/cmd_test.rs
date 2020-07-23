@@ -2,8 +2,7 @@ use mocknet::command::docker;
 use mocknet::command::system;
 use std::io::ErrorKind;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn test1() -> Result<(), std::io::Error> {
     let res = system::create_dir("/var/run/netns").await;
     match res {
         Err(io_err) if io_err.kind() == ErrorKind::InvalidData => {},
@@ -31,5 +30,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     system::remove_netns_link(pid_c2).await?;
     println!("removing netns link");
 
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    test1().await?;
     Ok(())
 }
