@@ -14,17 +14,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let pid_c1 = docker::launch_container("c1", "ubuntu").await?;
-    println!("pid is {}", pid_c1);
-    system::link_netns(pid_c1).await?;
+    system::create_netns_link(pid_c1).await?;
+    println!("creating netns link for container {}", pid_c1);
 
 
     let pid_c2 = docker::launch_container("c2", "ubuntu").await?;
-    println!("pid is {}", pid_c2);
-    system::link_netns(pid_c2).await?;
+    system::create_netns_link(pid_c2).await?;
+    println!("creating netns link for container {}", pid_c2);
 
 
-    // docker::remove_container("c1").await?;
-    // docker::remove_container("c2").await?;
+    docker::remove_container("c1").await?;
+    docker::remove_container("c2").await?;
+    println!("removing both the two containers");
+
+    system::remove_netns_link(pid_c1).await?;
+    system::remove_netns_link(pid_c2).await?;
+    println!("removing netns link");
 
     Ok(())
 }

@@ -14,12 +14,26 @@ pub async fn create_dir(dir: &str) -> Result<(), Error> {
 
 // link /proc/pid/ns/net to /var/run/netns/pid, 
 // return error on failure
-pub async fn link_netns(pid: u64) -> Result<(), Error> {
+pub async fn create_netns_link(pid: u64) -> Result<(), Error> {
     let src_dir = format!("/proc/{}/ns/net", pid);
     let dst_dir = format!("/var/run/netns/{}", pid);
 
     let mut cmd = Command::new("ln");
     cmd.arg("-s").arg(src_dir).arg(dst_dir);
+    cmd_runner(cmd).await?;
+
+    Ok(())
+}
+
+pub async fn remove_netns_link(pid: u64) -> Result<(), Error> {
+    let link_path = format!("/var/run/netns/{}", pid);
+
+    let mut cmd = Command::new("ls");
+    cmd.arg(&link_path);
+    cmd_runner(cmd).await?;
+
+    let mut cmd = Command::new("rm");
+    cmd.arg("-f").arg(link_path);
     cmd_runner(cmd).await?;
 
     Ok(())
