@@ -68,8 +68,27 @@ async fn test2() ->Result<(), std::io::Error> {
     ip::netns_attach_dev_to_br(netns, "c1_dport", "br").await?;
     ip::netns_attach_dev_to_br(netns, "c2_dport", "br").await?;
 
-    ip::netns_up_dev(netns, "c1_dport").await?;
-    ip::netns_up_dev(netns, "c2_dport").await?;
+    ip::netns_dev_up(netns, "c1_dport").await?;
+    ip::netns_dev_up(netns, "c2_dport").await?;
+
+    ip::netns_dev_down(netns, "c1_dport").await?;
+    ip::netns_dev_down(netns, "c2_dport").await?;
+
+    ip::netns_detach_dev_from_br(netns, "c1_dport").await?;
+    ip::netns_detach_dev_from_br(netns, "c2_dport").await?;
+
+    ip::netns_delete_dev(netns, "c1_dport").await?;
+    ip::netns_delete_dev(netns, "c2_dport").await?;
+
+    ip::delete_netns(netns).await?;
+
+    docker::remove_container("c1").await?;
+    docker::remove_container("c2").await?;
+    println!("removing both the two containers");
+
+    system::remove_netns_link(pid_c1).await?;
+    system::remove_netns_link(pid_c2).await?;
+    println!("removing netns link");
 
     Ok(())
 }

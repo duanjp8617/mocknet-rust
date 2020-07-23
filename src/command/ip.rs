@@ -28,9 +28,26 @@ pub async fn netns_add_dev(netns: &str, dev: &str) -> Result<(), Error> {
     Ok(())
 }
 
+pub async fn netns_delete_dev(netns: &str, dev: &str) -> Result<(), Error> {
+    let mut cmd = Command::new("ip");
+    cmd.arg("netns").arg("exec").arg(netns)
+        .arg("ip").arg("link").arg("set").arg(dev).arg("netns").arg("1");
+    cmd_runner(cmd).await?;
+    
+    Ok(())
+}
+
 pub async fn create_netns(netns: &str) -> Result<(), Error> {
     let mut cmd = Command::new("ip");
     cmd.arg("netns").arg("add").arg(netns);
+    cmd_runner(cmd).await?;
+    
+    Ok(())
+}
+
+pub async fn delete_netns(netns: &str) -> Result<(), Error> {
+    let mut cmd = Command::new("ip");
+    cmd.arg("netns").arg("delete").arg(netns);
     cmd_runner(cmd).await?;
     
     Ok(())
@@ -45,7 +62,16 @@ pub async fn netns_create_br(netns: &str, br: &str) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn netns_up_dev(netns: &str, dev: &str) -> Result<(), Error> {
+pub async fn netns_dev_up(netns: &str, dev: &str) -> Result<(), Error> {
+    let mut cmd = Command::new("ip");
+    cmd.arg("netns").arg("exec").arg(netns).arg("ip").arg("link").arg("set")
+        .arg("dev").arg(dev).arg("up");
+    cmd_runner(cmd).await?;
+    
+    Ok(())
+}
+
+pub async fn netns_dev_down(netns: &str, dev: &str) -> Result<(), Error> {
     let mut cmd = Command::new("ip");
     cmd.arg("netns").arg("exec").arg(netns).arg("ip").arg("link").arg("set")
         .arg("dev").arg(dev).arg("up");
@@ -58,6 +84,15 @@ pub async fn netns_attach_dev_to_br(netns: &str, dev: &str, br: &str) -> Result<
     let mut cmd = Command::new("ip");
     cmd.arg("netns").arg("exec").arg(netns).arg("ip").arg("link").arg("set")
         .arg("dev").arg(dev).arg("master").arg(br);
+    cmd_runner(cmd).await?;
+    
+    Ok(())
+}
+
+pub async fn netns_detach_dev_from_br(netns: &str, dev: &str) -> Result<(), Error> {
+    let mut cmd = Command::new("ip");
+    cmd.arg("netns").arg("exec").arg(netns).arg("ip").arg("link").arg("set")
+        .arg("dev").arg(dev).arg("nomaster");
     cmd_runner(cmd).await?;
     
     Ok(())
