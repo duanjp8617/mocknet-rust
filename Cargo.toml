@@ -4,21 +4,18 @@ version = "0.1.0"
 edition = "2018"
 
 [[bin]] # Bin to run the HelloWorld gRPC server
-name = "mater"
-path = "src/master.rs"
+name = "container_server"
+path = "src/bins/container_server.rs"
 
 [[bin]] # Bin to run the HelloWorld gRPC client
 name = "slave"
 path = "src/slave.rs"
 
-[[bin]] # Bin to run a test file
-name = "cmd_test"
-path = "src/cmd_test.rs"
-
 [dependencies]
 tonic = "0.2"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros", "process"] }
+dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git", branch = "master" }
 
 [build-dependencies]
 tonic-build = "0.2"
