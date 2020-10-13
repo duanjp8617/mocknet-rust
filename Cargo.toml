@@ -3,19 +3,21 @@ name = "mocknet"
 version = "0.1.0"
 edition = "2018"
 
-[[bin]] # Bin to run the HelloWorld gRPC server
+[[bin]] 
 name = "container_server"
 path = "src/bins/container_server.rs"
 
-[[bin]] # Bin to run the HelloWorld gRPC client
-name = "slave"
-path = "src/slave.rs"
+[[bin]]
+name = "mocknet_backend"
+path = "src/bins/mocknet_backend.rs"
 
 [dependencies]
 tonic = "0.2"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros", "process"] }
+tower = { version = "0.3" }
 dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git", branch = "master" }
+
 
 [build-dependencies]
 tonic-build = "0.2"

@@ -4,7 +4,7 @@ use hello_world::greeter_server::{Greeter, GreeterServer};
 use hello_world::{HelloReply, HelloRequest};
 
 use dummy_cli_parser::{CliParser, PatternType};
-use std::net::{IpAddr, SocketAddr};
+use std::net::{IpAddr};
 
 pub mod hello_world {
     tonic::include_proto!("helloworld"); // The string specified here must match the proto package name
@@ -76,7 +76,7 @@ fn parse_cli() -> Result<ParseObj, String> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let parse_obj = parse_cli()?;
 
-    let addr = (parse_obj.addr.to_string() + &parse_obj.port.to_string()).parse()?;
+    let addr = (parse_obj.addr.to_string() + ":" + &parse_obj.port.to_string()).parse()?;
     let greeter = MyGreeter::default();
     println!("ready to run!");
     Server::builder()
