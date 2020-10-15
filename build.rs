@@ -39,11 +39,11 @@ fn fix(path: PathBuf) {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // build protobuffer code using tonic 
-    tonic_build::compile_protos("proto/helloworld.proto")?;
+    tonic_build::compile_protos("rpc_proto/proto/helloworld.proto")?;
 
     // build capnp code using capnp
     capnpc::CompilerCommand::new()
-        .file("capnp/indradb.capnp")
+        .file("rpc_proto/capnp/indradb.capnp")
         .run()
         .expect("Expected to be able to compile capnp schemas");
 

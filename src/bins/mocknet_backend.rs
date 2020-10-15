@@ -1,9 +1,6 @@
-use hello_world::greeter_client::GreeterClient;
-use hello_world::HelloRequest;
+use mocknet::autogen::hello_world::greeter_client::GreeterClient;
+use mocknet::autogen::hello_world::HelloRequest;
 
-pub mod hello_world {
-    tonic::include_proto!("helloworld");
-}
 use mocknet::backend::conn_service;
 
 use tower::Service;

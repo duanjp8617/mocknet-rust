@@ -1,14 +1,11 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use hello_world::greeter_server::{Greeter, GreeterServer};
-use hello_world::{HelloReply, HelloRequest};
+use mocknet::autogen::hello_world::greeter_server::{Greeter, GreeterServer};
+use mocknet::autogen::hello_world::{HelloReply, HelloRequest};
 
 use dummy_cli_parser::{CliParser, PatternType};
 use std::net::{IpAddr};
 
-pub mod hello_world {
-    tonic::include_proto!("helloworld"); // The string specified here must match the proto package name
-}
 
 #[derive(Debug, Default)]
 pub struct MyGreeter {}
@@ -21,7 +18,7 @@ impl Greeter for MyGreeter {
     ) -> Result<Response<HelloReply>, Status> { // Return an instance of type HelloReply
         println!("Got a request: {:?}", request);
 
-        let reply = hello_world::HelloReply {
+        let reply = HelloReply {
             message: format!("Hello {}!", request.into_inner().name).into(), // We must use .into_inner() as the fields of gRPC requests and responses are private
         };
 
