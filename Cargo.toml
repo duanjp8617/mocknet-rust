@@ -2,6 +2,7 @@
 name = "mocknet"
 version = "0.1.0"
 edition = "2018"
+build = "build.rs"
 
 [[bin]] 
 name = "container_server"
@@ -17,7 +18,10 @@ prost = "0.6"
 tokio = { version = "0.2", features = ["macros", "process"] }
 tower = { version = "0.3" }
 dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git", branch = "master" }
+capnp = "0.13.3"
+capnp-rpc = "0.13.1"
 
 
 [build-dependencies]
 tonic-build = "0.2"
+capnpc = "0.13.1"
