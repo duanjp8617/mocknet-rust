@@ -19,7 +19,7 @@ path = "src/bins/test_indradb.rs"
 [dependencies]
 tonic = "0.2"
 prost = "0.6"
-tokio = { version = "0.2", features = ["macros", "process"] }
+tokio = { version = "0.2", features = ["macros", "process", "rt-util"] }
 tokio-util = { version = "0.3.0", features = ["compat"] }
 tower = { version = "0.3" }
 futures = "0.3.0"
