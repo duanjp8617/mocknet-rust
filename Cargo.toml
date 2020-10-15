@@ -20,7 +20,9 @@ path = "src/bins/test_indradb.rs"
 tonic = "0.2"
 prost = "0.6"
 tokio = { version = "0.2", features = ["macros", "process"] }
+tokio-util = { version = "0.3.0", features = ["compat"] }
 tower = { version = "0.3" }
+futures = "0.3.0"
 dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git", branch = "master" }
 capnp = "0.13.3"
 capnp-rpc = "0.13.1"

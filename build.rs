@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Expected to be able to compile capnp schemas");
 
     // Maybe add the generated capnp code to OUT_DIR?
-    fix(Path::new(&var("OUT_DIR").expect("Expected `OUT_DIR` environmental variable")).join("capnp/indradb_capnp.rs"));
+    fix(Path::new(&var("OUT_DIR").expect("Expected `OUT_DIR` environmental variable")).join("rpc_proto/capnp/indradb_capnp.rs"));
 
     Ok(())
 }
