@@ -27,6 +27,7 @@ dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git",
 capnp = "0.13.3"
 capnp-rpc = "0.13.1"
 indradb-lib = "1.1.0"
+uuid = { version = "~0.8.1", features = ["v1"] }
 
 
 [build-dependencies]

@@ -30,6 +30,8 @@ struct EmuNet {
     id: String,
     status: EmuNetStatus,
     servers: Vec<CtServer>,
+    emu_dev_uuid: std::collections::HashMap<String, i32>,
+    emu_link_uuid: std::collections::HashMap<String, i32>,
 }
 
 // We should have Vec<EmuNetUser> stored in the database, or HashMap<String, EmuNetUser> to accelerate indexing
@@ -52,6 +54,7 @@ struct EmuNetUser {
 // 3. The client side sends a EmuNet initialization request to the backend. The initialization request contains two list. 
 struct EmuDev {
     name: String,
+    total_ports: u32,
 }
 // 1. The first list is a list of EmuDev device to be created.
 struct EmuLink {
@@ -61,7 +64,11 @@ struct EmuLink {
 }
 // 2. The second list is a list of EmuLink to be created.
 // 3. The backend then confirms that the EmuNet is still uninitialized, if not, return an error.
-// 4. 
+// 4. Then we start doing the most important part, which is to construct the EmuNet topology in the graph database.
+// 4.1: For each EmuDev, create a new vertice in the graph database, and store the vertice uuid in the EmuNet structure.
+// 4.2: For each EmuLink, retrieve the in_bound and out_bound EmuDev name, and create a new edge in the graph database, store the 
+// edge id in Emunet structure
+// 4.3: In case there are errors, return errors.
 
 // 2.3 First, check whether we have enough number of CtServer to allocate to this EmuNet. If it's available, 
 //    2.1 The backend first checks whether the user exists and whether the user has already received an allocation. 

@@ -594,6 +594,7 @@ dependencies = [
  "tonic",
  "tonic-build",
  "tower",
+ "uuid",
 ]
 
 [[package]]
