@@ -26,27 +26,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         stream.set_nodelay(true)?;
         let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
         
+        // create an rpc_network
         let rpc_network = Box::new(twoparty::VatNetwork::new(
             reader,
             writer,
             Side::Client,
             Default::default(),
         ));
+        // create a rpc_system from the rpc_network.
+        // Note: the rpc_system drives the underlying connection, so 
+        // we must spawn it in a task
         let mut rpc_system = RpcSystem::new(rpc_network, None);
+        // create a new client from the rpc_system
         let client: autogen::service::Client = rpc_system.bootstrap(Side::Server);
-
+        // spawn the rpc_system in a taks to drive the underlying network connection
         tokio::task::spawn_local(rpc_system.map(|_| ()));
 
+        // The following code generates a ping request to the indradb
+        // to verify whether the indradb works normally.
         let req = client.ping_request();
         let res = req.send().promise.await?;
-
         if res.get().unwrap().get_ready() {
             println!("yeah");
-            Ok(())
         } else {
             println!("no");
-            Ok(())
         }
+
+        // create a new transaction from the client
+        let trans = client.transaction_request().send().pipeline.get_transaction();
+        
+
+
+        Ok(())
 
     }).await
 }
