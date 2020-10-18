@@ -16,6 +16,10 @@ path = "src/bins/mocknet_backend.rs"
 name = "test_indradb"
 path = "src/bins/test_indradb.rs"
 
+[[bin]]
+name = "test_db_conn"
+path = "src/bins/test_db_conn.rs"
+
 [dependencies]
 tonic = "0.2"
 prost = "0.6"

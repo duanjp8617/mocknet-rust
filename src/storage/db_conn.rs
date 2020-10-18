@@ -64,6 +64,15 @@ pub struct DBReqSender {
     inner: UnboundedSender<DBRequest>,
 }
 
+impl DBReqSender {
+    pub fn ping(&mut self) {
+        let res = self.inner.send(DBRequest::Ping);
+        if res.is_err() {
+            panic!("wtf?");
+        }
+    }
+}
+
 pub struct DBConn {
     rpc_system: RpcSystem<Side>,
     rpc_client: autogen::service::Client,
@@ -136,8 +145,10 @@ impl DBClient {
         let req = self.client.ping_request();
         let res = req.send().promise.await?;
         if res.get()?.get_ready() {
+            println!("ping ok");
             Ok(())
         } else {
+            println!("ping err");
             Err(Error::capnp_error("ping returns false".to_string()))
         }
     }
