@@ -1,15 +1,15 @@
 
 // use mocknet::backend::conn_service;
 use mocknet::autogen;
-use indradb;
+// use indradb;
 
 use std::net::ToSocketAddrs;
-use std::future::Future;
+// use std::future::Future;
 
 use futures::AsyncReadExt;
 use futures::FutureExt;
 
-use capnp::Error as CapnpError;
+// use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 
@@ -53,8 +53,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // create a new transaction from the client
-        let trans = client.transaction_request().send().pipeline.get_transaction();
-        
+        let _ = client.transaction_request().send().pipeline.get_transaction();
+
 
 
         Ok(())

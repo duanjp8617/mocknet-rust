@@ -69,6 +69,9 @@ struct EmuLink {
 // 4.2: For each EmuLink, retrieve the in_bound and out_bound EmuDev name, and create a new edge in the graph database, store the 
 // edge id in Emunet structure
 // 4.3: In case there are errors, return errors.
+// 5. After creating the EmuNet structure, set its status to store it in the database, and return OK.
+
+
 
 // 2.3 First, check whether we have enough number of CtServer to allocate to this EmuNet. If it's available, 
 //    2.1 The backend first checks whether the user exists and whether the user has already received an allocation. 
