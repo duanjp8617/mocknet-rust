@@ -26,6 +26,13 @@ impl Error {
             description,
         }
     }
+
+    pub fn capnp_error(description: String) -> Self {
+        Self {
+            kind: Kind::CapnpError,
+            description,
+        }
+    }
 }
  
 // Convert errors from dependencies to errors::Error

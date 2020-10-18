@@ -18,7 +18,7 @@ use tokio::sync::oneshot;
 use std::pin::Pin;
 use std::marker::Unpin;
 
-enum DBMsg {
+enum DBRequest {
     Ping,
 }
 
@@ -61,7 +61,7 @@ impl Future for DBConnLoop {
 
 #[derive(Clone)]
 pub struct DBReqSender {
-    inner: UnboundedSender<DBMsg>,
+    inner: UnboundedSender<DBRequest>,
 }
 
 pub struct DBConn {
@@ -91,22 +91,54 @@ impl DBConn {
     }
 
     pub fn launch(self) -> (DBReqSender, DBConnLoop) {
-        let (sender, receiver) = unbounded_channel();
-        
+        let (sender, mut receiver) = unbounded_channel();
+        let rpc_system = self.rpc_system;
+        let rpc_client = self.rpc_client;
+
         let req_sender = DBReqSender {
             inner: sender,
         };
 
         let rpc_system_driver = async move {
-            self.rpc_system.await
+            rpc_system.await.map_err(|e| {e.into()})
         };
 
         let rpc_client_driver = async move {
+            let client = DBClient { client: rpc_client };
+            
             while let Some(item) = receiver.recv().await {
-                
+                println!("receive a message");
+                let res = client.ping().await?;
             }
-        }
+
+            Ok(())
+        };
+
+        let conn_loop = DBConnLoop {
+            rpc_system_driver: Box::pin(rpc_system_driver),
+            rpc_client_driver: Box::pin(rpc_client_driver)
+        };
+
+        (req_sender, conn_loop)
     }
 }
 
+struct DBClient {
+    client: autogen::service::Client,
+}
 
+impl DBClient {
+    fn new(client: autogen::service::Client) -> Self {
+        Self { client }
+    }
+
+    async fn ping(&self) -> Result<(), Error> {
+        let req = self.client.ping_request();
+        let res = req.send().promise.await?;
+        if res.get()?.get_ready() {
+            Ok(())
+        } else {
+            Err(Error::capnp_error("ping returns false".to_string()))
+        }
+    }
+}
