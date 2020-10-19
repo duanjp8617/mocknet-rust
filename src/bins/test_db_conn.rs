@@ -13,7 +13,7 @@ use futures::FutureExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 
-use mocknet::storage::db_conn::{DBConn, DBReqSender, DBConnLoop};
+use mocknet::database::db_conn::{DBConn, DBReqSender, DBConnLoop};
 use mocknet::errors::Error;
 
 #[tokio::main]

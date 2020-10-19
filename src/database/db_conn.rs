@@ -22,10 +22,25 @@ enum DBRequest {
     Ping,
 }
 
-// struct IndradbBackend {
-//     rpc_system: RpcSystem<Side>,
-//     rpc_client: autogen::service::Client,
-// }
+pub enum DBResponse {
+    Ping(bool)
+}
+
+struct DBClient {
+    client: autogen::service::Client,
+}
+
+impl DBClient {
+    fn new(client: autogen::service::Client) -> Self {
+        Self { client }
+    }
+
+    async fn ping(&self) -> Result<bool, Error> {
+        let req = self.client.ping_request();
+        let res = req.send().promise.await?;
+        Ok(res.get()?.get_ready()) 
+    }
+}
 
 pub struct DBConnLoop {
     rpc_system_driver: Pin<Box<dyn Future<Output = Result<(), Error>> + 'static>>,
@@ -65,11 +80,9 @@ pub struct DBReqSender {
 }
 
 impl DBReqSender {
-    pub fn ping(&mut self) {
-        let res = self.inner.send(DBRequest::Ping);
-        if res.is_err() {
-            panic!("wtf?");
-        }
+    pub fn ping(&mut self) -> Result<DBResponse, Error> {
+        let res = self.inner.send(DBRequest::Ping)?;
+        Ok(DBResponse::Ping(true))
     }
 }
 
@@ -129,27 +142,5 @@ impl DBConn {
         };
 
         (req_sender, conn_loop)
-    }
-}
-
-struct DBClient {
-    client: autogen::service::Client,
-}
-
-impl DBClient {
-    fn new(client: autogen::service::Client) -> Self {
-        Self { client }
-    }
-
-    async fn ping(&self) -> Result<(), Error> {
-        let req = self.client.ping_request();
-        let res = req.send().promise.await?;
-        if res.get()?.get_ready() {
-            println!("ping ok");
-            Ok(())
-        } else {
-            println!("ping err");
-            Err(Error::capnp_error("ping returns false".to_string()))
-        }
     }
 }
