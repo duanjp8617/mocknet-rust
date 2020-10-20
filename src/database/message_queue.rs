@@ -9,29 +9,29 @@ pub mod error {
     use tokio::sync::oneshot::error::RecvError;
 
     #[derive(Debug)]
-    pub struct Error {
+    pub struct SenderError {
         description: String,
     }
 
-    impl<T> From<SendError<T>> for Error {
+    impl<T> From<SendError<T>> for SenderError {
         fn from(err: SendError<T>) -> Self {
-            Self {description: format!("SenderError: {}", err)}
+            Self {description: format!("SendError from tokio's mpsc channel: {}", err)}
         }
     }
 
-    impl From<RecvError> for Error {
+    impl From<RecvError> for SenderError {
         fn from(err: RecvError) -> Self {
-            Self {description: format!("ResponseRecvError: {}", err)}
+            Self {description: format!("RecvError from tokio's oneshot channel: {}", err)}
         }
     }
 
-    impl fmt::Display for Error {
+    impl fmt::Display for SenderError {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "{}", &self.description)
         }
     }
 
-    impl std::error::Error for Error {
+    impl std::error::Error for SenderError {
         fn description(&self) -> &str {
             &self.description
         }
@@ -45,22 +45,23 @@ pub struct Message<M, R> {
 }
 
 impl<M, R> Message<M, R> {
-    pub fn msg(&self) -> &M {
-        &self.msg
-    }
+    // pub fn msg(&self) -> &M {
+    //     &self.msg
+    // }
 
-    pub fn msg_mut(&mut self) -> &mut M {
-        &mut self.msg
-    }
+    // pub fn msg_mut(&mut self) -> &mut M {
+    //     &mut self.msg
+    // }
 
-    pub fn callback(self, response: R) -> Result<(), R> {
-        let cb_tx = self.take_cb_tx();
-        cb_tx.send(response)
-    }
+    // pub fn callback(self, response: R) -> Result<(), R> {
+    //     let cb_tx = self.take_cb_tx();
+    //     cb_tx.send(response)
+    // }
 
-    fn take_cb_tx(self) -> oneshot::Sender<R> {
+    pub fn take_inner(self) -> (M, oneshot::Sender<R>) {
+        let msg = self.msg;
         let cb_tx = self.cb_tx;
-        cb_tx
+        (msg, cb_tx)
     }
 
     fn new(msg: M, cb_tx: oneshot::Sender<R>) -> Self {
@@ -73,7 +74,7 @@ pub struct Sender<M, R> {
 }
 
 impl<M, R> Sender<M, R> {
-    pub async fn send(&self, msg: M) -> Result<R, error::Error> {
+    pub async fn send(&self, msg: M) -> Result<R, error::SenderError> {
         let (tx, rx) = oneshot::channel();
         let msg = Message::new(msg, tx);
         self.tx.send(msg)?;
