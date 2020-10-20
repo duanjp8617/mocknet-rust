@@ -1,5 +1,3 @@
 pub mod db_conn;
-mod indradb;
+pub mod indradb;
 mod message_queue;
-
-use message_queue::{create};

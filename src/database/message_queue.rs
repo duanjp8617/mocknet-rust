@@ -45,19 +45,6 @@ pub struct Message<M, R> {
 }
 
 impl<M, R> Message<M, R> {
-    // pub fn msg(&self) -> &M {
-    //     &self.msg
-    // }
-
-    // pub fn msg_mut(&mut self) -> &mut M {
-    //     &mut self.msg
-    // }
-
-    // pub fn callback(self, response: R) -> Result<(), R> {
-    //     let cb_tx = self.take_cb_tx();
-    //     cb_tx.send(response)
-    // }
-
     pub fn take_inner(self) -> (M, oneshot::Sender<R>) {
         let msg = self.msg;
         let cb_tx = self.cb_tx;

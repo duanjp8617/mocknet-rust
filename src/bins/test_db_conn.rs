@@ -1,20 +1,6 @@
 
-// use mocknet::backend::conn_service;
-use mocknet::autogen;
-// use indradb;
-
 use std::net::ToSocketAddrs;
-// use std::future::Future;
-
-use futures::AsyncReadExt;
-use futures::FutureExt;
-
-// use capnp::Error as CapnpError;
-use capnp_rpc::rpc_twoparty_capnp::Side;
-use capnp_rpc::{twoparty, RpcSystem};
-
-use mocknet::database::db_conn::{DBConn, DBReqSender, DBConnLoop};
-use mocknet::errors::Error;
+use mocknet::database::indradb;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,19 +10,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .next()
     .expect("could not parse address");
     
-    let db_conn = DBConn::new(&addr).await?;
-    println!("connection successful");
-    let (mut req_sender, conn_loop) = db_conn.launch();
+    let (db_client, db_loop) = indradb::build(&addr).await?;
+
     let ls = tokio::task::LocalSet::new();
+    let db_loop_end_fut = ls.run_until(db_loop);
 
-    let res = ls.run_until(async move {
-        conn_loop.await
-    });
+    let resp = db_client.ping().await?;
+    println!("Ping indradb returns {}", resp);
 
-    // tokio::spawn(async move {
-        req_sender.ping();
-    // });
-
-    let _  = res.await?;
+    db_loop_end_fut.await?;
     Ok(())
 }
