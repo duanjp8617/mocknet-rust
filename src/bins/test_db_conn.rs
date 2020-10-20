@@ -11,13 +11,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .expect("could not parse address");
     
     let (db_client, db_loop) = indradb::build(&addr).await?;
+    println!("good");
+
+    let fut = tokio::spawn(async move {
+        let res = db_client.ping().await;
+        res
+    });
 
     let ls = tokio::task::LocalSet::new();
-    let db_loop_end_fut = ls.run_until(db_loop);
-
-    let resp = db_client.ping().await?;
-    println!("Ping indradb returns {}", resp);
-
+    let db_loop_end_fut = ls.run_until(async move {
+        println!("running");
+        db_loop.await
+    });
     db_loop_end_fut.await?;
+
+    let res = fut.await?;
+    println!("Ping response is {}", res.unwrap());
     Ok(())
 }

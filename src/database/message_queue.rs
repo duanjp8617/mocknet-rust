@@ -65,6 +65,7 @@ impl<M, R> Sender<M, R> {
         let (tx, rx) = oneshot::channel();
         let msg = Message::new(msg, tx);
         self.tx.send(msg)?;
+        println!("Sender finishes sending the message");
         Ok(rx.await?)
     }
 }

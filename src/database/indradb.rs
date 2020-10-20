@@ -41,7 +41,9 @@ impl IndradbCapnpClient {
     fn build_driver(self, mut queue: message_queue::Queue<Request, Response>) -> impl Future<Output = Result<(), Error>> + 'static {
         // the core loop for running capnp rpc
         async move {
+            println!("inside core loop");
             while let Some(msg) = queue.recv().await {
+                println!("receive ping request");
                 let (req, cb_tx) = msg.take_inner();
                 
                 match req {
@@ -67,6 +69,7 @@ pub struct IndradbClient {
 impl IndradbClient {
     pub async fn ping(&self) -> Result<bool, message_queue::error::SenderError> {
         let req = Request::Ping;
+        println!("send ping request");
         let res = self.sender.send(req).await?;
         match res {
             Response::Ping(flag) => Ok(flag),
@@ -87,7 +90,8 @@ impl Unpin for IndradbConnLoop {}
 impl Future for IndradbConnLoop {
     type Output = Result<(), Error>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {                
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {       
+        println!("polling?");
         let inner_ref = self.get_mut();
         let poll1 = inner_ref.capnp_rpc_driver.as_mut().poll(cx);
         match poll1 {
@@ -112,6 +116,7 @@ impl Future for IndradbConnLoop {
 pub async fn build(addr: &SocketAddr) -> Result<(IndradbClient, IndradbConnLoop), Error> {
     // Make a connection
     let stream = tokio::net::TcpStream::connect(addr).await?;
+    println!("connection ready");   
     stream.set_nodelay(true)?;
  
     // create rpc_network
@@ -134,6 +139,7 @@ pub async fn build(addr: &SocketAddr) -> Result<(IndradbClient, IndradbConnLoop)
 
     // create capnp drivers
     let capnp_rpc_driver = async move {
+        println!("running capnp_rpc_system");
         capnp_rpc_system.await.map_err(|e| {e.into()})
     };
     let capnp_client_driver = IndradbCapnpClient::build_driver(indradb_capnp_client, queue);
