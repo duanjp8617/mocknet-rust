@@ -47,10 +47,7 @@ impl IndradbCapnpClient {
                 match req {
                     Request::Ping => {                        
                         let resp = self.ping().await?;
-                        let send_result = cb_tx.send(Response::Ping(resp));
-                        if send_result.is_err() {
-                            panic!("fail to send the response back to the callback channel");
-                        }
+                        let _ = cb_tx.send(Response::Ping(resp));
                     }
                     _ => {
                         panic!("Wtf")
