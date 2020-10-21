@@ -49,6 +49,16 @@ impl Connector {
     }   
 }
 
+enum Request {
+    Wtf,
+    Ping,
+}
+
+enum Response {
+    Wtf,
+    Ping(bool),
+}
+
 struct IndradbClientBackend {
     client: IndradbCapnpClient,
     disconnector: CapnpRpcDisconnector,
@@ -91,6 +101,7 @@ fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Re
                     let _ = msg.callback(resp);
                 },
                 Err(err) => {
+                    while let Ok(_) = queue.try_recv() {}
                     return Err(err);
                 }
             }
@@ -130,16 +141,6 @@ fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Re
         let disconnect_res = backend.disconnector.await;
         err_opt.map_or(disconnect_res, |err|{Err(err)})
     }
-}
-
-enum Request {
-    Wtf,
-    Ping,
-}
-
-enum Response {
-    Wtf,
-    Ping(bool),
 }
 
 struct IndradbClient {
