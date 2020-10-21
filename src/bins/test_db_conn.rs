@@ -1,6 +1,6 @@
 
 use std::net::ToSocketAddrs;
-use mocknet::database::indradb;
+use mocknet::database::build_client_fut;
 
 // #[tokio::main]
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -38,8 +38,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .next()
     .expect("could not parse address");
     
-    
+    let stream = tokio::net::TcpStream::connect(&addr).await?;
+    stream.set_nodelay(true)?;
+    let ls = tokio::task::LocalSet::new();
 
+    let (indradb_client, backend_fut) = build_client_fut(stream, &ls);
+
+
+    let jh = tokio::spawn(async move {
+        let res = indradb_client.ping().await.unwrap();
+        println!("response is {}", res);
+    });
+
+    backend_fut.await?;
+    jh.await.unwrap();
     
     Ok(())
 }

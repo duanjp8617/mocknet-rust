@@ -1,5 +1,6 @@
-pub mod indradb;
+mod indradb;
 mod message_queue;
 
-mod fucking_brand_new;
-mod message_queue1;
+pub use self::indradb::IndradbClient;
+pub use self::indradb::IndradbClientError;
+pub use self::indradb::build_client_fut;

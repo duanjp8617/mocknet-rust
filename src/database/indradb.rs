@@ -1,20 +1,19 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
-use std::task::{Context, Poll, Poll::Ready, Poll::Pending};
-use std::pin::Pin;
-use std::marker::Unpin;
-use std::net::SocketAddr;
 
 use futures::AsyncReadExt;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
+use capnp_rpc::Disconnector;
 
-use crate::errors::Error;
-use crate::autogen;
-use super::message_queue;
+use crate::autogen::service::Client as IndradbCapnpClient;
 
-// A request sent from the database client
+use super::message_queue::{Sender, Queue, create};
+
+type CapnpRpcDisconnector = Disconnector<Side>;
+pub type IndradbClientError = super::message_queue::error::MsgQError;
+
 enum Request {
     Wtf,
     Ping,
@@ -25,49 +24,100 @@ enum Response {
     Ping(bool),
 }
 
-struct IndradbCapnpClient {
-    client: autogen::service::Client,
+struct IndradbClientBackend {
+    client: IndradbCapnpClient,
+    disconnector: CapnpRpcDisconnector,
 }
 
-impl IndradbCapnpClient {
-    async fn ping(&self) -> Result<bool, Error> {
+impl IndradbClientBackend {
+    async fn ping(&self) -> Result<bool, capnp::Error> {
         let req = self.client.ping_request();
         let res = req.send().promise.await?;
         Ok(res.get()?.get_ready()) 
     }
 }
 
-impl IndradbCapnpClient {
-    fn build_driver(self, mut queue: message_queue::Queue<Request, Response>) -> impl Future<Output = Result<(), Error>> + 'static {
-        // the core loop for running capnp rpc
-        async move {
-            println!("inside core");
-            while let Some(msg) = queue.recv().await {
-                println!("receive ping request");
-                let (req, cb_tx) = msg.take_inner();
-                
-                match req {
-                    Request::Ping => {                        
-                        let resp = self.ping().await?;
-                        let _ = cb_tx.send(Response::Ping(resp));
-                    }
-                    _ => {
-                        panic!("Wtf")
-                    }
-                }
+impl IndradbClientBackend {
+    async fn dispatch_request(&self, req: Request) -> Result<Response, capnp::Error> {
+        match req {
+            Request::Ping => {
+                let resp = self.ping().await?;
+                Ok(Response::Ping(resp))
+            },
+            _ => {
+                panic!("wtf?")
             }
-    
-            Ok(())
         }
     }
 }
 
+fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response>) 
+    -> impl Future<Output = Result<(), capnp::Error>> + 'static 
+{
+    async fn shutdown_queue(backend: &IndradbClientBackend, mut queue: Queue<Request, Response>) 
+        -> Result<(), capnp::Error> 
+    {
+        queue.close();
+        while let Ok(mut msg) = queue.try_recv() {
+            let req = msg.try_get_msg().expect("find another error message");
+            let resp_result = backend.dispatch_request(req).await;
+            match resp_result {
+                Ok(resp) => {
+                    let _ = msg.callback(resp);
+                },
+                Err(err) => {
+                    while let Ok(_) = queue.try_recv() {}
+                    return Err(err);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn drain_queue(mut queue: Queue<Request, Response>) {
+        queue.close();
+        while let Ok(_) = queue.try_recv() {}
+    }
+    
+    async move {
+        println!("running core loop");
+        let mut err_opt = None;        
+        while let Some(mut msg) = queue.recv().await {
+            println!("receive a message");
+            if msg.is_close_msg() {
+                err_opt = shutdown_queue(&backend, queue).await.err();
+                break;
+            }
+            else {                
+                let req = msg.try_get_msg().unwrap();
+                let resp_result = backend.dispatch_request(req).await;
+                match resp_result {
+                    Ok(resp) => {
+                        let _ = msg.callback(resp);
+                    },
+                    Err(err) => {
+                        drain_queue(queue);
+                        err_opt = Some(err);
+                        break;
+                    }
+
+                }
+            }
+        }
+        println!("here");
+
+        let disconnect_res = backend.disconnector.await;
+        println!("Indradb network connection down");
+        err_opt.map_or(disconnect_res, |err|{Err(err)})
+    }
+}
+
 pub struct IndradbClient {
-    sender: message_queue::Sender<Request, Response>,
+    sender: Sender<Request, Response>,
 }
 
 impl IndradbClient {
-    pub async fn ping(&self) -> Result<bool, message_queue::error::SenderError> {
+    pub async fn ping(&self) -> Result<bool, IndradbClientError> {
         let req = Request::Ping;
         println!("send ping request");
         let res = self.sender.send(req).await?;
@@ -80,75 +130,39 @@ impl IndradbClient {
     }
 }
 
-pub struct IndradbConnLoop {
-    capnp_rpc_driver: Pin<Box<dyn Future<Output = Result<(), Error>> + 'static>>,
-    capnp_client_driver: Pin<Box<dyn Future<Output = Result<(), Error>> + 'static>>,
-}
 
-impl Unpin for IndradbConnLoop {}
+pub fn build_client_fut<'a>(stream: tokio::net::TcpStream, ls: &'a tokio::task::LocalSet) 
+    -> (IndradbClient, impl Future<Output = Result<(), capnp::Error>> + 'a)
+{
+    
+    let (sender, queue) = create();
 
-impl Future for IndradbConnLoop {
-    type Output = Result<(), Error>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {       
-        println!("polling?");
-        let inner_ref = self.get_mut();
-        let poll1 = inner_ref.capnp_rpc_driver.as_mut().poll(cx);
-        match poll1 {
-            Ready(res) => {
-                return Ready(res);
-            },
-            Pending => {}
+    let backend_fut = ls.run_until(async move {         
+        // create rpc_system
+        let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
+        let rpc_network = Box::new(twoparty::VatNetwork::new(
+            reader,
+            writer,
+            Side::Client,
+            Default::default(),
+        ));
+        let mut capnp_rpc_system = RpcSystem::new(rpc_network, None);
+        
+        // create client_backend
+        let indradb_capnp_client = capnp_rpc_system.bootstrap(Side::Server);
+        let disconnector = capnp_rpc_system.get_disconnector();
+        let indradb_client_backend = IndradbClientBackend {
+            client: indradb_capnp_client,
+            disconnector,
         };
 
-        let poll2 = inner_ref.capnp_client_driver.as_mut().poll(cx);
-        match poll2 {
-            Ready(res) => {
-                return Ready(res);
-            },
-            Pending => {
-                return Pending;
-            }
-        };
-    }
-}
-
-pub async fn build(addr: &SocketAddr) -> Result<(IndradbClient, IndradbConnLoop), Error> {
-    // Make a connection
-    let stream = tokio::net::TcpStream::connect(addr).await?;
-    println!("connection ready");   
-    stream.set_nodelay(true)?;
- 
-    // create rpc_network
-    let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
-    let rpc_network = Box::new(twoparty::VatNetwork::new(
-        reader,
-        writer,
-        Side::Client,
-        Default::default(),
-    ));
-
-    // create capnp_rpc_system and indradb_capnp_client
-    let mut capnp_rpc_system = RpcSystem::new(rpc_network, None);
-    let indradb_capnp_client = IndradbCapnpClient {
-        client: capnp_rpc_system.bootstrap(Side::Server),
-    };
-
-    // create message queue
-    let (sender, queue) = message_queue::create();
-
-    // create capnp drivers
-    let capnp_rpc_driver = async move {
-        println!("running capnp_rpc_system");
-        capnp_rpc_system.await.map_err(|e| {e.into()})
-    };
-    let capnp_client_driver = IndradbCapnpClient::build_driver(indradb_capnp_client, queue);
-
-    // build connection loop
-    let conn_loop = IndradbConnLoop {
-        capnp_rpc_driver: Box::pin(capnp_rpc_driver),
-        capnp_client_driver: Box::pin(capnp_client_driver)
-    };
-
-    Ok((IndradbClient{sender}, conn_loop))
+        // run rpc_system
+        tokio::task::spawn_local(async move {
+            capnp_rpc_system.await
+        });
+        // run indradb backend
+        tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue)).await.unwrap()
+    });
+    
+    (IndradbClient{sender}, backend_fut)
 }
