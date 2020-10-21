@@ -43,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // spawn the rpc_system in a taks to drive the underlying network connection
         tokio::task::spawn_local(rpc_system.map(|_| ()));
 
+        tokio::spawn(async move {});
         // The following code generates a ping request to the indradb
         // to verify whether the indradb works normally.
         let req = client.ping_request();

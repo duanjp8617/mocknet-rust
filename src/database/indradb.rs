@@ -41,7 +41,7 @@ impl IndradbCapnpClient {
     fn build_driver(self, mut queue: message_queue::Queue<Request, Response>) -> impl Future<Output = Result<(), Error>> + 'static {
         // the core loop for running capnp rpc
         async move {
-            println!("inside core loop");
+            println!("inside core");
             while let Some(msg) = queue.recv().await {
                 println!("receive ping request");
                 let (req, cb_tx) = msg.take_inner();
