@@ -20,8 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .unwrap()
     .next()
     .expect("could not parse address");
-    
-    tokio::task::LocalSet::new().run_until(async move {
+    let ls = tokio::task::LocalSet::new();
+    let jh = ls.run_until(async move {
         println!("running");
         let stream = tokio::net::TcpStream::connect(&addr).await?;
         stream.set_nodelay(true)?;
@@ -61,5 +61,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         Ok(())
 
-    }).await
+    });
+    jh.await
 }
