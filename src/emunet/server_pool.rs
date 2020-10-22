@@ -105,4 +105,23 @@ impl ServerPool {
     pub fn into_vec(self) -> Vec<ContainerServer> {
         self.servers
     }
+
+    pub fn allocate_servers(&mut self, quantity: u32) -> Option<Vec<ContainerServer>> {
+        let mut res = Vec::new();
+        let mut target = 0;
+        
+        while target < quantity && self.servers.len() > 0 {
+            let cs = self.servers.pop().unwrap();
+            target += cs.capacity();
+            res.push(cs);
+        };
+        
+        if target >= quantity {
+            Some(res)
+        }
+        else {
+            self.add_servers(res.into_iter());
+            None
+        }
+    }
 }
