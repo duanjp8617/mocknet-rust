@@ -9,3 +9,4 @@ pub mod backend;
 pub mod autogen;
 pub mod database;
 pub mod util;
+pub mod emunet;
