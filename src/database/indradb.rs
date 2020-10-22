@@ -14,6 +14,8 @@ use super::message_queue::{Sender, Queue, create};
 type CapnpRpcDisconnector = Disconnector<Side>;
 pub type IndradbClientError = super::message_queue::error::MsgQError;
 
+use super::resource;
+
 enum Request {
     Wtf,
     Ping,
@@ -128,6 +130,19 @@ impl IndradbClient {
             }
         }
     }
+
+    pub async fn get_server_pool(name: String) -> Result<Vec<resource::CtServer>, IndradbClientError> {
+        unimplemented!()
+    }
+
+    pub async fn update_server_pool(name: String, server_pool: Vec<resource::CtServer>) -> Result<(), IndradbClientError> {
+        unimplemented!()
+    }
+
+    // pub async fn user_registration(user: String) -> Result<(), IndradbClientError> {
+
+    // }
+
 }
 
 
