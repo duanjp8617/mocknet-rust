@@ -36,6 +36,7 @@ capnp = "0.13.3"
 capnp-rpc = "0.13.1"
 indradb-lib = "1.1.0"
 uuid = { version = "~0.8.1", features = ["v1", "serde"] }
+chrono = "0.4.15"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 

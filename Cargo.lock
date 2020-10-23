@@ -585,6 +585,7 @@ dependencies = [
  "capnp",
  "capnp-rpc",
  "capnpc",
+ "chrono",
  "dummy_cli_parser",
  "futures",
  "indradb-lib",
