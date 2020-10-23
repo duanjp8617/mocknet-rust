@@ -5,19 +5,19 @@ use capnp::Error as CapnpError;
 use uuid::Uuid;
 use serde_json::value::Value as JsonValue;
 
-pub struct ClientTransaction<'a> {
-    trans: &'a autogen::transaction::Client,
+pub struct ClientTransaction {
+    trans: autogen::transaction::Client,
 }
 
-impl<'a> ClientTransaction<'a> {
-    pub fn new(trans: &'a autogen::transaction::Client) -> Self {
+impl ClientTransaction {
+    pub fn new(trans: autogen::transaction::Client) -> Self {
         ClientTransaction {
             trans,
         }
     }
 }
 
-impl<'a> ClientTransaction<'a> {
+impl ClientTransaction {
     pub async fn async_create_vertex(&self, v: &indradb::Vertex) -> Result<bool, CapnpError> {
         let mut req = self.trans.create_vertex_request();
         converters::from_vertex(v, req.get().init_vertex());

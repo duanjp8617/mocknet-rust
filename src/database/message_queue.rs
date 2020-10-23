@@ -35,7 +35,7 @@ pub mod error {
                     write!(f, "message queue closed with mpsc::SendError")
                 }
                 MsgQError::OneshotRecvError => {
-                    write!(f, "message queue closed with mspc::OneShotRecvError")
+                    write!(f, "message queue closed with oneshot::RecvError")
                 }
             }            
         }

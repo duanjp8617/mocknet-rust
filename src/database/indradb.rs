@@ -15,6 +15,7 @@ use indradb::{VertexProperty};
 use crate::emunet::server;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::message_queue::{Sender, Queue, create};
+use crate::util::ClientTransaction;
 
 type CapnpRpcDisconnector = Disconnector<Side>;
 pub type IndradbClientError = super::message_queue::error::MsgQError;
@@ -42,6 +43,15 @@ impl IndradbClientBackend {
         let req = self.client.ping_request();
         let res = req.send().promise.await?;
         Ok(res.get()?.get_ready()) 
+    }
+
+    async fn create_server_list(&self) -> Result<bool, capnp::Error> {        
+        let vt = Type::new("server_list").unwrap();
+        let v = Vertex::new(vt);
+
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        ct.async_create_vertex(&v).await        
     }
 
     // async fn read_server_list(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
