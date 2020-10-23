@@ -7,6 +7,11 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use capnp_rpc::Disconnector;
 
+use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQuery, VertexQueryExt, VertexPropertyQuery};
+use indradb::Type;
+use indradb::{Vertex};
+use indradb::{VertexProperty};
+
 use crate::emunet::server;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::message_queue::{Sender, Queue, create};
@@ -31,6 +36,7 @@ struct IndradbClientBackend {
     disconnector: CapnpRpcDisconnector,
 }
 
+
 impl IndradbClientBackend {
     async fn ping(&self) -> Result<bool, capnp::Error> {
         let req = self.client.ping_request();
@@ -38,12 +44,28 @@ impl IndradbClientBackend {
         Ok(res.get()?.get_ready()) 
     }
 
-    async fn read_servers(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
-        let mut trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let mut req = trans.get_vertices_request();
-        
-        Ok(Vec::new())
-    }
+    // async fn read_server_list(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
+    //     // get the vertex of type "server_list"
+    //     let q = RangeVertexQuery::new(1).t(Type::new("server_list").unwrap());
+    //     let vertex_list = self.async_get_vertices(q.into()).await?;
+    //     if vertex_list.len() != 1 {
+    //         return Ok(Vec::new());
+    //     }
+
+    //     // get the "name" property of this vertex
+    //     let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(name);
+    //     let property_list = self.async_get_vertex_properties(q).await?;
+    //     if property_list.len() != 1 {
+    //         panic!("fatal, this should be impossible to reach");
+    //     }
+    //     let server_list: Vec<server::ContainerServer> = serde_json::from_value(property_list[0].value).unwrap();
+
+    //     Ok(list.into_iter().map(|p|{serde_json::from_value(p.value).unwrap()}).collect())
+    // }
+
+    // async fn update_server_list(&self, name: String, server_list: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
+
+    // }
 }
 
 impl IndradbClientBackend {
