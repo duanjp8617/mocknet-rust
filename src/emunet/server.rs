@@ -78,7 +78,12 @@ impl ServerPool {
     }
 
     pub fn add_server(&mut self, conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str, capacity: u32) {        
-        let target = ServerAddr::new(conn_ip.to_string(), conn_port, data_ip.to_string(), man_ip.to_string()).expect("invalid server address");
+        let target = ServerAddr::new(
+            conn_ip.to_string(), 
+            conn_port, 
+            data_ip.to_string(), 
+            man_ip.to_string()
+        ).expect("invalid server address");
         if self.server_addr_exist(&target) {
             panic!("ServerAddr {:?} exists in the pool", target);
         }
@@ -106,21 +111,23 @@ impl ServerPool {
         self.servers
     }
 
+    // Use a simple greedy algorithm to allocate servers
     pub fn allocate_servers(&mut self, quantity: u32) -> Option<Vec<ContainerServer>> {
-        let mut res = Vec::new();
         let mut target = 0;
+
+        let mut enumerate: Vec<(usize, u32)> = self.servers.iter().map(|e|{e.capacity}).enumerate().collect();
+        enumerate.sort_by(|a, b|{(&b.1).cmp(&a.1)});
         
-        while target < quantity && self.servers.len() > 0 {
-            let cs = self.servers.pop().unwrap();
-            target += cs.capacity();
-            res.push(cs);
+        let mut index = 0;
+        while target < quantity && index < enumerate.len() {
+            target += enumerate[index].1;            
+            index += 1;
         };
         
         if target >= quantity {
-            Some(res)
+            Some(enumerate.iter().take(index).map(|e|{self.servers.remove(e.0)}).collect())
         }
         else {
-            self.add_servers(res.into_iter());
             None
         }
     }

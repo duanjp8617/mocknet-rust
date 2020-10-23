@@ -5,7 +5,7 @@ use serde_json::Result;
 
 use std::net::{SocketAddr, ToSocketAddrs, IpAddr};
 
-use mocknet::emunet::server_pool;
+use mocknet::emunet::server;
 
 #[derive(Serialize, Deserialize)]
 struct Address {
@@ -41,9 +41,9 @@ fn print_an_address() -> Result<()> {
 
 #[allow(dead_code)]
 fn test_server_pool() {
-    let mut sp = server_pool::ServerPool::new();
-    sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 10);
-    sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 10);
+    let mut sp = server::ServerPool::new();
+    sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
+    sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
     // sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 10);
     // sp.add_server("127.0.0.2.5", 128, "128.0.0.3", "129.0.0.4", 10);
 
@@ -52,12 +52,27 @@ fn test_server_pool() {
         println!("{}", cs.conn_addr());
     }
 
-    let mut sp = server_pool::ServerPool::new();
-    sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 10);
+    let mut sp = server::ServerPool::new();
+    sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
     sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
     // sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 10);
     // sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 10);
     sp.add_servers(ls.into_iter());
+
+    let ls = sp.allocate_servers(19).unwrap();
+    println!("first 19: {}", ls.len());
+    for i in ls.iter() {
+        println!("first 19: {}", i.capacity());
+    }
+
+    let ls = sp.allocate_servers(19);
+    println!("second none: {}", ls.is_none());
+
+    let ls = sp.allocate_servers(10).unwrap();
+    println!("last 10: {}", ls.len());
+    for i in ls.iter() {
+        println!("last 10: {}", i.capacity());
+    }
 }
 
 fn main() {
