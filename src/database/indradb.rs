@@ -7,23 +7,23 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use capnp_rpc::Disconnector;
 
+use crate::emunet::server;
 use crate::autogen::service::Client as IndradbCapnpClient;
-
 use super::message_queue::{Sender, Queue, create};
 
 type CapnpRpcDisconnector = Disconnector<Side>;
 pub type IndradbClientError = super::message_queue::error::MsgQError;
 
-use super::resource;
-
 enum Request {
     Wtf,
     Ping,
+    ReadServers(String),
 }
 
 enum Response {
     Wtf,
     Ping(bool),
+    ReadServers(Vec<server::ContainerServer>),
 }
 
 struct IndradbClientBackend {
@@ -36,6 +36,13 @@ impl IndradbClientBackend {
         let req = self.client.ping_request();
         let res = req.send().promise.await?;
         Ok(res.get()?.get_ready()) 
+    }
+
+    async fn read_servers(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
+        let mut trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let mut req = trans.get_vertices_request();
+        
+        Ok(Vec::new())
     }
 }
 
@@ -126,16 +133,23 @@ impl IndradbClient {
         match res {
             Response::Ping(flag) => Ok(flag),
             _ => {
-                panic!("wtf")
+                panic!("invalid response type")
             }
         }
     }
 
-    pub async fn get_server_pool(name: String) -> Result<Vec<resource::CtServer>, IndradbClientError> {
-        unimplemented!()
+    pub async fn get_server_pool(&self, name: String) -> Result<Vec<server::ContainerServer>, IndradbClientError> {
+        let req = Request::ReadServers(name);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::ReadServers(v) => Ok(v),
+            _ => {
+                panic!("invalid response type")
+            }
+        }
     }
 
-    pub async fn update_server_pool(name: String, server_pool: Vec<resource::CtServer>) -> Result<(), IndradbClientError> {
+    pub async fn update_server_pool(name: String, server_pool: Vec<server::ContainerServer>) -> Result<(), IndradbClientError> {
         unimplemented!()
     }
 
