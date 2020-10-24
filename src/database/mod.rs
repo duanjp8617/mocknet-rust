@@ -6,3 +6,5 @@ pub use self::indradb::IndradbClientError;
 pub use self::indradb::build_client_fut;
 
 // mod resource;
+
+mod new_message_queue;
