@@ -60,6 +60,7 @@ impl ContainerServer {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct ServerPool {
     servers: Vec<ContainerServer>
 }

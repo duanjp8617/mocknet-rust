@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use crate::emunet::server;
 use crate::emunet::user;
+use crate::emunet::net;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::new_message_queue::{Sender, Queue, create, error};
 use crate::util::ClientTransaction;
@@ -43,12 +44,6 @@ struct IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
-    async fn ping(&self) -> Result<bool, capnp::Error> {
-        let req = self.client.ping_request();
-        let res = req.send().promise.await?;
-        Ok(res.get()?.get_ready()) 
-    }
-
     async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, capnp::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
@@ -107,14 +102,14 @@ impl IndradbClientBackend {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        // get the server_list vertex
+        // query the vertex with vertex type
         let q = RangeVertexQuery::new(1).t(Type::new(vertex_type).unwrap());
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
             panic!("vertex type {} with property {} is not available in the database");
         }
 
-        // update the property for the queue
+        // write the property value for the property with property_name
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         ct.async_set_vertex_properties(q, json_value).await?;
         Ok(())
@@ -122,6 +117,12 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
+    async fn ping(&self) -> Result<bool, capnp::Error> {
+        let req = self.client.ping_request();
+        let res = req.send().promise.await?;
+        Ok(res.get()?.get_ready()) 
+    }
+
     async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
         let c_server_list = self.count_vertex_number("server_list").await?;
         let c_user_map = self.count_vertex_number("user_map").await?;
@@ -154,6 +155,35 @@ impl IndradbClientBackend {
         user_map.insert(user_name, user);
         let jv = serde_json::to_value(user_map).unwrap();
         self.write_vertex_json_value("user_map", "map", &jv).await.map(|_|{true})
+    }
+
+    async fn create_emu_net(&self, user_name: String, net_name: String, capacity: u32) -> Result<bool, capnp::Error> {
+        let jv = self.read_vertex_json_value("user_map", "map").await?;
+        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        let user_mut = user_map.get_mut(&net_name).expect("user is not registered");
+        
+        if user_mut.emu_net_exist(&net_name) {
+            Ok(false)
+        }
+        else {
+            let emu_net = net::EmuNet::new(net_name.clone(), capacity);
+            {
+                let trans = self.client.transaction_request().send().pipeline.get_transaction();
+                let ct = ClientTransaction::new(trans);
+                
+                // create a new vertex with vertex_type
+                let vt = Type::new("emu_net").unwrap();
+                let v = Vertex::new(vt);
+                let succeed = ct.async_create_vertex(&v).await?;
+                if !succeed {
+                    panic!("error creating a new emu_net node");
+                }
+
+                user_mut.add_emu_net(net_name, v.id.clone());
+            }
+
+            
+        }
     }
 }
 
