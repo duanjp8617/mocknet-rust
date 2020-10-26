@@ -18,8 +18,9 @@ use crate::emunet::server;
 use crate::emunet::user;
 use crate::emunet::net;
 use crate::autogen::service::Client as IndradbCapnpClient;
-use super::message_queue::{Sender, Queue, create, error};
+use super::message_queue::{Queue};
 use super::indradb_util::ClientTransaction;
+use super::errors;
 
 use std::collections::HashMap;
 
@@ -221,10 +222,10 @@ impl IndradbClientBackend {
     }
 }
 
-pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, capnp::Error>) 
-    -> impl Future<Output = Result<(), capnp::Error>> + 'static 
+pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, errors::BackendError>) 
+    -> impl Future<Output = Result<(), errors::BackendError>> + 'static 
 {
-    fn drain_queue(mut queue: Queue<Request, Response, capnp::Error>) {
+    fn drain_queue(mut queue: Queue<Request, Response, errors::BackendError>) {
         queue.close();
         while let Ok(_) = queue.try_recv() {}
     }
@@ -237,11 +238,11 @@ pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request
             }
             else {                
                 let req = msg.try_get_msg().unwrap();
-                let resp_result = backend.dispatch_request(req).await;
+                let resp_result = backend.dispatch_request(req).await.map_err(|e|{e.into()});
                 let _ = msg.callback(resp_result);
             }
         }
         
-        backend.disconnector.await        
+        backend.disconnector.await.map_err(|e|{e.into()})
     }
 }

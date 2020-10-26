@@ -5,18 +5,17 @@ use futures::AsyncReadExt;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
-use capnp_rpc::Disconnector;
-
-use crate::emunet::server;
-use super::message_queue::{Sender, create};
 
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
 
-pub type IndradbClientError = super::message_queue::error::MsgQError<capnp::Error>;
+use crate::emunet::server;
+use super::message_queue::{Sender, create};
+use super::IndradbClientError;
+use super::errors::BackendError;
 
 pub struct IndradbClient {
-    sender: Sender<Request, Response, capnp::Error>,
+    sender: Sender<Request, Response, BackendError>,
 }
 
 impl IndradbClient {
@@ -50,7 +49,7 @@ impl IndradbClient {
 
 
 pub fn build_client_fut<'a>(stream: tokio::net::TcpStream, ls: &'a tokio::task::LocalSet) 
-    -> (IndradbClient, impl Future<Output = Result<(), capnp::Error>> + 'a)
+    -> (IndradbClient, impl Future<Output = Result<(), IndradbClientError>> + 'a)
 {
     
     let (sender, queue) = create();
@@ -76,7 +75,10 @@ pub fn build_client_fut<'a>(stream: tokio::net::TcpStream, ls: &'a tokio::task::
             capnp_rpc_system.await
         });
         // run indradb backend
-        tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue)).await.unwrap()
+        tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue))
+            .await
+            .unwrap()
+            .map_err(|e|{IndradbClientError::from_error(e)})
     });
     
     (IndradbClient{sender}, backend_fut)

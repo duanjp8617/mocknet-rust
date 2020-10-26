@@ -2,63 +2,7 @@ use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
 use tokio::sync::oneshot;
 use tokio::sync::mpsc::error::TryRecvError;
 
-pub mod error {
-    use std::fmt;
-    use std::convert::From;
-
-    use tokio::sync::mpsc::error as mpsc;
-    use tokio::sync::oneshot::error as oneshot;
-
-    #[derive(Debug)]
-    pub enum MsgQError<E: std::error::Error> {
-        QueueDrop,
-        Inner(E),
-    }
-
-    // If we don't enforce E to implement StdError, then rust complains.
-    impl<E: std::error::Error, T> From<mpsc::SendError<T>> for MsgQError<E> {
-        fn from(_: mpsc::SendError<T>) -> MsgQError<E> {
-            MsgQError::<E>::QueueDrop
-        }
-    }
-
-    impl<E: std::error::Error> From<oneshot::RecvError> for MsgQError<E> {
-        fn from(_: oneshot::RecvError) -> MsgQError<E> {
-            MsgQError::QueueDrop
-        }
-    }
-
-    impl<E: std::error::Error> fmt::Display for MsgQError<E> {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            match self {
-                MsgQError::QueueDrop => {
-                    write!(f, "message queue is dropped")
-                }
-                MsgQError::Inner(e) => {
-                    write!(f, "inner error message: {}", e)
-                }
-            }            
-        }
-    }
-
-    impl<E: std::error::Error> std::error::Error for MsgQError<E> {}
-
-    // If we don't enforce E to implement StdError, then rust complains.
-    // Because MsgQError::Inner is only available for type variable E 
-    // that implement std::error::Error
-    impl<E: std::error::Error> MsgQError<E> {
-        pub fn get_inner(self) -> Option<E> {
-            match self {
-                MsgQError::Inner(e) => Some(e),
-                _ => None
-            }
-        }
-
-        pub(super) fn from_error(e: E) -> Self {
-            MsgQError::Inner(e)
-        }
-    }
-}
+use super::errors::MsgQError;
 
 // A message with a callback channel
 pub struct Message<M, R, E> {
@@ -101,14 +45,14 @@ pub struct Sender<M, R, E> {
 }
 
 impl<M, R, E: std::error::Error> Sender<M, R, E> {
-    pub async fn send(&self, msg: M) -> Result<R, error::MsgQError<E>> {
+    pub async fn send(&self, msg: M) -> Result<R, MsgQError<E>> {
         let (tx, rx) = oneshot::channel();
         let msg = Message::new(msg, tx);
         
         self.tx.send(msg)?;
         let res = rx.await?;
         
-        res.map_err(|e|{error::MsgQError::from_error(e)})
+        res.map_err(|e|{MsgQError::from_error(e)})
     }
 }
 
