@@ -23,24 +23,27 @@ use super::indradb_util::ClientTransaction;
 
 use std::collections::HashMap;
 
-type CapnpRpcDisconnector = Disconnector<Side>;
-pub type IndradbClientError = error::MsgQError<capnp::Error>;
-
-enum Request {
+pub enum Request {
     Ping,
     Init(Vec<server::ContainerServer>),
     RegisterUser(String),
 }
 
-enum Response {
+pub enum Response {
     Ping(bool),
     Init(bool),
     RegisterUser(bool),
 }
 
-struct IndradbClientBackend {
-    client: IndradbCapnpClient,
-    disconnector: CapnpRpcDisconnector,
+pub struct IndradbClientBackend {
+    client: crate::autogen::service::Client,
+    disconnector: capnp_rpc::Disconnector<Side>,
+}
+
+impl IndradbClientBackend {
+    pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
+        Self{client, disconnector}
+    }
 }
 
 impl IndradbClientBackend {
@@ -218,7 +221,7 @@ impl IndradbClientBackend {
     }
 }
 
-fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, capnp::Error>) 
+pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, capnp::Error>) 
     -> impl Future<Output = Result<(), capnp::Error>> + 'static 
 {
     fn drain_queue(mut queue: Queue<Request, Response, capnp::Error>) {
@@ -241,74 +244,4 @@ fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Re
         
         backend.disconnector.await        
     }
-}
-
-pub struct IndradbClient {
-    sender: Sender<Request, Response, capnp::Error>,
-}
-
-impl IndradbClient {
-    pub async fn ping(&self) -> Result<bool, IndradbClientError> {
-        let req = Request::Ping;
-        let res = self.sender.send(req).await?;
-        match res {
-            Response::Ping(flag) => Ok(flag),
-            _ => panic!("invalid response")
-        }
-    }
-
-    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, IndradbClientError> {
-        let req = Request::Init(servers);
-        let res = self.sender.send(req).await?;
-        match res {
-            Response::Init(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
-    }
-
-    pub async fn register_user(&self, user_name: String) -> Result<bool, IndradbClientError> {
-        let req = Request::RegisterUser(user_name);
-        let res = self.sender.send(req).await?;
-        match res {
-            Response::RegisterUser(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
-    }
-}
-
-
-pub fn build_client_fut<'a>(stream: tokio::net::TcpStream, ls: &'a tokio::task::LocalSet) 
-    -> (IndradbClient, impl Future<Output = Result<(), capnp::Error>> + 'a)
-{
-    
-    let (sender, queue) = create();
-
-    let backend_fut = ls.run_until(async move {         
-        // create rpc_system
-        let (reader, writer) = tokio_util::compat::Tokio02AsyncReadCompatExt::compat(stream).split();
-        let rpc_network = Box::new(twoparty::VatNetwork::new(
-            reader,
-            writer,
-            Side::Client,
-            Default::default(),
-        ));
-        let mut capnp_rpc_system = RpcSystem::new(rpc_network, None);
-        
-        // create client_backend
-        let indradb_capnp_client = capnp_rpc_system.bootstrap(Side::Server);
-        let disconnector = capnp_rpc_system.get_disconnector();
-        let indradb_client_backend = IndradbClientBackend {
-            client: indradb_capnp_client,
-            disconnector,
-        };
-
-        // run rpc_system
-        tokio::task::spawn_local(async move {
-            capnp_rpc_system.await
-        });
-        // run indradb backend
-        tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue)).await.unwrap()
-    });
-    
-    (IndradbClient{sender}, backend_fut)
 }
