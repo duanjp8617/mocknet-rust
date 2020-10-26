@@ -1,28 +1,85 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
 
-use futures::AsyncReadExt;
-
 use capnp_rpc::rpc_twoparty_capnp::Side;
-use capnp_rpc::{twoparty, RpcSystem};
-use capnp_rpc::Disconnector;
 
-use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQuery, VertexQueryExt, VertexPropertyQuery};
+use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt, VertexQuery};
 use indradb::Type;
 use indradb::{Vertex};
-use indradb::{VertexProperty};
 
 use uuid::Uuid;
 
 use crate::emunet::server;
 use crate::emunet::user;
 use crate::emunet::net;
-use crate::autogen::service::Client as IndradbCapnpClient;
 use super::message_queue::{Queue};
 use super::indradb_util::ClientTransaction;
 use super::errors;
 
 use std::collections::HashMap;
+
+enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
+struct IndradbTransactionWorker {
+    client: crate::autogen::service::Client,
+}
+
+impl IndradbTransactionWorker {
+
+    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, errors::BackendError> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        let q = RangeVertexQuery::new(u32::MAX).t(Type::new(vertex_type).unwrap());
+        let ls = ct.async_get_vertices(q).await?;
+        Ok(ls.len())
+    }
+
+    async fn create_vertex(&self, id: Option<Uuid>, vt: &str) -> Result<Uuid, errors::BackendError> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        let vt = Type::new(vt).unwrap();
+        let v = match id {
+            Some(id) => Vertex::with_id(id, vt),
+            None => Vertex::new(vt),
+        };
+
+        let succeed = ct.async_create_vertex(&v).await?;
+        if succeed {
+            Ok(v.id)
+        }
+        else {
+            Err(capnp::Error::failed("fail to create the vertex".to_string()).into())
+        }
+    }
+
+    async fn read_vertex_json_value(&self, vertex_info: Either<String, Uuid>, property_name: &str) -> Result<serde_json::Value, errors::BackendError> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        let q: VertexQuery = match vertex_info {
+            Either::Left(vt) => RangeVertexQuery::new(1).t(Type::new(vt).unwrap()).into(),
+            Either::Right(id) => SpecificVertexQuery::single(id).into(),
+        };
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() == 0 {
+            return Err(capnp::Error::failed(format!("fail to find the vertex to read")).into());
+        }
+
+        // read the value of property_name
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        let mut property_list = ct.async_get_vertex_properties(q).await?;
+        if property_list.len() != 1 {
+            return Err(capnp::Error::failed(format!("fail to find the property to read")).into());
+        }
+
+        Ok(property_list.pop().unwrap().value)
+    }
+}
 
 pub enum Request {
     Ping,
@@ -35,6 +92,8 @@ pub enum Response {
     Init(bool),
     RegisterUser(bool),
 }
+
+
 
 pub struct IndradbClientBackend {
     client: crate::autogen::service::Client,
