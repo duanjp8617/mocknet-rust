@@ -15,23 +15,24 @@ use indradb::{VertexProperty};
 use uuid::Uuid;
 
 use crate::emunet::server;
+use crate::emunet::user;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::new_message_queue::{Sender, Queue, create, error};
 use crate::util::ClientTransaction;
+
+use std::collections::HashMap;
 
 type CapnpRpcDisconnector = Disconnector<Side>;
 pub type IndradbClientError = error::MsgQError<capnp::Error>;
 
 enum Request {
-    Wtf,
     Ping,
-    ReadServers(String),
+    Init(Vec<server::ContainerServer>),
 }
 
 enum Response {
-    Wtf,
     Ping(bool),
-    ReadServers(Vec<server::ContainerServer>),
+    Init(bool),
 }
 
 struct IndradbClientBackend {
@@ -46,97 +47,121 @@ impl IndradbClientBackend {
         Ok(res.get()?.get_ready()) 
     }
 
-    async fn create_server_list(&self) -> Result<bool, capnp::Error> {        
+    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, capnp::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        // create the server_list vertex
-        let vt = Type::new("server_list").unwrap();
-        let v = Vertex::new(vt);
-        // return true if succeed, if the vertex already exists, return false 
-        ct.async_create_vertex(&v).await        
+        // query the vertex with vertex type
+        let q = RangeVertexQuery::new(u32::MAX).t(Type::new(vertex_type).unwrap());
+        ct.async_get_vertices(q).await.map(|v|{v.len()})
     }
 
-    async fn read_server_list(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
-        // get the vertex of type "server_list"
+    async fn create_vertex_json_value(&self, vertex_type: &str, property_name: &str, json_value: &serde_json::Value) 
+        -> Result<bool, capnp::Error> 
+    {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // create a new vertex with vertex_type
+        let vt = Type::new(vertex_type).unwrap();
+        let v = Vertex::new(vt);
+        let succeed = ct.async_create_vertex(&v).await?;
+        if !succeed {
+            return Ok(succeed)
+        }
+
+        // create a new property with property_name
+        let q = SpecificVertexQuery::single(v.id).property(property_name);
+        ct.async_set_vertex_properties(q, json_value).await?;
+        Ok(true)
+    }
+
+    async fn read_vertex_json_value(&self, vertex_type: &str, property_name: &str) 
+        -> Result<serde_json::Value, capnp::Error> 
+    {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // query the vertex with vertex type
+        let q = RangeVertexQuery::new(1).t(Type::new(vertex_type).unwrap());
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() != 1 {
+            panic!("vertex type {} with property {} is not available in the database");
+        }
+
+        // read the value of property_name
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        let mut property_list = ct.async_get_vertex_properties(q).await?;
+        if property_list.len() != 1 {
+            panic!("vertex type {} with property {} is not available in the database");
+        }
+
+        Ok(property_list.pop().unwrap().value)
+    }
+
+    async fn write_vertex_json_value(&self, vertex_type: &str, property_name: &str, json_value: &serde_json::Value) 
+        -> Result<(), capnp::Error> 
+    {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
         // get the server_list vertex
-        let q = RangeVertexQuery::new(1).t(Type::new("server_list").unwrap());
+        let q = RangeVertexQuery::new(1).t(Type::new(vertex_type).unwrap());
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
-            // if server_list vertex is not available, return an empty list
-            return Ok(Vec::new())
+            panic!("vertex type {} with property {} is not available in the database");
         }
 
-        // get the "name" property of this vertex
-        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(name);
-        let mut property_list = ct.async_get_vertex_properties(q).await?;
-        if property_list.len() != 1 {
-            // if property_list is not available, return an empty list
-            return Ok(Vec::new())
-        }
+        // update the property for the queue
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        ct.async_set_vertex_properties(q, json_value).await?;
+        Ok(())
+    }
+}
 
-        let json_value = property_list.pop().unwrap().value;
+impl IndradbClientBackend {
+    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
+        let c_server_list = self.count_vertex_number("server_list").await?;
+        let c_user_map = self.count_vertex_number("user_map").await?;
+
+        if c_server_list == 1 && c_user_map == 1 {        
+            return Ok(false)
+        }
+        else if c_server_list == 0 && c_user_map == 0 {            
+            let servers_jv = serde_json::to_value(servers).unwrap();
+            let _succeed = self.create_vertex_json_value("server_list", "list", &servers_jv).await?;
+            
+            let users_jv = serde_json::to_value(HashMap::<String, user::EmuNetUser>::new()).unwrap();
+            let _succeed = self.create_vertex_json_value("user_map", "map", &users_jv).await?;
+
+            return Ok(true)
+        }
+        else {
+            panic!("The database is incorrectly initialized, please check the database")
+        }
+    }
+
+    async fn create_server_list(&self) -> Result<bool, capnp::Error> {        
+        let json_value = serde_json::to_value(Vec::<server::ContainerServer>::new()).unwrap();
+        self.create_vertex_json_value("server_list", "list", &json_value).await   
+    }
+
+    async fn read_server_list(&self) -> Result<Vec<server::ContainerServer>, capnp::Error> {
+        let json_value = self.read_vertex_json_value("server_list", "list").await?;
         let server_list: Vec<server::ContainerServer> = serde_json::from_value(json_value).unwrap();
         Ok(server_list)
     }
 
-    async fn update_server_list(&self, name: String, server_list: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
-        // get the vertex of type "server_list"
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let ct = ClientTransaction::new(trans);
-        
-        // get the server_list vertex
-        let q = RangeVertexQuery::new(1).t(Type::new("server_list").unwrap());
-        let vertex_list = ct.async_get_vertices(q).await?;
-        if vertex_list.len() != 1 {
-            // if server_list vertex is not available, return an empty list
-            return Ok(false)
-        }
-
-        // update the property for the queue
-        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(name);
+    async fn update_server_list(&self, server_list: Vec<server::ContainerServer>) -> Result<(), capnp::Error> {
         let json_value = serde_json::to_value(server_list).unwrap();
-        ct.async_set_vertex_properties(q, &json_value).await?;
-        Ok(true)
+        self.write_vertex_json_value("server_list", "list", &json_value).await
     }
 
-    // create a new vertex with type "user_list", initialzie "user_map" property
-    // containing a map between user name and user struct
-    async fn create_user_list(&self) -> Result<bool, capnp::Error> {
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let ct = ClientTransaction::new(trans);
-        
-        // create the server_list vertex
-        let vt = Type::new("user_list").unwrap();
-        let v = Vertex::new(vt);
-        // return true if succeed, if the vertex already exists, return false 
-        let res = ct.async_create_vertex(&v).await?;
-        // If the vertex is already there, 
-        if res == false {
-            return Ok(false);
-        }
-
-        // update the property for the queue
-        let q = SpecificVertexQuery::new(vec!(v.id)).property("list");
-        let json_value = serde_json::to_value(Vec::<i32>::new()).unwrap();
-        ct.async_set_vertex_properties(q, &json_value).await?;
-        Ok(true)
+    async fn create_user_map(&self) -> Result<bool, capnp::Error> {
+        let json_value = serde_json::to_value(HashMap::<String, user::EmuNetUser>::new()).unwrap();
+        self.create_vertex_json_value("user_map", "map", &json_value).await   
     }
 
-    // check if the user_map contains the name, if so, the user has already 
-    // been registered, the registration fails, return false.
-    // otherwise, create a new entry in the map, finish registration and return true.
-    async fn register_new_user(&self, name: String) -> Result<bool, capnp::Error> {
-        unimplemented!()
-    }
-
-    // 
-    async fn create_enet(&self, name: String) -> Result<Option<Uuid>, capnp::Error> {
-
-    }
 
 }
 
@@ -144,11 +169,12 @@ impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, capnp::Error> {
         match req {
             Request::Ping => {
-                let resp = self.ping().await?;
-                Ok(Response::Ping(resp))
+                let res = self.ping().await?;
+                Ok(Response::Ping(res))
             },
-            _ => {
-                panic!("wtf?")
+            Request::Init(servers) => {
+                let res = self.init(servers).await?;
+                Ok(Response::Init(res))
             }
         }
     }
@@ -189,9 +215,16 @@ impl IndradbClient {
         let res = self.sender.send(req).await?;
         match res {
             Response::Ping(flag) => Ok(flag),
-            _ => {
-                panic!("invalid response")
-            }
+            _ => panic!("invalid response")
+        }
+    }
+
+    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, IndradbClientError> {
+        let req = Request::Init(servers);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::Init(res) => Ok(res),
+            _ => panic!("invalid response")
         }
     }
 }

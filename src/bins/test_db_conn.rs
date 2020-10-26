@@ -1,6 +1,7 @@
 
 use std::net::ToSocketAddrs;
 use mocknet::database::build_client_fut;
+use mocknet::emunet::server;
 
 // #[tokio::main]
 // async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,6 +49,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let jh = tokio::spawn(async move {
         let res = indradb_client.ping().await.unwrap();
         println!("response is {}", res);
+
+
+        let mut sp = server::ServerPool::new();
+        sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
+        sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
+        sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
+        sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
+        let res = indradb_client.init(sp.into_vec()).await.unwrap();
+        if res {
+            println!("successfully initializing the database");
+        }
+        else {
+            println!("the database has already been initialized");
+        }
     });
 
     backend_fut.await?;
