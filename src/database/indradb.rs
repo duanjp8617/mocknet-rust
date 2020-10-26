@@ -19,7 +19,7 @@ use crate::emunet::user;
 use crate::emunet::net;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::message_queue::{Sender, Queue, create, error};
-use crate::util::ClientTransaction;
+use super::indradb_util::ClientTransaction;
 
 use std::collections::HashMap;
 
