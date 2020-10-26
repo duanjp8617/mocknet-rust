@@ -12,6 +12,8 @@ use indradb::Type;
 use indradb::{Vertex};
 use indradb::{VertexProperty};
 
+use uuid::Uuid;
+
 use crate::emunet::server;
 use crate::autogen::service::Client as IndradbCapnpClient;
 use super::new_message_queue::{Sender, Queue, create, error};
@@ -100,6 +102,42 @@ impl IndradbClientBackend {
         ct.async_set_vertex_properties(q, &json_value).await?;
         Ok(true)
     }
+
+    // create a new vertex with type "user_list", initialzie "user_map" property
+    // containing a map between user name and user struct
+    async fn create_user_list(&self) -> Result<bool, capnp::Error> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // create the server_list vertex
+        let vt = Type::new("user_list").unwrap();
+        let v = Vertex::new(vt);
+        // return true if succeed, if the vertex already exists, return false 
+        let res = ct.async_create_vertex(&v).await?;
+        // If the vertex is already there, 
+        if res == false {
+            return Ok(false);
+        }
+
+        // update the property for the queue
+        let q = SpecificVertexQuery::new(vec!(v.id)).property("list");
+        let json_value = serde_json::to_value(Vec::<i32>::new()).unwrap();
+        ct.async_set_vertex_properties(q, &json_value).await?;
+        Ok(true)
+    }
+
+    // check if the user_map contains the name, if so, the user has already 
+    // been registered, the registration fails, return false.
+    // otherwise, create a new entry in the map, finish registration and return true.
+    async fn register_new_user(&self, name: String) -> Result<bool, capnp::Error> {
+        unimplemented!()
+    }
+
+    // 
+    async fn create_enet(&self, name: String) -> Result<Option<Uuid>, capnp::Error> {
+
+    }
+
 }
 
 impl IndradbClientBackend {
