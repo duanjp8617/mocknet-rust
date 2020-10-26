@@ -44,14 +44,26 @@ struct IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
+    // get the number of vertexes of a vertex_type
     async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, capnp::Error> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        // query the vertex with vertex type
         let q = RangeVertexQuery::new(u32::MAX).t(Type::new(vertex_type).unwrap());
         ct.async_get_vertices(q).await.map(|v|{v.len()})
     }
+
+    // // create one new vertex of vertex_type
+    // async fn create_vertex(&self, vertex_type: &str) -> Result<Uuid, capnp::Error> {
+    //     let trans = self.client.transaction_request().send().pipeline.get_transaction();
+    //     let ct = ClientTransaction::new(trans);
+
+    //     // create a new vertex with vertex_type
+    //     let vt = Type::new(vertex_type).unwrap();
+    //     let v = Vertex::new(vt);
+    // }
+
+
 
     async fn create_vertex_json_value(&self, vertex_type: &str, property_name: &str, json_value: &serde_json::Value) 
         -> Result<bool, capnp::Error> 
@@ -157,34 +169,34 @@ impl IndradbClientBackend {
         self.write_vertex_json_value("user_map", "map", &jv).await.map(|_|{true})
     }
 
-    async fn create_emu_net(&self, user_name: String, net_name: String, capacity: u32) -> Result<bool, capnp::Error> {
-        let jv = self.read_vertex_json_value("user_map", "map").await?;
-        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
-        let user_mut = user_map.get_mut(&net_name).expect("user is not registered");
+    // async fn create_emu_net(&self, user_name: String, net_name: String, capacity: u32) -> Result<bool, capnp::Error> {
+    //     let jv = self.read_vertex_json_value("user_map", "map").await?;
+    //     let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+    //     let user_mut = user_map.get_mut(&net_name).expect("user is not registered");
         
-        if user_mut.emu_net_exist(&net_name) {
-            Ok(false)
-        }
-        else {
-            let emu_net = net::EmuNet::new(net_name.clone(), capacity);
-            {
-                let trans = self.client.transaction_request().send().pipeline.get_transaction();
-                let ct = ClientTransaction::new(trans);
+    //     if user_mut.emu_net_exist(&net_name) {
+    //         Ok(false)
+    //     }
+    //     else {
+    //         let emu_net = net::EmuNet::new(net_name.clone(), capacity);
+    //         {
+    //             let trans = self.client.transaction_request().send().pipeline.get_transaction();
+    //             let ct = ClientTransaction::new(trans);
                 
-                // create a new vertex with vertex_type
-                let vt = Type::new("emu_net").unwrap();
-                let v = Vertex::new(vt);
-                let succeed = ct.async_create_vertex(&v).await?;
-                if !succeed {
-                    panic!("error creating a new emu_net node");
-                }
+    //             // create a new vertex with vertex_type
+    //             let vt = Type::new("emu_net").unwrap();
+    //             let v = Vertex::new(vt);
+    //             let succeed = ct.async_create_vertex(&v).await?;
+    //             if !succeed {
+    //                 panic!("error creating a new emu_net node");
+    //             }
 
-                user_mut.add_emu_net(net_name, v.id.clone());
-            }
+    //             user_mut.add_emu_net(net_name, v.id.clone());
+    //         }
 
-            
-        }
-    }
+
+    //     }
+    // }
 }
 
 impl IndradbClientBackend {
