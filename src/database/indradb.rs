@@ -12,24 +12,30 @@ use indradb::Type;
 use indradb::{Vertex};
 use indradb::{VertexProperty};
 
+use uuid::Uuid;
+
 use crate::emunet::server;
+use crate::emunet::user;
+use crate::emunet::net;
 use crate::autogen::service::Client as IndradbCapnpClient;
-use super::message_queue::{Sender, Queue, create};
+use super::message_queue::{Sender, Queue, create, error};
 use crate::util::ClientTransaction;
 
+use std::collections::HashMap;
+
 type CapnpRpcDisconnector = Disconnector<Side>;
-pub type IndradbClientError = super::message_queue::error::MsgQError;
+pub type IndradbClientError = error::MsgQError<capnp::Error>;
 
 enum Request {
-    Wtf,
     Ping,
-    ReadServers(String),
+    Init(Vec<server::ContainerServer>),
+    RegisterUser(String),
 }
 
 enum Response {
-    Wtf,
     Ping(bool),
-    ReadServers(Vec<server::ContainerServer>),
+    Init(bool),
+    RegisterUser(bool),
 }
 
 struct IndradbClientBackend {
@@ -37,6 +43,90 @@ struct IndradbClientBackend {
     disconnector: CapnpRpcDisconnector,
 }
 
+impl IndradbClientBackend {
+    // get the number of vertexes of a vertex_type
+    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, capnp::Error> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        let q = RangeVertexQuery::new(u32::MAX).t(Type::new(vertex_type).unwrap());
+        ct.async_get_vertices(q).await.map(|v|{v.len()})
+    }
+
+    // // create one new vertex of vertex_type
+    // async fn create_vertex(&self, vertex_type: &str) -> Result<Uuid, capnp::Error> {
+    //     let trans = self.client.transaction_request().send().pipeline.get_transaction();
+    //     let ct = ClientTransaction::new(trans);
+
+    //     // create a new vertex with vertex_type
+    //     let vt = Type::new(vertex_type).unwrap();
+    //     let v = Vertex::new(vt);
+    // }
+
+
+
+    async fn create_vertex_json_value(&self, vertex_type: &str, property_name: &str, json_value: &serde_json::Value) 
+        -> Result<bool, capnp::Error> 
+    {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // create a new vertex with vertex_type
+        let vt = Type::new(vertex_type).unwrap();
+        let v = Vertex::new(vt);
+        let succeed = ct.async_create_vertex(&v).await?;
+        if !succeed {
+            return Ok(succeed)
+        }
+
+        // create a new property with property_name
+        let q = SpecificVertexQuery::single(v.id).property(property_name);
+        ct.async_set_vertex_properties(q, json_value).await?;
+        Ok(true)
+    }
+
+    async fn read_vertex_json_value(&self, vertex_type: &str, property_name: &str) 
+        -> Result<serde_json::Value, capnp::Error> 
+    {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // query the vertex with vertex type
+        let q = RangeVertexQuery::new(1).t(Type::new(vertex_type).unwrap());
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() != 1 {
+            panic!("vertex type {} with property {} is not available in the database");
+        }
+
+        // read the value of property_name
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        let mut property_list = ct.async_get_vertex_properties(q).await?;
+        if property_list.len() != 1 {
+            panic!("vertex type {} with property {} is not available in the database");
+        }
+
+        Ok(property_list.pop().unwrap().value)
+    }
+
+    async fn write_vertex_json_value(&self, vertex_type: &str, property_name: &str, json_value: &serde_json::Value) 
+        -> Result<(), capnp::Error> 
+    {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        // query the vertex with vertex type
+        let q = RangeVertexQuery::new(1).t(Type::new(vertex_type).unwrap());
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() != 1 {
+            panic!("vertex type {} with property {} is not available in the database");
+        }
+
+        // write the property value for the property with property_name
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        ct.async_set_vertex_properties(q, json_value).await?;
+        Ok(())
+    }
+}
 
 impl IndradbClientBackend {
     async fn ping(&self) -> Result<bool, capnp::Error> {
@@ -45,36 +135,67 @@ impl IndradbClientBackend {
         Ok(res.get()?.get_ready()) 
     }
 
-    async fn create_server_list(&self) -> Result<bool, capnp::Error> {        
-        let vt = Type::new("server_list").unwrap();
-        let v = Vertex::new(vt);
+    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
+        let c_server_list = self.count_vertex_number("server_list").await?;
+        let c_user_map = self.count_vertex_number("user_map").await?;
 
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let ct = ClientTransaction::new(trans);
-        ct.async_create_vertex(&v).await        
+        if c_server_list == 1 && c_user_map == 1 {        
+            return Ok(false)
+        }
+        else if c_server_list == 0 && c_user_map == 0 {            
+            let servers_jv = serde_json::to_value(servers).unwrap();
+            let _succeed = self.create_vertex_json_value("server_list", "list", &servers_jv).await?;
+            
+            let users_jv = serde_json::to_value(HashMap::<String, user::EmuNetUser>::new()).unwrap();
+            let _succeed = self.create_vertex_json_value("user_map", "map", &users_jv).await?;
+
+            return Ok(true)
+        }
+        else {
+            panic!("The database is incorrectly initialized, please check the database")
+        }
     }
 
-    // async fn read_server_list(&self, name: String) -> Result<Vec<server::ContainerServer>, capnp::Error> {
-    //     // get the vertex of type "server_list"
-    //     let q = RangeVertexQuery::new(1).t(Type::new("server_list").unwrap());
-    //     let vertex_list = self.async_get_vertices(q.into()).await?;
-    //     if vertex_list.len() != 1 {
-    //         return Ok(Vec::new());
+    async fn register_user(&self, user_name: String) -> Result<bool, capnp::Error> {
+        let jv = self.read_vertex_json_value("user_map", "map").await?;
+        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        if user_map.get(&user_name).is_some() {
+            return Ok(false);
+        }
+
+        let user = user::EmuNetUser::new(&user_name);
+        user_map.insert(user_name, user);
+        let jv = serde_json::to_value(user_map).unwrap();
+        self.write_vertex_json_value("user_map", "map", &jv).await.map(|_|{true})
+    }
+
+    // async fn create_emu_net(&self, user_name: String, net_name: String, capacity: u32) -> Result<bool, capnp::Error> {
+    //     let jv = self.read_vertex_json_value("user_map", "map").await?;
+    //     let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+    //     let user_mut = user_map.get_mut(&net_name).expect("user is not registered");
+        
+    //     if user_mut.emu_net_exist(&net_name) {
+    //         Ok(false)
     //     }
+    //     else {
+    //         let emu_net = net::EmuNet::new(net_name.clone(), capacity);
+    //         {
+    //             let trans = self.client.transaction_request().send().pipeline.get_transaction();
+    //             let ct = ClientTransaction::new(trans);
+                
+    //             // create a new vertex with vertex_type
+    //             let vt = Type::new("emu_net").unwrap();
+    //             let v = Vertex::new(vt);
+    //             let succeed = ct.async_create_vertex(&v).await?;
+    //             if !succeed {
+    //                 panic!("error creating a new emu_net node");
+    //             }
 
-    //     // get the "name" property of this vertex
-    //     let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(name);
-    //     let property_list = self.async_get_vertex_properties(q).await?;
-    //     if property_list.len() != 1 {
-    //         panic!("fatal, this should be impossible to reach");
+    //             user_mut.add_emu_net(net_name, v.id.clone());
+    //         }
+
+
     //     }
-    //     let server_list: Vec<server::ContainerServer> = serde_json::from_value(property_list[0].value).unwrap();
-
-    //     Ok(list.into_iter().map(|p|{serde_json::from_value(p.value).unwrap()}).collect())
-    // }
-
-    // async fn update_server_list(&self, name: String, server_list: Vec<server::ContainerServer>) -> Result<bool, capnp::Error> {
-
     // }
 }
 
@@ -82,113 +203,77 @@ impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, capnp::Error> {
         match req {
             Request::Ping => {
-                let resp = self.ping().await?;
-                Ok(Response::Ping(resp))
+                let res = self.ping().await?;
+                Ok(Response::Ping(res))
             },
-            _ => {
-                panic!("wtf?")
+            Request::Init(servers) => {
+                let res = self.init(servers).await?;
+                Ok(Response::Init(res))
+            },
+            Request::RegisterUser(user_name) => {
+                let res = self.register_user(user_name).await?;
+                Ok(Response::RegisterUser(res))
             }
         }
     }
 }
 
-fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response>) 
+fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, capnp::Error>) 
     -> impl Future<Output = Result<(), capnp::Error>> + 'static 
 {
-    async fn shutdown_queue(backend: &IndradbClientBackend, mut queue: Queue<Request, Response>) 
-        -> Result<(), capnp::Error> 
-    {
-        queue.close();
-        while let Ok(mut msg) = queue.try_recv() {
-            let req = msg.try_get_msg().expect("find another error message");
-            let resp_result = backend.dispatch_request(req).await;
-            match resp_result {
-                Ok(resp) => {
-                    let _ = msg.callback(resp);
-                },
-                Err(err) => {
-                    while let Ok(_) = queue.try_recv() {}
-                    return Err(err);
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn drain_queue(mut queue: Queue<Request, Response>) {
+    fn drain_queue(mut queue: Queue<Request, Response, capnp::Error>) {
         queue.close();
         while let Ok(_) = queue.try_recv() {}
     }
     
-    async move {
-        println!("running core loop");
-        let mut err_opt = None;        
+    async move {        
         while let Some(mut msg) = queue.recv().await {
-            println!("receive a message");
             if msg.is_close_msg() {
-                err_opt = shutdown_queue(&backend, queue).await.err();
+                drain_queue(queue);
                 break;
             }
             else {                
                 let req = msg.try_get_msg().unwrap();
                 let resp_result = backend.dispatch_request(req).await;
-                match resp_result {
-                    Ok(resp) => {
-                        let _ = msg.callback(resp);
-                    },
-                    Err(err) => {
-                        drain_queue(queue);
-                        err_opt = Some(err);
-                        break;
-                    }
-
-                }
+                let _ = msg.callback(resp_result);
             }
         }
-        println!("here");
-
-        let disconnect_res = backend.disconnector.await;
-        println!("Indradb network connection down");
-        err_opt.map_or(disconnect_res, |err|{Err(err)})
+        
+        backend.disconnector.await        
     }
 }
 
 pub struct IndradbClient {
-    sender: Sender<Request, Response>,
+    sender: Sender<Request, Response, capnp::Error>,
 }
 
 impl IndradbClient {
     pub async fn ping(&self) -> Result<bool, IndradbClientError> {
         let req = Request::Ping;
-        println!("send ping request");
         let res = self.sender.send(req).await?;
         match res {
             Response::Ping(flag) => Ok(flag),
-            _ => {
-                panic!("invalid response type")
-            }
+            _ => panic!("invalid response")
         }
     }
 
-    pub async fn get_server_pool(&self, name: String) -> Result<Vec<server::ContainerServer>, IndradbClientError> {
-        let req = Request::ReadServers(name);
+    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, IndradbClientError> {
+        let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
         match res {
-            Response::ReadServers(v) => Ok(v),
-            _ => {
-                panic!("invalid response type")
-            }
+            Response::Init(res) => Ok(res),
+            _ => panic!("invalid response")
         }
     }
 
-    pub async fn update_server_pool(name: String, server_pool: Vec<server::ContainerServer>) -> Result<(), IndradbClientError> {
-        unimplemented!()
+    pub async fn register_user(&self, user_name: String) -> Result<bool, IndradbClientError> {
+        let req = Request::RegisterUser(user_name);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::RegisterUser(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
     }
-
-    // pub async fn user_registration(user: String) -> Result<(), IndradbClientError> {
-
-    // }
-
 }
 
 
