@@ -14,7 +14,7 @@ use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
 use super::indradb_util::ClientTransaction;
-use super::errors;
+use super::errors::{BackendError};
 
 use std::collections::HashMap;
 
@@ -29,7 +29,7 @@ struct IndradbTransactionWorker {
 
 impl IndradbTransactionWorker {
 
-    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, errors::BackendError> {
+    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
@@ -38,14 +38,14 @@ impl IndradbTransactionWorker {
         Ok(ls.len())
     }
 
-    async fn create_vertex(&self, id: Option<Uuid>, vt: &str) -> Result<Uuid, errors::BackendError> {
+    async fn create_vertex(&self, id: Option<Uuid>, vt: &str) -> Result<Uuid, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let vt = Type::new(vt).unwrap();
+        let t = Type::new(vt).unwrap();
         let v = match id {
-            Some(id) => Vertex::with_id(id, vt),
-            None => Vertex::new(vt),
+            Some(id) => Vertex::with_id(id, t),
+            None => Vertex::new(t),
         };
 
         let succeed = ct.async_create_vertex(&v).await?;
@@ -53,11 +53,11 @@ impl IndradbTransactionWorker {
             Ok(v.id)
         }
         else {
-            Err(capnp::Error::failed("fail to create the vertex".to_string()).into())
+            Err(BackendError::invalid_arg(format!("vertex of type {} exists", vt)))
         }
     }
 
-    async fn read_vertex_json_value(&self, vertex_info: Either<String, Uuid>, property_name: &str) -> Result<serde_json::Value, errors::BackendError> {
+    async fn read_vertex_json_value(&self, vertex_info: Either<String, Uuid>, property_name: &str) -> Result<serde_json::Value, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
@@ -67,17 +67,33 @@ impl IndradbTransactionWorker {
         };
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() == 0 {
-            return Err(capnp::Error::failed(format!("fail to find the vertex to read")).into());
+            return Err(BackendError::invalid_arg("vertex does not exist".to_string()));
         }
 
-        // read the value of property_name
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         let mut property_list = ct.async_get_vertex_properties(q).await?;
-        if property_list.len() != 1 {
-            return Err(capnp::Error::failed(format!("fail to find the property to read")).into());
+        if property_list.len() == 0 {
+            return Err(BackendError::invalid_arg(format!("vertex has no property {}", property_name)));
         }
 
         Ok(property_list.pop().unwrap().value)
+    }
+
+    async fn update_vertex_json_value(&self, vertex_info: Either<String, Uuid>, property_name: &str, json: &serde_json::Value) -> Result<(), BackendError> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        
+        let q: VertexQuery = match vertex_info {
+            Either::Left(vt) => RangeVertexQuery::new(1).t(Type::new(vt).unwrap()).into(),
+            Either::Right(id) => SpecificVertexQuery::single(id).into(),
+        };
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() == 0 {
+            return Err(BackendError::invalid_arg("vertex does not exist".to_string()));
+        }
+
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        ct.async_set_vertex_properties(q, json).await.map_err(|e|{e.into()})
     }
 }
 
@@ -281,10 +297,10 @@ impl IndradbClientBackend {
     }
 }
 
-pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, errors::BackendError>) 
-    -> impl Future<Output = Result<(), errors::BackendError>> + 'static 
+pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, BackendError>) 
+    -> impl Future<Output = Result<(), BackendError>> + 'static 
 {
-    fn drain_queue(mut queue: Queue<Request, Response, errors::BackendError>) {
+    fn drain_queue(mut queue: Queue<Request, Response, BackendError>) {
         queue.close();
         while let Ok(_) = queue.try_recv() {}
     }

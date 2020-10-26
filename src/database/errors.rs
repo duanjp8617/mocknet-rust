@@ -8,6 +8,7 @@ use tokio::sync::oneshot::error as oneshot;
 #[derive(Debug, Clone, Copy)]
 pub enum BackendErrorKind {
     CapnpError,
+    InvalidArg,
 }
 
 #[derive(Debug)]
@@ -19,6 +20,13 @@ pub struct BackendError {
 impl BackendError {
     pub fn kind(&self) -> BackendErrorKind {
         self.kind
+    }
+
+    pub fn invalid_arg(description: String) -> Self {
+        Self {
+            kind: BackendErrorKind::InvalidArg,
+            description,
+        }
     }
 }
 
