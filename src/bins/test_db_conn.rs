@@ -63,6 +63,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         else {
             println!("the database has already been initialized");
         }
+
+        let res = indradb_client.register_user("wtf".to_string()).await.unwrap();
+        if res {
+            println!("successfully register a new user");
+        }
+        else {
+            println!("the user with a similar name is presented");
+        }
     });
 
     backend_fut.await?;

@@ -28,11 +28,13 @@ pub type IndradbClientError = error::MsgQError<capnp::Error>;
 enum Request {
     Ping,
     Init(Vec<server::ContainerServer>),
+    RegisterUser(String),
 }
 
 enum Response {
     Ping(bool),
     Init(bool),
+    RegisterUser(bool),
 }
 
 struct IndradbClientBackend {
@@ -141,28 +143,18 @@ impl IndradbClientBackend {
         }
     }
 
-    async fn create_server_list(&self) -> Result<bool, capnp::Error> {        
-        let json_value = serde_json::to_value(Vec::<server::ContainerServer>::new()).unwrap();
-        self.create_vertex_json_value("server_list", "list", &json_value).await   
+    async fn register_user(&self, user_name: String) -> Result<bool, capnp::Error> {
+        let jv = self.read_vertex_json_value("user_map", "map").await?;
+        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        if user_map.get(&user_name).is_some() {
+            return Ok(false);
+        }
+
+        let user = user::EmuNetUser::new(&user_name);
+        user_map.insert(user_name, user);
+        let jv = serde_json::to_value(user_map).unwrap();
+        self.write_vertex_json_value("user_map", "map", &jv).await.map(|_|{true})
     }
-
-    async fn read_server_list(&self) -> Result<Vec<server::ContainerServer>, capnp::Error> {
-        let json_value = self.read_vertex_json_value("server_list", "list").await?;
-        let server_list: Vec<server::ContainerServer> = serde_json::from_value(json_value).unwrap();
-        Ok(server_list)
-    }
-
-    async fn update_server_list(&self, server_list: Vec<server::ContainerServer>) -> Result<(), capnp::Error> {
-        let json_value = serde_json::to_value(server_list).unwrap();
-        self.write_vertex_json_value("server_list", "list", &json_value).await
-    }
-
-    async fn create_user_map(&self) -> Result<bool, capnp::Error> {
-        let json_value = serde_json::to_value(HashMap::<String, user::EmuNetUser>::new()).unwrap();
-        self.create_vertex_json_value("user_map", "map", &json_value).await   
-    }
-
-
 }
 
 impl IndradbClientBackend {
@@ -175,6 +167,10 @@ impl IndradbClientBackend {
             Request::Init(servers) => {
                 let res = self.init(servers).await?;
                 Ok(Response::Init(res))
+            },
+            Request::RegisterUser(user_name) => {
+                let res = self.register_user(user_name).await?;
+                Ok(Response::RegisterUser(res))
             }
         }
     }
@@ -224,6 +220,15 @@ impl IndradbClient {
         let res = self.sender.send(req).await?;
         match res {
             Response::Init(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    pub async fn register_user(&self, user_name: String) -> Result<bool, IndradbClientError> {
+        let req = Request::RegisterUser(user_name);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::RegisterUser(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }
