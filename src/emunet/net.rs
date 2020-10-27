@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use super::server::ServerPool;
+use super::server::{ServerPool, ContainerServer};
 
 #[derive(Deserialize, Serialize)]
 pub struct EmuNet {
@@ -13,8 +13,13 @@ impl EmuNet {
         Self {
             name,
             capacity,
-            server_pool: ServerPool::new()
+            server_pool: ServerPool::new(),
         }
     }
+
+    pub fn add_servers(&mut self, server_list: Vec<ContainerServer>) {
+        self.server_pool.add_servers(server_list.into_iter());
+    }
+
 }
 

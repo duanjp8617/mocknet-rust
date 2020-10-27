@@ -63,6 +63,22 @@ impl IndradbTransactionWorker {
         }
     }
 
+    async fn find_vertex(&self, id: Uuid) -> Result<bool, BackendError> {
+        let trans = self.client.transaction_request().send().pipeline.get_transaction();
+        let ct = ClientTransaction::new(trans);
+        let q = SpecificVertexQuery::single(id.clone());
+        let vertex_list = ct.async_get_vertices(q).await?;
+        if vertex_list.len() == 0 {
+            Ok(false)
+        }
+        else if vertex_list.len() == 1 {
+            Ok(true)
+        }
+        else {
+            Err(BackendError::invalid_arg("too many vertexes".to_string()))
+        }
+    }
+
     async fn read_vertex_json_value(&self, vertex_info: Either<&str, Uuid>, property_name: &str) -> Result<serde_json::Value, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
@@ -168,6 +184,48 @@ impl IndradbClientBackend {
         user_map.insert(user_name, user);
         let jv = serde_json::to_value(user_map).unwrap();
         self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await.map(|_|{true})
+    }
+
+    async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, BackendError> {
+        let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
+        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        if user_map.get(&user).is_none() {
+            return Err(BackendError::invalid_arg("invalid user name".to_string()));
+        }
+        let user_mut = user_map.get_mut(&user).unwrap();
+
+        // check whether the net has existed
+        if user_mut.emu_net_exist(&net) {
+            return Err(BackendError::invalid_arg("invalid emu-net name".to_string()));
+        }
+
+        // TODO: update server pool API and make the code shorter.
+        let jv = self.worker.read_vertex_json_value(Either::Left("server_list"), "list").await?;
+        let server_list: Vec<server::ContainerServer> = serde_json::from_value(jv).unwrap();
+        let mut sp = server::ServerPool::new();
+        sp.add_servers(server_list.into_iter());
+        let allocated_opt = sp.allocate_servers(capacity);
+        let servers_jv = serde_json::to_value(sp.into_vec()).unwrap();
+        self.worker.update_vertex_json_value(Either::Left("server_list"), "list", &servers_jv).await?;
+        if allocated_opt.is_none() {
+            return Err(BackendError::invalid_arg("invalid capacity".to_string()));
+        }
+
+        // create a new emu net
+        let mut emu_net = net::EmuNet::new(net.clone(), capacity);
+        emu_net.add_servers(allocated_opt.unwrap());
+        // create a new emu net node
+        let emu_net_id = self.worker.create_vertex(None, &format!("{}:{}", &user, &net)).await?;
+        // write the new emu_net property into the new node
+        let jv = serde_json::to_value(emu_net).unwrap();
+        self.worker.update_vertex_json_value(Either::Right(emu_net_id.clone()), "default", &jv).await?;
+
+        // write the user_map property into the new node
+        user_mut.add_emu_net(net, emu_net_id.clone());
+        let jv = serde_json::to_value(user_map).unwrap();
+        self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await?;
+
+        Ok(emu_net_id)
     }
 }
 
