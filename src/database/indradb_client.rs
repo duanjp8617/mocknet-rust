@@ -6,6 +6,8 @@ use futures::AsyncReadExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 
+use uuid::Uuid;
+
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
 
@@ -42,6 +44,15 @@ impl IndradbClient {
         let res = self.sender.send(req).await?;
         match res {
             Response::RegisterUser(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, IndradbClientError> {
+        let req= Request::CreateEmuNet(user, net, capacity);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::CreateEmuNet(uuid) => Ok(uuid),
             _ => panic!("invalid response")
         }
     }

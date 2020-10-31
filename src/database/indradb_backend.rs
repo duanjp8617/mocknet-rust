@@ -123,12 +123,14 @@ pub enum Request {
     Ping,
     Init(Vec<server::ContainerServer>),
     RegisterUser(String),
+    CreateEmuNet(String, String, u32),
 }
 
 pub enum Response {
     Ping(bool),
     Init(bool),
     RegisterUser(bool),
+    CreateEmuNet(Uuid),
 }
 
 pub struct IndradbClientBackend {
@@ -142,6 +144,30 @@ impl IndradbClientBackend {
             worker: IndradbTransactionWorker{client}, 
             disconnector
         }
+    }
+
+    // a few helper functions:
+
+    async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
+        let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
+        let user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        Ok(user_map)
+    }
+
+    async fn set_user_map(&self, user_map: HashMap<String, user::EmuNetUser>) -> Result<(), BackendError> {
+        let jv = serde_json::to_value(user_map).unwrap();
+        self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await
+    }
+
+    async fn get_server_list(&self) -> Result<Vec<server::ContainerServer>, BackendError> {
+        let jv = self.worker.read_vertex_json_value(Either::Left("server_list"), "list").await?;
+        let server_list: Vec<server::ContainerServer> = serde_json::from_value(jv).unwrap();
+        Ok(server_list)
+    }
+
+    async fn set_server_list(&self, server_list: Vec<server::ContainerServer>) -> Result<(), BackendError> {
+        let jv = serde_json::to_value(server_list).unwrap();
+        self.worker.update_vertex_json_value(Either::Left("server_list"), "mlist", &jv).await
     }
 }
 
@@ -173,22 +199,19 @@ impl IndradbClientBackend {
         }
     }
 
-    async fn register_user(&self, user_name: String) -> Result<bool, BackendError> {
-        let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
-        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+    async fn register_user(&self, user_name: String) -> Result<bool, BackendError> {        
+        let mut user_map = self.get_user_map().await?;
         if user_map.get(&user_name).is_some() {
             return Ok(false);
         }
 
         let user = user::EmuNetUser::new(&user_name);
-        user_map.insert(user_name, user);
-        let jv = serde_json::to_value(user_map).unwrap();
-        self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await.map(|_|{true})
+        user_map.insert(user_name, user);        
+        self.set_user_map(user_map).await.map(|_|{true})
     }
 
     async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, BackendError> {
-        let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
-        let mut user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
+        let mut user_map = self.get_user_map().await?;
         if user_map.get(&user).is_none() {
             return Err(BackendError::invalid_arg("invalid user name".to_string()));
         }
@@ -200,13 +223,11 @@ impl IndradbClientBackend {
         }
 
         // TODO: update server pool API and make the code shorter.
-        let jv = self.worker.read_vertex_json_value(Either::Left("server_list"), "list").await?;
-        let server_list: Vec<server::ContainerServer> = serde_json::from_value(jv).unwrap();
+        let server_list = self.get_server_list().await?;
         let mut sp = server::ServerPool::new();
         sp.add_servers(server_list.into_iter());
         let allocated_opt = sp.allocate_servers(capacity);
-        let servers_jv = serde_json::to_value(sp.into_vec()).unwrap();
-        self.worker.update_vertex_json_value(Either::Left("server_list"), "list", &servers_jv).await?;
+        self.set_server_list(sp.into_vec()).await?;
         if allocated_opt.is_none() {
             return Err(BackendError::invalid_arg("invalid capacity".to_string()));
         }
@@ -222,8 +243,7 @@ impl IndradbClientBackend {
 
         // write the user_map property into the new node
         user_mut.add_emu_net(net, emu_net_id.clone());
-        let jv = serde_json::to_value(user_map).unwrap();
-        self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await?;
+        self.set_user_map(user_map).await?;
 
         Ok(emu_net_id)
     }
@@ -243,6 +263,10 @@ impl IndradbClientBackend {
             Request::RegisterUser(user_name) => {
                 let res = self.register_user(user_name).await?;
                 Ok(Response::RegisterUser(res))
+            },
+            Request::CreateEmuNet(user, net, capacity) => {
+                let res = self.create_emu_net(user, net, capacity).await?;
+                Ok(Response::CreateEmuNet(res))
             }
         }
     }
