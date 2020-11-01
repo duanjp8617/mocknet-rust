@@ -47,6 +47,7 @@ chrono = "0.4.15"
 
 # For test_wrap.rs
 pretty_env_logger = "0.4"
+parking_lot = "0.11"
 
 [build-dependencies]
 tonic-build = "0.2"

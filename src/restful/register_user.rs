@@ -33,10 +33,13 @@ fn parse_json_body() -> impl Filter<Extract = (String,), Error = warp::Rejection
         .map(|req_body: Json|{req_body.name})
 }
 
-fn build_filter<'a>(db_client: &'a IndradbClient) 
-    -> impl Filter + Clone + Send + Sync + 'a
+pub fn build_filter(db_client: IndradbClient) 
+    -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {
-    let db_filter = warp::any().map(move || db_client.clone());
+    let db_filter = warp::any().map(move || {
+        let clone = db_client.clone();
+        clone
+    });
     warp::post()
         .and(warp::path("v1"))
         .and(warp::path("register_user"))
