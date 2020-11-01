@@ -2,8 +2,7 @@ use std::net::ToSocketAddrs;
 use mocknet::database::build_client_fut;
 use mocknet::emunet::server;
 
-use mocknet::restful::register_user;
-
+use mocknet::restful::{register_user, create_emunet};
 use warp::Filter;
 
 #[tokio::main]
@@ -47,7 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("the user with a similar name is presented");
         }
 
-        let routes = register_user::build_filter(indradb_client.clone());
+        let ru = register_user::build_filter(indradb_client.clone());
+        let ce = create_emunet::build_filter(indradb_client.clone());
+        let routes = ru.or(ce);
         warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     });
 

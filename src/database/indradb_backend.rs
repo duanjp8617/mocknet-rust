@@ -48,6 +48,7 @@ impl IndradbTransactionWorker {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
+        println!("{}", vt);
         let t = Type::new(vt).unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
@@ -237,7 +238,7 @@ impl IndradbClientBackend {
         let mut emu_net = net::EmuNet::new(net.clone(), capacity);
         emu_net.add_servers(allocated_opt.unwrap());
         // create a new emu net node
-        let emu_net_id = self.worker.create_vertex(None, &format!("{}:{}", &user, &net)).await?;
+        let emu_net_id = self.worker.create_vertex(None, &format!("{}_{}", &user, &net)).await?;
         // write the new emu_net property into the new node
         let jv = serde_json::to_value(emu_net).unwrap();
         self.worker.update_vertex_json_value(Either::Right(emu_net_id.clone()), "default", &jv).await?;
