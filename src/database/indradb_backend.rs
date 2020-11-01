@@ -119,6 +119,7 @@ impl IndradbTransactionWorker {
     }
 }
 
+#[derive(Clone)]
 pub enum Request {
     Ping,
     Init(Vec<server::ContainerServer>),
@@ -126,6 +127,7 @@ pub enum Request {
     CreateEmuNet(String, String, u32),
 }
 
+#[derive(Clone)]
 pub enum Response {
     Ping(bool),
     Init(bool),
@@ -147,7 +149,6 @@ impl IndradbClientBackend {
     }
 
     // a few helper functions:
-
     async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
         let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
         let user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();

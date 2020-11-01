@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("the database has already been initialized");
         }
 
-        let res = indradb_client.register_user("wtf".to_string()).await.unwrap();
+        let res = indradb_client.register_user("wtf").await.unwrap();
         if res {
             println!("successfully register a new user");
         }

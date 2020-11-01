@@ -40,6 +40,7 @@ impl<M, R, E> Message<M, R, E> {
     }
 }
 
+#[derive(Clone)]
 pub struct Sender<M, R, E> {
     tx: UnboundedSender<Message<M, R, E>>,
 }

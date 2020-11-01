@@ -11,7 +11,7 @@ pub enum BackendErrorKind {
     InvalidArg,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BackendError {
     kind: BackendErrorKind,
     description: String,

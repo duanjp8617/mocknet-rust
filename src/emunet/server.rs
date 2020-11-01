@@ -6,7 +6,7 @@ use crate::util;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
 struct ServerAddr {
     conn_ip: IpAddr,
     conn_port: u16,
@@ -31,7 +31,7 @@ impl ServerAddr {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ContainerServer {
     id: Uuid,
     server_addr: ServerAddr,

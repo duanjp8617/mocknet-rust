@@ -10,3 +10,4 @@ pub mod autogen;
 pub mod database;
 pub mod util;
 pub mod emunet;
+pub mod restful;

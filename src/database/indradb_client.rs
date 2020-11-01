@@ -20,6 +20,14 @@ pub struct IndradbClient {
     sender: Sender<Request, Response, BackendError>,
 }
 
+impl Clone for IndradbClient {
+    fn clone(&self) -> Self {
+        Self {
+            sender: self.sender.clone()
+        }
+    }
+}
+
 impl IndradbClient {
     pub async fn ping(&self) -> Result<bool, IndradbClientError> {
         let req = Request::Ping;
@@ -39,8 +47,8 @@ impl IndradbClient {
         }
     }
 
-    pub async fn register_user(&self, user_name: String) -> Result<bool, IndradbClientError> {
-        let req = Request::RegisterUser(user_name);
+    pub async fn register_user(&self, user_name: &str) -> Result<bool, IndradbClientError> {
+        let req = Request::RegisterUser(user_name.to_string());
         let res = self.sender.send(req).await?;
         match res {
             Response::RegisterUser(res) => Ok(res),
