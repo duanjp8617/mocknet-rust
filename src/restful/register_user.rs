@@ -3,6 +3,13 @@ use crate::database::{IndradbClient};
 use warp::{http, Filter};
 use serde::Deserialize;
 
+// curl --location --request POST 'localhost:3030/v1/register_user' \
+// --header 'Content-Type: application/json' \
+// --header 'Content-Type: text/plain' \
+// --data-raw '{
+//     "name": "fuck"
+// }'
+
 // path/register_user/:user_name
 async fn register_user(user_name: String, db_client: IndradbClient) -> Result<impl warp::Reply, warp::Rejection> {
     let res = db_client.register_user(&user_name).await;
