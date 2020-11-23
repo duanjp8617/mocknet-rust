@@ -10,7 +10,7 @@ pub enum EmuNetState {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct EmuNet {
+pub struct EmuNetLink {
     name: String,
     capacity: u32,
     server_pool: ServerPool,

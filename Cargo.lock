@@ -287,7 +287,7 @@ checksum = "134951f4028bdadb9b84baf4232681efbf277da25144b9b0ad65df75946c422b"
 [[package]]
 name = "dummy_cli_parser"
 version = "0.1.0"
-source = "git+https://github.com/duanjp8617/dummy_cli_parser.git?branch=master#c63869d2f997cce7102bc0202b8409c43e9855f8"
+source = "git+https://github.com/duanjp8617/dummy_cli_parser.git#c63869d2f997cce7102bc0202b8409c43e9855f8"
 
 [[package]]
 name = "either"

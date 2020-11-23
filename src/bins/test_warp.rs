@@ -2,7 +2,7 @@ use std::net::ToSocketAddrs;
 use mocknet::database::build_client_fut;
 use mocknet::emunet::server;
 
-use mocknet::restful::{register_user, create_emunet};
+use mocknet::restful::{register_user, create_emunet, init_emunet};
 use warp::Filter;
 
 #[tokio::main]
@@ -48,7 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let ru = register_user::build_filter(indradb_client.clone());
         let ce = create_emunet::build_filter(indradb_client.clone());
-        let routes = ru.or(ce);
+        let ie = init_emunet::build_filter(indradb_client.clone());
+        let routes = ru.or(ce).or(ie);
         warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     });
 
