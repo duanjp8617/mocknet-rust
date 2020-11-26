@@ -9,3 +9,5 @@ pub use self::indradb_client::IndradbClient;
 pub use self::indradb_client::build_client_fut;
 
 pub type IndradbClientError = errors::MsgQError<errors::BackendError>;
+
+mod client;
