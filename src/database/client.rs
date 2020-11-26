@@ -82,7 +82,7 @@ impl ClientLauncher {
     pub async fn with_db_client<Func, Fut>(self, entry_fn: Func) -> Result<(), IndradbClientError> 
         where
             Func: Fn(Client) -> Fut,
-            Fut: Future<Output = Result<(), IndradbClientError>> + 'static + Send,
+            Fut: Future<Output = Result<(), IndradbClientError>> + 'static + Send, 
     {
         let ls = tokio::task::LocalSet::new();
         let (sender, queue) = message_queue::create();
