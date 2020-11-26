@@ -4,25 +4,25 @@ version = "0.1.0"
 edition = "2018"
 build = "build.rs"
 
-[[bin]] 
-name = "container_server"
-path = "src/bins/container_server.rs"
+#[[bin]] 
+#name = "container_server"
+#path = "src/bins/container_server.rs"
 
-[[bin]]
-name = "mocknet_backend"
-path = "src/bins/mocknet_backend.rs"
+#[[bin]]
+#name = "mocknet_backend"
+#path = "src/bins/mocknet_backend.rs"
 
-[[bin]]
-name = "test_indradb"
-path = "src/bins/test_indradb.rs"
+#[[bin]]
+#name = "test_indradb"
+#path = "src/bins/test_indradb.rs"
 
-[[bin]]
-name = "test_db_conn"
-path = "src/bins/test_db_conn.rs"
+#[[bin]]
+#name = "test_db_conn"
+#path = "src/bins/test_db_conn.rs"
 
-[[bin]]
-name = "test_serde"
-path = "src/bins/test_serde.rs"
+#[[bin]]
+#name = "test_serde"
+#path = "src/bins/test_serde.rs"
 
 [[bin]]
 name = "test_warp"
