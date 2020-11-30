@@ -12,15 +12,13 @@ use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
 
 use crate::emunet::server;
-use super::message_queue::{Sender, create};
 use super::message_queue;
 use super::IndradbClientError;
 use super::errors::BackendError;
 
-// use tokio::net::tcp::
-
+/// The database client that stores core mocknet information.
 pub struct Client {
-    sender: Sender<Request, Response, BackendError>,
+    sender: message_queue::Sender<Request, Response, BackendError>,
 }
 
 impl Clone for Client {
@@ -32,6 +30,8 @@ impl Clone for Client {
 }
 
 impl Client {
+    /// Sends a ping request to database and check whether we can use the database.
+    // TODO: consider removing this method.
     pub async fn ping(&self) -> Result<bool, IndradbClientError> {
         let req = Request::Ping;
         let res = self.sender.send(req).await?;
@@ -41,6 +41,9 @@ impl Client {
         }
     }
 
+    /// Initilize a table for storing core information of the mocknet database.
+    /// 
+    /// `servers` stores information about backend servers for launching containers.
     pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, IndradbClientError> {
         let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
@@ -50,6 +53,7 @@ impl Client {
         }
     }
 
+    /// Store a new user with `user_name`.
     pub async fn register_user(&self, user_name: &str) -> Result<bool, IndradbClientError> {
         let req = Request::RegisterUser(user_name.to_string());
         let res = self.sender.send(req).await?;
@@ -59,6 +63,7 @@ impl Client {
         }
     }
 
+    /// Create a new emulation net for `user` with `name` and `capacity`.
     pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, IndradbClientError> {
         let req= Request::CreateEmuNet(user, net, capacity);
         let res = self.sender.send(req).await?;
@@ -74,11 +79,15 @@ pub struct ClientLauncher {
 }
 
 impl ClientLauncher {
-    pub async fn new(addr: &std::net::SocketAddr) -> Result<Self, IndradbClientError> {
+    /// Make an async connection to the database and return a ClientLauncher.
+    pub async fn connect(addr: &std::net::SocketAddr) -> Result<Self, IndradbClientError> {
         let conn = tokio::net::TcpStream::connect(&addr).await.unwrap();
         Ok(Self {conn})
     }
 
+    /// Launch a background task and run the entry function.
+    /// 
+    /// The entry function is the start point of the mocknet program.
     pub async fn with_db_client<Func, Fut>(self, entry_fn: Func) -> Result<(), IndradbClientError> 
         where
             Func: Fn(Client) -> Fut,
@@ -107,6 +116,7 @@ impl ClientLauncher {
             tokio::task::spawn_local(async move {
                 capnp_rpc_system.await
             });
+
             // run indradb backend
             tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue))
                 .await
@@ -114,11 +124,11 @@ impl ClientLauncher {
                 .map_err(|e|{IndradbClientError::from_error(e)})
         });
 
+        // launch the backend task to run entry function
         let client = Client{sender};
         let entry_fn_jh = tokio::spawn(entry_fn(client));
 
-        backend_fut.await.unwrap();
-
-        Ok(entry_fn_jh.await.unwrap().unwrap())
+        backend_fut.await?;
+        entry_fn_jh.await.unwrap()
     }
 }
