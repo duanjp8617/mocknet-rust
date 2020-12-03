@@ -1,58 +1,43 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
+use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
-
 use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt, VertexQuery};
 use indradb::Type;
 use indradb::{Vertex};
-
 use uuid::Uuid;
+use lazy_static::lazy_static;
 
 use crate::emunet::server;
 use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
-use super::indradb_util::ClientTransaction;
+use super::indradb_util::{ClientTransaction, generate_uuid_v1};
 use super::errors::{BackendError};
 
-use std::collections::HashMap;
-
-enum Either<L, R> {
-    Left(L),
-    Right(R),
+// CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
+const bytes_seed: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
+                              9, 10, 11, 12, 13, 14, 15, 16];
+lazy_static! {
+    static ref CORE_INFO_ID: Uuid = Uuid::from_bytes(bytes_seed);
 }
 
-struct IndradbTransactionWorker {
+/// A transaction worker that handles all the interaction with indradb.
+struct TranWorker {
     client: crate::autogen::service::Client,
 }
 
-impl IndradbTransactionWorker {
-
-    async fn ping(&self) -> Result<bool, BackendError> {
-        let req = self.client.ping_request();
-        let res = req.send().promise.await?;
-        Ok(res.get()?.get_ready()) 
-    }
-
-    async fn count_vertex_number(&self, vertex_type: &str) -> Result<usize, BackendError> {
+impl TranWorker {
+    /// Create a vertex with an optional uuid.
+    async fn create_vertex(&self, id: Option<Uuid>) -> Result<Uuid, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let q = RangeVertexQuery::new(u32::MAX).t(Type::new(vertex_type).unwrap());
-        let ls = ct.async_get_vertices(q).await?;
-        Ok(ls.len())
-    }
-
-    async fn create_vertex(&self, id: Option<Uuid>, vt: &str) -> Result<Uuid, BackendError> {
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let ct = ClientTransaction::new(trans);
-        
-        println!("{}", vt);
-        let t = Type::new(vt).unwrap();
+        let t = Type::new("").unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
-            None => Vertex::new(t),
+            None => Vertex::with_id(generate_uuid_v1(), t),
         };
 
         let succeed = ct.async_create_vertex(&v).await?;
@@ -60,59 +45,39 @@ impl IndradbTransactionWorker {
             Ok(v.id)
         }
         else {
-            Err(BackendError::invalid_arg(format!("vertex of type {} exists", vt)))
+            Err(BackendError::invalid_arg(format!("vertex {} already exists", &v.id)))
         }
     }
 
-    async fn find_vertex(&self, id: Uuid) -> Result<bool, BackendError> {
-        let trans = self.client.transaction_request().send().pipeline.get_transaction();
-        let ct = ClientTransaction::new(trans);
-        let q = SpecificVertexQuery::single(id.clone());
-        let vertex_list = ct.async_get_vertices(q).await?;
-        if vertex_list.len() == 0 {
-            Ok(false)
-        }
-        else if vertex_list.len() == 1 {
-            Ok(true)
-        }
-        else {
-            Err(BackendError::invalid_arg("too many vertexes".to_string()))
-        }
-    }
-
-    async fn read_vertex_json_value(&self, vertex_info: Either<&str, Uuid>, property_name: &str) -> Result<serde_json::Value, BackendError> {
+    /// Get json property with name `property_name` from vertex with id `vid`.
+    async fn get_vertex_json_value(&self, vid: Uuid, property_name: &str) -> Result<serde_json::Value, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let q: VertexQuery = match vertex_info {
-            Either::Left(vt) => RangeVertexQuery::new(1).t(Type::new(vt).unwrap()).into(),
-            Either::Right(id) => SpecificVertexQuery::single(id.clone()).into(),
-        };
+        let q: VertexQuery = SpecificVertexQuery::single(vid.clone()).into();
         let vertex_list = ct.async_get_vertices(q).await?;
-        if vertex_list.len() == 0 {
-            return Err(BackendError::invalid_arg("vertex does not exist".to_string()));
+        if vertex_list.len() != 1 {
+            return Err(BackendError::invalid_arg(format!("vertex {} already exists", &vid)));
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         let mut property_list = ct.async_get_vertex_properties(q).await?;
-        if property_list.len() == 0 {
+        if property_list.len() != 1 {
             return Err(BackendError::invalid_arg(format!("vertex has no property {}", property_name)));
         }
 
         Ok(property_list.pop().unwrap().value)
     }
 
-    async fn update_vertex_json_value(&self, vertex_info: Either<&str, Uuid>, property_name: &str, json: &serde_json::Value) -> Result<(), BackendError> {
+    /// Set json property with name `property_name` for vertex with id `vid`.
+    async fn set_vertex_json_value(&self, vid: Uuid, property_name: &str, json: &serde_json::Value) -> Result<(), BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let q: VertexQuery = match vertex_info {
-            Either::Left(vt) => RangeVertexQuery::new(1).t(Type::new(vt).unwrap()).into(),
-            Either::Right(id) => SpecificVertexQuery::single(id).into(),
-        };
+        let q: VertexQuery = SpecificVertexQuery::single(vid).into();
         let vertex_list = ct.async_get_vertices(q).await?;
-        if vertex_list.len() == 0 {
-            return Err(BackendError::invalid_arg("vertex does not exist".to_string()));
+        if vertex_list.len() != 1 {
+            return Err(BackendError::invalid_arg(format!("vertex {} already exists", &vid)));
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
@@ -137,21 +102,21 @@ pub enum Response {
 }
 
 pub struct IndradbClientBackend {
-    worker: IndradbTransactionWorker,
+    worker: TranWorker,
     disconnector: capnp_rpc::Disconnector<Side>,
 }
 
 impl IndradbClientBackend {
     pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
         Self{
-            worker: IndradbTransactionWorker{client}, 
+            worker: TranWorker{client}, 
             disconnector
         }
     }
 
     // a few helper functions:
     async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
-        let jv = self.worker.read_vertex_json_value(Either::Left("user_map"), "map").await?;
+        let jv = self.worker.get_vertex_json_value(Either::Left("user_map"), "map").await?;
         let user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
         Ok(user_map)
     }

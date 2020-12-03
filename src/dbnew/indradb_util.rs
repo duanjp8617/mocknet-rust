@@ -6,6 +6,15 @@ use capnp::Error as CapnpError;
 use uuid::Uuid;
 use serde_json::value::Value as JsonValue;
 
+use chrono::offset::Utc;
+use uuid::v1::{Context, Timestamp};
+use lazy_static::lazy_static;
+
+const NODE_ID: [u8; 6] = [0, 0, 0, 0, 0, 0];
+lazy_static! {
+    static ref CONTEXT: Context = Context::new(0);
+}
+
 mod converters {
     use crate::autogen;
     use std::fmt::Display;
@@ -386,4 +395,13 @@ impl ClientTransaction {
         res.get()?;
         Ok(())
     }
+}
+
+
+/// Generates a UUID v1. this utility method uses a shared context and node ID
+/// to help ensure generated UUIDs are unique.
+pub fn generate_uuid_v1() -> Uuid {
+    let now = Utc::now();
+    let ts = Timestamp::from_unix(&*CONTEXT, now.timestamp() as u64, now.timestamp_subsec_nanos());
+    Uuid::new_v1(ts, &NODE_ID).expect("Expected to be able to generate a UUID")
 }

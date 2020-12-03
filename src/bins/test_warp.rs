@@ -65,7 +65,7 @@
 // }
 
 use std::net::ToSocketAddrs;
-use mocknet::dbnew::client;
+use mocknet::dbnew;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -75,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .next()
         .expect("could not parse address");
 
-    let launcher = client::ClientLauncher::connect(&addr).await?;
+    let launcher = dbnew::ClientLauncher::connect(&addr).await?;
     launcher.with_db_client(|client| {
         async move {
             Ok(())

@@ -1,13 +1,10 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
-
 use futures::AsyncReadExt;
-
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 
 use uuid::Uuid;
-
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
 
@@ -81,8 +78,8 @@ pub struct ClientLauncher {
 
 impl ClientLauncher {
     /// Make an async connection to the database and return a ClientLauncher.
-    pub async fn connect(addr: &std::net::SocketAddr) -> Result<Self, ClientError> {
-        let conn = tokio::net::TcpStream::connect(&addr).await.unwrap();
+    pub async fn connect(addr: &std::net::SocketAddr) -> Result<Self, std::io::Error> {
+        let conn = tokio::net::TcpStream::connect(&addr).await?;
         Ok(Self {conn})
     }
 

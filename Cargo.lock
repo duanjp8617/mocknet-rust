@@ -867,6 +867,7 @@ dependencies = [
  "dummy_cli_parser",
  "futures",
  "indradb-lib",
+ "lazy_static",
  "parking_lot",
  "pretty_env_logger",
  "prost",

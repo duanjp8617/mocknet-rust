@@ -44,6 +44,7 @@ capnp-rpc = "0.13.1"
 indradb-lib = "1.1.0"
 uuid = { version = "~0.8.1", features = ["v1", "serde"] }
 chrono = "0.4.15"
+lazy_static = "1.4.0"
 
 # For test_wrap.rs
 pretty_env_logger = "0.4"
