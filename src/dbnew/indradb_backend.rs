@@ -14,13 +14,13 @@ use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
 use super::indradb_util::{ClientTransaction, generate_uuid_v1};
-use super::errors::{BackendError};
+use super::errors::{BackendError, BackendErrorKind};
 
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
-const bytes_seed: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
+const BYTES_SEED: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
                               9, 10, 11, 12, 13, 14, 15, 16];
 lazy_static! {
-    static ref CORE_INFO_ID: Uuid = Uuid::from_bytes(bytes_seed);
+    static ref CORE_INFO_ID: Uuid = Uuid::from_bytes(BYTES_SEED);
 }
 
 /// A transaction worker that handles all the interaction with indradb.
@@ -29,6 +29,13 @@ struct TranWorker {
 }
 
 impl TranWorker {
+    // this should be removed
+    async fn ping(&self) -> Result<bool, BackendError> {
+        let req = self.client.ping_request();
+        let res = req.send().promise.await?;
+        Ok(res.get()?.get_ready()) 
+    }
+
     /// Create a vertex with an optional uuid.
     async fn create_vertex(&self, id: Option<Uuid>) -> Result<Uuid, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
@@ -116,25 +123,25 @@ impl IndradbClientBackend {
 
     // a few helper functions:
     async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
-        let jv = self.worker.get_vertex_json_value(Either::Left("user_map"), "map").await?;
+        let jv = self.worker.get_vertex_json_value(CORE_INFO_ID.clone(), "user_map").await?;
         let user_map: HashMap<String, user::EmuNetUser> = serde_json::from_value(jv).unwrap();
         Ok(user_map)
     }
 
     async fn set_user_map(&self, user_map: HashMap<String, user::EmuNetUser>) -> Result<(), BackendError> {
         let jv = serde_json::to_value(user_map).unwrap();
-        self.worker.update_vertex_json_value(Either::Left("user_map"), "map", &jv).await
+        self.worker.set_vertex_json_value(CORE_INFO_ID.clone(), "user_map", &jv).await
     }
 
     async fn get_server_list(&self) -> Result<Vec<server::ContainerServer>, BackendError> {
-        let jv = self.worker.read_vertex_json_value(Either::Left("server_list"), "list").await?;
+        let jv = self.worker.get_vertex_json_value(CORE_INFO_ID.clone(), "server_list").await?;
         let server_list: Vec<server::ContainerServer> = serde_json::from_value(jv).unwrap();
         Ok(server_list)
     }
 
     async fn set_server_list(&self, server_list: Vec<server::ContainerServer>) -> Result<(), BackendError> {
         let jv = serde_json::to_value(server_list).unwrap();
-        self.worker.update_vertex_json_value(Either::Left("server_list"), "mlist", &jv).await
+        self.worker.set_vertex_json_value(CORE_INFO_ID.clone(), "server_list", &jv).await
     }
 }
 
@@ -144,35 +151,36 @@ impl IndradbClientBackend {
     }
 
     async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, BackendError> {
-        let c_server_list = self.worker.count_vertex_number("server_list").await?;
-        let c_user_map = self.worker.count_vertex_number("user_map").await?;
+        let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await;
+        match res {
+            Ok(_) => {
+                // initialize user map
+                self.set_user_map(HashMap::<String, user::EmuNetUser>::new()).await?;
 
-        if c_server_list == 1 && c_user_map == 1 {        
-            Ok(false)
-        }
-        else if c_server_list == 0 && c_user_map == 0 {  
-            let server_list_id = self.worker.create_vertex(None, "server_list").await?;
-            let servers_jv = serde_json::to_value(servers).unwrap();
-            self.worker.update_vertex_json_value(Either::Right(server_list_id), "list", &servers_jv).await?;
+                // initialize server list                
+                self.set_server_list(servers).await?;
                         
-            let user_map_id = self.worker.create_vertex(None, "user_map").await?;
-            let users_jv = serde_json::to_value(HashMap::<String, user::EmuNetUser>::new()).unwrap();
-            self.worker.update_vertex_json_value(Either::Right(user_map_id), "map", &users_jv).await?;
-
-            Ok(true)
-        }
-        else {
-            Err(BackendError::invalid_arg("FATAL: database is polluted".to_string()))
+                Ok(true)
+            },
+            Err(e) => {
+                match e.kind() {
+                    BackendErrorKind::InvalidArg => {
+                        // the core info vertex is presented, this is not an error
+                        Ok(false)
+                    },
+                    _ => Err(e),
+                }
+            }
         }
     }
 
-    async fn register_user(&self, user_name: String) -> Result<bool, BackendError> {        
+    async fn register_user(&self, user_id: String) -> Result<bool, BackendError> {        
         let mut user_map = self.get_user_map().await?;
-        if user_map.get(&user_name).is_some() {
+        if user_map.get(&user_id).is_some() {
             return Ok(false);
         }
 
-        let user = user::EmuNetUser::new(&user_name);
+        let user = user::EmuNetUser::new(&user_id);
         user_map.insert(user_name, user);        
         self.set_user_map(user_map).await.map(|_|{true})
     }
