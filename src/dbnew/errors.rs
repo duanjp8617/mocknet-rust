@@ -7,8 +7,9 @@ use tokio::sync::oneshot::error as oneshot;
 // Error of indradb backend
 #[derive(Debug, Clone, Copy)]
 pub enum BackendErrorKind {
-    CapnpError,
-    InvalidArg,
+    CapnpError, // capnp rpc error, fatal
+    DataError,  // data error, fatal
+    InvalidArg, // input argument error, none fatal
 }
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,24 @@ pub struct BackendError {
 impl BackendError {
     pub fn kind(&self) -> BackendErrorKind {
         self.kind
+    }
+
+    /// Change the error message if the error kind is DataError.
+    // pub fn change_data_error_msg(self, description: String) -> Self {
+    //     match self.kind {
+    //         BackendErrorKind::DataError => {
+    //             self.description = description;
+    //             self
+    //         },
+    //         _ => {self},
+    //     }
+    // }
+
+    pub fn data_error(description: String) -> Self {
+        Self {
+            kind: BackendErrorKind::DataError,
+            description,
+        }
     }
 
     pub fn invalid_arg(description: String) -> Self {

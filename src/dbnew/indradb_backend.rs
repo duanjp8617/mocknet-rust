@@ -3,7 +3,7 @@ use std::future::Future;
 use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
-use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt, VertexQuery};
+use indradb::{SpecificVertexQuery, VertexQueryExt, VertexQuery};
 use indradb::{Vertex, Type};
 use uuid::Uuid;
 use lazy_static::lazy_static;
@@ -51,7 +51,7 @@ impl TranWorker {
             Ok(v.id)
         }
         else {
-            Err(BackendError::invalid_arg(format!("vertex {} already exists", &v.id)))
+            Err(BackendError::data_error(format!("vertex {} exists", v.id)))
         }
     }
 
@@ -63,13 +63,13 @@ impl TranWorker {
         let q: VertexQuery = SpecificVertexQuery::single(vid.clone()).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
-            panic!("indradb fatal error")
+            panic!("indradb fatal error");
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         let mut property_list = ct.async_get_vertex_properties(q).await?;
         if property_list.len() != 1 {
-            panic!("indradb fatal error")
+            panic!("indradb fatal error");
         }
 
         Ok(property_list.pop().unwrap().value)
@@ -83,7 +83,7 @@ impl TranWorker {
         let q: VertexQuery = SpecificVertexQuery::single(vid).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
-            panic!("indradb fatal error")
+            panic!("indradb fatal error");
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
@@ -163,8 +163,12 @@ impl IndradbClientBackend {
                 Ok(())
             },
             Err(e) => {
-                // e may contain an InvalidArg error
-                Err(e)
+                // e may be a DataError due to intialized database
+                // this is not an error and change it to InvalidArg
+                match e.kind() {
+                    BackendErrorKind::DataError => Err(BackendError::invalid_arg("the database has initialized".to_string())),
+                    _ => Err(e)
+                }
             },
         }
     }

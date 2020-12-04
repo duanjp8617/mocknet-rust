@@ -32,12 +32,12 @@ impl<M, R, E> Message<M, R, E> {
         }
     }
 
-    fn close_msg() -> Self {
-        Self {
-            msg: None,
-            cb_tx: oneshot::channel().0,
-        }
-    }
+    // fn close_msg() -> Self {
+    //     Self {
+    //         msg: None,
+    //         cb_tx: oneshot::channel().0,
+    //     }
+    // }
 }
 
 #[derive(Clone)]
