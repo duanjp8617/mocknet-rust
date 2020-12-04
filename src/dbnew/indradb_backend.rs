@@ -4,8 +4,7 @@ use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt, VertexQuery};
-use indradb::Type;
-use indradb::{Vertex};
+use indradb::{Vertex, Type};
 use uuid::Uuid;
 use lazy_static::lazy_static;
 
@@ -13,7 +12,7 @@ use crate::emunet::server;
 use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
-use super::indradb_util::{ClientTransaction, generate_uuid_v1};
+use super::indradb_util::ClientTransaction;
 use super::errors::{BackendError, BackendErrorKind};
 
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
@@ -36,7 +35,7 @@ impl TranWorker {
         Ok(res.get()?.get_ready()) 
     }
 
-    /// Create a vertex with an optional uuid.
+    // create a vertex with an optional uuid
     async fn create_vertex(&self, id: Option<Uuid>) -> Result<Uuid, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
@@ -44,7 +43,7 @@ impl TranWorker {
         let t = Type::new("").unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
-            None => Vertex::with_id(generate_uuid_v1(), t),
+            None => Vertex::with_id(indradb::util::generate_uuid_v1(), t),
         };
 
         let succeed = ct.async_create_vertex(&v).await?;
@@ -56,7 +55,7 @@ impl TranWorker {
         }
     }
 
-    /// Get json property with name `property_name` from vertex with id `vid`.
+    // get json property with name `property_name` from vertex with id `vid`
     async fn get_vertex_json_value(&self, vid: Uuid, property_name: &str) -> Result<serde_json::Value, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
@@ -64,19 +63,19 @@ impl TranWorker {
         let q: VertexQuery = SpecificVertexQuery::single(vid.clone()).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
-            return Err(BackendError::invalid_arg(format!("vertex {} already exists", &vid)));
+            panic!("indradb fatal error")
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         let mut property_list = ct.async_get_vertex_properties(q).await?;
         if property_list.len() != 1 {
-            return Err(BackendError::invalid_arg(format!("vertex has no property {}", property_name)));
+            panic!("indradb fatal error")
         }
 
         Ok(property_list.pop().unwrap().value)
     }
 
-    /// Set json property with name `property_name` for vertex with id `vid`.
+    // set json property with name `property_name` for vertex with id `vid`
     async fn set_vertex_json_value(&self, vid: Uuid, property_name: &str, json: &serde_json::Value) -> Result<(), BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
@@ -84,7 +83,7 @@ impl TranWorker {
         let q: VertexQuery = SpecificVertexQuery::single(vid).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() != 1 {
-            return Err(BackendError::invalid_arg(format!("vertex {} already exists", &vid)));
+            panic!("indradb fatal error")
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
@@ -146,6 +145,7 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
+    // this should be removed
     async fn ping(&self) -> Result<bool, BackendError> {
         self.worker.ping().await
     }
@@ -174,49 +174,54 @@ impl IndradbClientBackend {
         }
     }
 
-    async fn register_user(&self, user_id: String) -> Result<bool, BackendError> {        
+    async fn register_user(&self, user_id: String) -> Result<(), BackendError> {        
+        // read current user map
         let mut user_map = self.get_user_map().await?;
         if user_map.get(&user_id).is_some() {
-            return Ok(false);
+            return Err(BackendError::invalid_arg("user has registered".to_string()));
         }
 
+        // register the new user
         let user = user::EmuNetUser::new(&user_id);
-        user_map.insert(user_name, user);        
-        self.set_user_map(user_map).await.map(|_|{true})
+        user_map.insert(user_id, user);        
+        
+        // sync update in the db
+        self.set_user_map(user_map).await
     }
 
     async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, BackendError> {
+        // get the user
         let mut user_map = self.get_user_map().await?;
         if user_map.get(&user).is_none() {
             return Err(BackendError::invalid_arg("invalid user name".to_string()));
         }
         let user_mut = user_map.get_mut(&user).unwrap();
 
-        // check whether the net has existed
+        // check whether the emunet has existed
         if user_mut.emu_net_exist(&net) {
             return Err(BackendError::invalid_arg("invalid emu-net name".to_string()));
         }
 
-        // TODO: update server pool API and make the code shorter.
+        // get the allocation of servers
         let server_list = self.get_server_list().await?;
-        let mut sp = server::ServerPool::new();
-        sp.add_servers(server_list.into_iter());
-        let allocated_opt = sp.allocate_servers(capacity);
+        let mut sp = server::ServerPool::from(server_list);
+        let allocation = match sp.allocate_servers(capacity) {
+            Some(alloc) => alloc,
+            None => return Err(BackendError::invalid_arg("invalid capacity".to_string())),
+        };
         self.set_server_list(sp.into_vec()).await?;
-        if allocated_opt.is_none() {
-            return Err(BackendError::invalid_arg("invalid capacity".to_string()));
-        }
+
 
         // create a new emu net
         let mut emu_net = net::EmuNet::new(net.clone(), capacity);
-        emu_net.add_servers(allocated_opt.unwrap());
-        // create a new emu net node
-        let emu_net_id = self.worker.create_vertex(None, &format!("{}_{}", &user, &net)).await?;
-        // write the new emu_net property into the new node
+        emu_net.add_servers(allocation);
+        
+        // create and initialize a new emu net node
+        let emu_net_id = self.worker.create_vertex(None).await?;
         let jv = serde_json::to_value(emu_net).unwrap();
-        self.worker.update_vertex_json_value(Either::Right(emu_net_id.clone()), "default", &jv).await?;
+        self.worker.set_vertex_json_value(emu_net_id, "default", &jv).await?;
 
-        // write the user_map property into the new node
+        // add the new emunet to user map
         user_mut.add_emu_net(net, emu_net_id.clone());
         self.set_user_map(user_map).await?;
 

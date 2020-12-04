@@ -9,6 +9,5 @@ pub mod backend;
 pub mod autogen;
 // pub mod database;
 pub mod dbnew;
-pub mod util;
 pub mod emunet;
 // pub mod restful;

@@ -1,7 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 use std::cmp::Ord;
-
-use crate::util;
+use std::convert::From;
 
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
@@ -90,7 +89,7 @@ impl ServerPool {
         }
         
         self.servers.push(ContainerServer {
-            id: util::new_uuid(),
+            id: indradb::util::generate_uuid_v1(),
             server_addr: target,
             capacity,
         });
@@ -131,5 +130,13 @@ impl ServerPool {
         else {
             None
         }
+    }
+}
+
+impl From<Vec<ContainerServer>> for ServerPool {
+    fn from(vec: Vec<ContainerServer>) -> Self {
+        let mut sp = Self::new();
+        sp.add_servers(vec.into_iter());
+        sp
     }
 }
