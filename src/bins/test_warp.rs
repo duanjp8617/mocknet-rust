@@ -66,6 +66,7 @@
 
 use std::net::ToSocketAddrs;
 use mocknet::dbnew;
+use mocknet::emunet::server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
@@ -79,8 +80,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
         Ok(l) => l,
         Err(e) => return Err(Box::new(e) as Box<dyn std::error::Error + Send>),
     };
-    launcher.with_db_client(|_| {
+    launcher.with_db_client(|client| {
         async move {
+            let res = client.ping().await?;
+            println!("response is {}", res);
+
+            // let mut sp = server::ServerPool::new();
+            // sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
+            // sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
+            // sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
+            // sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
+            // let res = client.init(sp.into_vec()).await;
+            // match res {
+                
+            // }
+
+            // let res = indradb_client.register_user("wtf").await.unwrap();
+            // if res {
+            //     println!("successfully register a new user");
+            // }
+            // else {
+            //     println!("the user with a similar name is presented");
+            // }
+
             Ok(())
         }
     }).await.unwrap();
