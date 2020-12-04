@@ -45,7 +45,7 @@ impl Client {
         let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
         match res {
-            Response::Init(res) => Ok(res),
+            Response::Init => Ok(true),
             _ => panic!("invalid response")
         }
     }
@@ -55,7 +55,7 @@ impl Client {
         let req = Request::RegisterUser(user_name.to_string());
         let res = self.sender.send(req).await?;
         match res {
-            Response::RegisterUser(res) => Ok(res),
+            Response::RegisterUser => Ok(true),
             _ => panic!("invalid response")
         }
     }

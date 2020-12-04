@@ -102,8 +102,8 @@ pub enum Request {
 #[derive(Clone)]
 pub enum Response {
     Ping(bool),
-    Init(bool),
-    RegisterUser(bool),
+    Init,
+    RegisterUser,
     CreateEmuNet(Uuid),
 }
 
@@ -150,7 +150,7 @@ impl IndradbClientBackend {
         self.worker.ping().await
     }
 
-    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, BackendError> {
+    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<(), BackendError> {
         let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await;
         match res {
             Ok(_) => {
@@ -160,17 +160,12 @@ impl IndradbClientBackend {
                 // initialize server list                
                 self.set_server_list(servers).await?;
                         
-                Ok(true)
+                Ok(())
             },
             Err(e) => {
-                match e.kind() {
-                    BackendErrorKind::InvalidArg => {
-                        // the core info vertex is presented, this is not an error
-                        Ok(false)
-                    },
-                    _ => Err(e),
-                }
-            }
+                // e may contain an InvalidArg error
+                Err(e)
+            },
         }
     }
 
@@ -233,20 +228,16 @@ impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
             Request::Ping => {
-                let res = self.ping().await?;
-                Ok(Response::Ping(res))
+               self.ping().await.map(|succeed|{ Response::Ping(succeed)})
             },
             Request::Init(servers) => {
-                let res = self.init(servers).await?;
-                Ok(Response::Init(res))
+                self.init(servers).await.map(|_|{Response::Init})
             },
             Request::RegisterUser(user_name) => {
-                let res = self.register_user(user_name).await?;
-                Ok(Response::RegisterUser(res))
+                self.register_user(user_name).await.map(|_|{Response::RegisterUser})                
             },
             Request::CreateEmuNet(user, net, capacity) => {
-                let res = self.create_emu_net(user, net, capacity).await?;
-                Ok(Response::CreateEmuNet(res))
+                self.create_emu_net(user, net, capacity).await.map(|id|{Response::CreateEmuNet(id)})                
             }
         }
     }
