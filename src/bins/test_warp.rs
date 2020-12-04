@@ -68,19 +68,19 @@ use std::net::ToSocketAddrs;
 use mocknet::dbnew;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "127.0.0.1:27615"
-        .to_socket_addrs()
-        .unwrap()
-        .next()
-        .expect("could not parse address");
+async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
+    // let addr = "127.0.0.1:27615"
+    //     .to_socket_addrs()
+    //     .unwrap()
+    //     .next()
+    //     .expect("could not parse address");
 
-    let launcher = dbnew::ClientLauncher::connect(&addr).await?;
-    launcher.with_db_client(|client| {
-        async move {
-            Ok(())
-        }
-    }).await?;
+    // let launcher = dbnew::ClientLauncher::connect(&addr).await?;
+    // launcher.with_db_client(|client| {
+    //     async move {
+    //         Ok(())
+    //     }
+    // }).await
     
     // let stream = tokio::net::TcpStream::connect(&addr).await?;
     // stream.set_nodelay(true)?;

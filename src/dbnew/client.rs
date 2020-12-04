@@ -86,10 +86,10 @@ impl ClientLauncher {
     /// Launch a background task and run the entry function.
     /// 
     /// The entry function is the start point of the mocknet program.
-    pub async fn with_db_client<Func, Fut>(self, entry_fn: Func) -> Result<(), ClientError> 
+    pub async fn with_db_client<Func, Fut>(self, entry_fn: Func) -> Result<(), Box<dyn std::error::Error + Send>> 
         where
             Func: Fn(Client) -> Fut,
-            Fut: Future<Output = Result<(), ClientError>> + 'static + Send, 
+            Fut: Future<Output = Result<(), Box<dyn std::error::Error + Send>>> + 'static + Send, 
     {
         let ls = tokio::task::LocalSet::new();
         let (sender, queue) = message_queue::create();

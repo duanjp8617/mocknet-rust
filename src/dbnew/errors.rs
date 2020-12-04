@@ -116,3 +116,9 @@ impl<E: std::error::Error> MsgQError<E> {
         MsgQError::Inner(e)
     }
 }
+
+impl From<MsgQError<BackendError>> for Box<dyn std::error::Error + Send> {
+    fn from(err: MsgQError<BackendError>) -> Self {
+        Box::new(err)
+    }
+}
