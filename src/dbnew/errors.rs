@@ -10,6 +10,7 @@ pub enum BackendErrorKind {
     CapnpError, // capnp rpc error, fatal
     DataError,  // data error, fatal
     InvalidArg, // input argument error, none fatal
+    QueueDrop,  // the message queue has been dropped
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,24 @@ impl From<capnp::Error> for BackendError {
     }
 }
 
+impl<T> From<mpsc::SendError<T>> for BackendError {
+    fn from(_: mpsc::SendError<T>) -> BackendError {
+        Self {
+            kind: BackendErrorKind::QueueDrop,
+            description: String::new()
+        }
+    }
+}
+
+impl From<oneshot::RecvError> for BackendError {
+    fn from(_: oneshot::RecvError) -> BackendError {
+        Self {
+            kind: BackendErrorKind::QueueDrop,
+            description: String::new()
+        }
+    }
+}
+
 impl fmt::Display for BackendError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}: {}", self.kind, self.description)         
@@ -66,59 +85,8 @@ impl fmt::Display for BackendError {
 
 impl std::error::Error for BackendError {}
 
-// Error of message queue
-#[derive(Debug)]
-pub enum MsgQError<E: std::error::Error> {
-    QueueDrop,
-    Inner(E),
-}
-
-// If we don't enforce E to implement StdError, then rust complains.
-impl<E: std::error::Error, T> From<mpsc::SendError<T>> for MsgQError<E> {
-    fn from(_: mpsc::SendError<T>) -> MsgQError<E> {
-        MsgQError::<E>::QueueDrop
-    }
-}
-
-impl<E: std::error::Error> From<oneshot::RecvError> for MsgQError<E> {
-    fn from(_: oneshot::RecvError) -> MsgQError<E> {
-        MsgQError::QueueDrop
-    }
-}
-
-impl<E: std::error::Error> fmt::Display for MsgQError<E> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            MsgQError::QueueDrop => {
-                write!(f, "message queue is dropped")
-            }
-            MsgQError::Inner(e) => {
-                write!(f, "inner error message: {}", e)
-            }
-        }            
-    }
-}
-
-impl<E: std::error::Error> std::error::Error for MsgQError<E> {}
-
-// If we don't enforce E to implement StdError, then rust complains.
-// Because MsgQError::Inner is only available for type variable E 
-// that implement std::error::Error
-impl<E: std::error::Error> MsgQError<E> {
-    pub fn get_inner(self) -> Option<E> {
-        match self {
-            MsgQError::Inner(e) => Some(e),
-            _ => None
-        }
-    }
-
-    pub(super) fn from_error(e: E) -> Self {
-        MsgQError::Inner(e)
-    }
-}
-
-impl From<MsgQError<BackendError>> for Box<dyn std::error::Error + Send> {
-    fn from(err: MsgQError<BackendError>) -> Self {
+impl From<BackendError> for Box<dyn std::error::Error + Send> {
+    fn from(err: BackendError) -> Self {
         Box::new(err)
     }
 }

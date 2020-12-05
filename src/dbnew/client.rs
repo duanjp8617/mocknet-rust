@@ -120,7 +120,6 @@ impl ClientLauncher {
             tokio::task::spawn_local(build_backend_fut(indradb_client_backend, queue))
                 .await
                 .unwrap()
-                .map_err(|e|{ClientError::from_error(e)})
         });
 
         // launch the backend task to run entry function

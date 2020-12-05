@@ -1,8 +1,8 @@
-use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
-use tokio::sync::oneshot;
-use tokio::sync::mpsc::error::TryRecvError;
+use std::convert::From;
 
-use super::errors::MsgQError;
+use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
+use tokio::sync::mpsc::error::{TryRecvError, SendError};
+use tokio::sync::oneshot::{self, error::RecvError};
 
 // A message with a callback channel
 pub struct Message<M, R, E> {
@@ -45,15 +45,18 @@ pub struct Sender<M, R, E> {
     tx: UnboundedSender<Message<M, R, E>>,
 }
 
-impl<M, R, E: std::error::Error> Sender<M, R, E> {
-    pub async fn send(&self, msg: M) -> Result<R, MsgQError<E>> {
+impl<M, R, E> Sender<M, R, E> 
+    where
+        E: From<SendError<Message<M, R, E>>> + From<RecvError>
+{
+    pub async fn send(&self, msg: M) -> Result<R, E> {
         let (tx, rx) = oneshot::channel();
         let msg = Message::new(msg, tx);
         
         self.tx.send(msg)?;
         let res = rx.await?;
         
-        res.map_err(|e|{MsgQError::from_error(e)})
+        res
     }
 }
 
