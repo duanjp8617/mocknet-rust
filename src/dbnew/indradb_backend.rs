@@ -28,13 +28,6 @@ struct TranWorker {
 }
 
 impl TranWorker {
-    // this should be removed
-    async fn ping(&self) -> Result<bool, BackendError> {
-        let req = self.client.ping_request();
-        let res = req.send().promise.await?;
-        Ok(res.get()?.get_ready()) 
-    }
-
     // create a vertex with an optional uuid
     async fn create_vertex(&self, id: Option<Uuid>) -> Result<Uuid, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
@@ -93,7 +86,6 @@ impl TranWorker {
 
 #[derive(Clone)]
 pub enum Request {
-    Ping,
     Init(Vec<server::ContainerServer>),
     RegisterUser(String),
     CreateEmuNet(String, String, u32),
@@ -101,7 +93,6 @@ pub enum Request {
 
 #[derive(Clone)]
 pub enum Response {
-    Ping(bool),
     Init,
     RegisterUser,
     CreateEmuNet(Uuid),
@@ -145,11 +136,6 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
-    // this should be removed
-    async fn ping(&self) -> Result<bool, BackendError> {
-        self.worker.ping().await
-    }
-
     async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<(), BackendError> {
         let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await;
         match res {
@@ -231,9 +217,6 @@ impl IndradbClientBackend {
 impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
-            Request::Ping => {
-               self.ping().await.map(|succeed|{ Response::Ping(succeed)})
-            },
             Request::Init(servers) => {
                 self.init(servers).await.map(|_|{Response::Init})
             },

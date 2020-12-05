@@ -27,17 +27,6 @@ impl Clone for Client {
 }
 
 impl Client {
-    /// Sends a ping request to database and check whether we can use the database.
-    // TODO: consider removing this method.
-    pub async fn ping(&self) -> Result<bool, ClientError> {
-        let req = Request::Ping;
-        let res = self.sender.send(req).await?;
-        match res {
-            Response::Ping(flag) => Ok(flag),
-            _ => panic!("invalid response")
-        }
-    }
-
     /// Initilize a table for storing core information of the mocknet database.
     /// 
     /// `servers` stores information about backend servers for launching containers.

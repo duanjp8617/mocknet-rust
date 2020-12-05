@@ -82,9 +82,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     };
     launcher.with_db_client(|client| {
         async move {
-            let res = client.ping().await?;
-            println!("response is {}", res);
-
             // let mut sp = server::ServerPool::new();
             // sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
             // sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
