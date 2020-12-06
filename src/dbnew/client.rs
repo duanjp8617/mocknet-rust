@@ -30,11 +30,11 @@ impl Client {
     /// Initilize a table for storing core information of the mocknet database.
     /// 
     /// `servers` stores information about backend servers for launching containers.
-    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<bool, ClientError> {
+    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<(), ClientError> {
         let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
         match res {
-            Response::Init => Ok(true),
+            Response::Init => Ok(()),
             _ => panic!("invalid response")
         }
     }

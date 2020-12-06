@@ -65,7 +65,7 @@
 // }
 
 use std::net::ToSocketAddrs;
-use mocknet::dbnew;
+use mocknet::dbnew::{self, ClientError, ClientErrorKind};
 use mocknet::emunet::server;
 
 #[tokio::main]
@@ -82,16 +82,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     };
     launcher.with_db_client(|client| {
         async move {
-            // let mut sp = server::ServerPool::new();
-            // sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
-            // sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
-            // sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
-            // sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
-            // let res = client.init(sp.into_vec()).await;
-            // match res {
-                
-            // }
-
+            let mut sp = server::ServerPool::new();
+            sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
+            sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
+            sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
+            sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
+            let res = client.init(sp.into_vec()).await;
+            match res {
+                Err(err) => {
+                    match err.kind() {
+                        ClientErrorKind::InvalidArg => println!("The database has been initialized."),
+                        _ => return Err(err.into()),
+                    }
+                }
+                _ => println!("The database is initialized."),
+            };
+            
             // let res = indradb_client.register_user("wtf").await.unwrap();
             // if res {
             //     println!("successfully register a new user");
