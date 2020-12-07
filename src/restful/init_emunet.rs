@@ -1,4 +1,4 @@
-use crate::database::{IndradbClient};
+use crate::dbnew::{Client, QueryOk, QueryFail};
 
 use warp::{http, Filter};
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use std::collections::HashSet;
 // }'
 
 // path/create_emunet/
-async fn init_emunet(json_value: Json, db_client: IndradbClient) -> Result<impl warp::Reply, warp::Rejection> {
+async fn init_emunet(json_value: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
     Ok(warp::reply::with_status(format!("emunet is initializing."), http::StatusCode::CREATED))
 }
 
@@ -49,7 +49,7 @@ fn parse_json_body() -> impl Filter<Extract = (Json,), Error = warp::Rejection> 
         .and(warp::body::json())
 }
 
-pub fn build_filter(db_client: IndradbClient) 
+pub fn build_filter(db_client: Client) 
     -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {
     let db_filter = warp::any().map(move || {

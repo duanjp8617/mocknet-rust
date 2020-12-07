@@ -10,4 +10,4 @@ pub mod autogen;
 // pub mod database;
 pub mod dbnew;
 pub mod emunet;
-// pub mod restful;
+pub mod restful;

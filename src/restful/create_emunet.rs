@@ -1,4 +1,4 @@
-use crate::dbnew::{IndradbClient};
+use crate::dbnew::{Client, QueryOk, QueryFail};
 
 use warp::{http, Filter};
 use serde::Deserialize;
@@ -13,16 +13,25 @@ use serde::Deserialize;
 // }'
 
 // path/create_emunet/
-async fn create_emunet(json_value: Json, db_client: IndradbClient) -> Result<impl warp::Reply, warp::Rejection> {
+async fn create_emunet(json_value: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
     // unwrap ClientError
-    let res = db_client.create_emu_net(json_value.user, json_value.emunet, json_value.capacity).await.unwrap();
+    let db_response = db_client.create_emu_net(json_value.user, json_value.emunet, json_value.capacity).await;
 
-    res.map_err(|err_msg| {
-        warp::reject::not_found()
-    }).and_then(|uuid| {
-        Ok(warp::reply::with_status(format!("emunet with id {} successfully registers.", &uuid), http::StatusCode::CREATED))
-    })
-
+    match db_response {
+        Err(e) => {
+            Ok(warp::reply::with_status(format!("internal server error: {}", e), http::StatusCode::INTERNAL_SERVER_ERROR))
+        },
+        Ok(query_res) => {
+            match query_res {
+                QueryOk(uuid) => {
+                    Ok(warp::reply::with_status(format!("emunet_uuid: {}", uuid), http::StatusCode::OK))
+                },
+                QueryFail(err_msg) => {
+                    Ok(warp::reply::with_status(format!("operation fail: {}", err_msg), http::StatusCode::BAD_REQUEST))
+                }
+            }
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -39,7 +48,7 @@ fn parse_json_body() -> impl Filter<Extract = (Json,), Error = warp::Rejection> 
         .and(warp::body::json())
 }
 
-pub fn build_filter(db_client: IndradbClient) 
+pub fn build_filter(db_client: Client) 
     -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {
     let db_filter = warp::any().map(move || {
