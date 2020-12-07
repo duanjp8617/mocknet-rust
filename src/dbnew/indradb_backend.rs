@@ -15,7 +15,7 @@ use crate::emunet::net;
 use super::message_queue::{Queue};
 use super::indradb_util::ClientTransaction;
 use super::errors::{BackendError};
-use super::QueryResult;
+use super::{QueryResult, QueryOk, QueryFail};
 
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
 const BYTES_SEED: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
@@ -87,16 +87,6 @@ impl TranWorker {
     }
 }
 
-// helper function for generating QueryResult::Ok
-fn query_ok<T>(t: T) -> QueryResult<T> {
-    Ok(t)
-}
-
-// helper function for generating QueryResult::Err
-fn query_fail<T>(s: String) -> QueryResult<T> {
-    Err(s)
-}
-
 #[derive(Clone)]
 pub enum Request {
     Init(Vec<server::ContainerServer>),
@@ -154,9 +144,9 @@ impl IndradbClientBackend {
                 // initialize server list                
                 self.set_core_property("sever_list", servers).await?;
                         
-                Ok(query_ok(()))
+                Ok(QueryOk(()))
             },
-            None => Ok(query_fail("database has already been initialized".to_string())),
+            None => Ok(QueryFail("database has already been initialized".to_string())),
         }
     }
 
@@ -164,7 +154,7 @@ impl IndradbClientBackend {
         // read current user map
         let mut user_map: HashMap<String, user::EmuNetUser> = self.get_core_property("user_map").await?;
         if user_map.get(&user_id).is_some() {
-            return Ok(query_fail("user has already registered".to_string()));
+            return Ok(QueryFail("user has already registered".to_string()));
         }
 
         // register the new user
@@ -174,20 +164,20 @@ impl IndradbClientBackend {
         // sync update in the db
         self.set_core_property("user_map", user_map).await?;
         
-        Ok(query_ok(()))
+        Ok(QueryOk(()))
     }
 
     async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, BackendError> {
         // get the user
         let mut user_map: HashMap<String, user::EmuNetUser> = self.get_core_property("user_map").await?;
         if user_map.get(&user).is_none() {
-            return Ok(query_fail("invalid user name".to_string()));
+            return Ok(QueryFail("invalid user name".to_string()));
         }
         let user_mut = user_map.get_mut(&user).unwrap();
 
         // check whether the emunet has existed
         if user_mut.emu_net_exist(&net) {
-            return Ok(query_fail("invalid emu-net name".to_string()));
+            return Ok(QueryFail("invalid emu-net name".to_string()));
         }
 
         // get the allocation of servers
@@ -195,7 +185,7 @@ impl IndradbClientBackend {
         let mut sp = server::ServerPool::from(server_list);
         let allocation = match sp.allocate_servers(capacity) {
             Some(alloc) => alloc,
-            None => return Ok(query_fail("invalid capacity".to_string())),
+            None => return Ok(QueryFail("invalid capacity".to_string())),
         };
         self.set_core_property("server_list", sp.into_vec()).await?;
 
@@ -216,7 +206,7 @@ impl IndradbClientBackend {
         user_mut.add_emu_net(net, emu_net_id.clone());
         self.set_core_property("user_map", user_map).await?;
 
-        Ok(query_ok(emu_net_id))
+        Ok(QueryOk(emu_net_id))
     }
 }
 

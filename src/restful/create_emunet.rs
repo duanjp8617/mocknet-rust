@@ -1,4 +1,4 @@
-use crate::database::{IndradbClient};
+use crate::dbnew::{IndradbClient};
 
 use warp::{http, Filter};
 use serde::Deserialize;
@@ -14,9 +14,10 @@ use serde::Deserialize;
 
 // path/create_emunet/
 async fn create_emunet(json_value: Json, db_client: IndradbClient) -> Result<impl warp::Reply, warp::Rejection> {
-    let res = db_client.create_emu_net(json_value.user, json_value.emunet, json_value.capacity).await;
+    // unwrap ClientError
+    let res = db_client.create_emu_net(json_value.user, json_value.emunet, json_value.capacity).await.unwrap();
 
-    res.map_err(|_| {
+    res.map_err(|err_msg| {
         warp::reject::not_found()
     }).and_then(|uuid| {
         Ok(warp::reply::with_status(format!("emunet with id {} successfully registers.", &uuid), http::StatusCode::CREATED))
