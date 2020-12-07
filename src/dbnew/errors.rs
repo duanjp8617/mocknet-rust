@@ -8,7 +8,6 @@ use tokio::sync::oneshot::error as oneshot;
 #[derive(Debug, Clone, Copy)]
 pub enum BackendErrorKind {
     CapnpError, // capnp rpc error, fatal
-    InvalidArg, // input argument error, none fatal
     QueueDrop,  // the message queue has been dropped, fatal
 }
 
@@ -25,7 +24,7 @@ impl BackendError {
         self.kind
     }
 
-    /// Change the error message if the error kind is DataError.
+    // Change the error message if the error kind is DataError.
     // pub fn change_data_error_msg(self, description: String) -> Self {
     //     match self.kind {
     //         BackendErrorKind::DataError => {
@@ -35,14 +34,6 @@ impl BackendError {
     //         _ => {self},
     //     }
     // }
-
-    /// Create an InvalidArg error with `description`.
-    pub fn invalid_arg(description: String) -> Self {
-        Self {
-            kind: BackendErrorKind::InvalidArg,
-            description,
-        }
-    }
 }
 
 // Convert capnp::Error into BackendError.

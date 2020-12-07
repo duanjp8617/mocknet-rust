@@ -65,7 +65,7 @@
 // }
 
 use std::net::ToSocketAddrs;
-use mocknet::dbnew::{self, ClientError, ClientErrorKind};
+use mocknet::dbnew::{self, ClientError, ClientErrorKind, QueryResult, QueryOk, QueryFail};
 use mocknet::emunet::server;
 
 #[tokio::main]
@@ -87,15 +87,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
             sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
             sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
-            let res = client.init(sp.into_vec()).await;
+            let res = client.init(sp.into_vec()).await?;
             match res {
-                Err(err) => {
-                    match err.kind() {
-                        ClientErrorKind::InvalidArg => println!("The database has been initialized."),
-                        _ => return Err(err.into()),
-                    }
+                QueryOk(_) => {},
+                QueryFail(s) => {
+                    println!("{}", &s);
                 }
-                _ => println!("The database is initialized."),
             };
             
             // let res = indradb_client.register_user("wtf").await.unwrap();

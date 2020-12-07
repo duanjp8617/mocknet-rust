@@ -5,13 +5,14 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 
 use uuid::Uuid;
+
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
-
 use crate::emunet::server;
 use super::message_queue;
 use super::ClientError;
 use super::errors::BackendError;
+use super::QueryResult;
 
 /// The database client that stores core mocknet information.
 pub struct Client {
@@ -30,31 +31,41 @@ impl Client {
     /// Initilize a table for storing core information of the mocknet database.
     /// 
     /// `servers` stores information about backend servers for launching containers.
-    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<(), ClientError> {
+    /// 
+    /// Interpretation of return values:
+    /// Ok(Ok(())) means successful initialization.
+    /// Ok(Err(s)) means the database has been initialized, and `s` is the error message.
+    /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
+    /// dropping backend worker (though the second error si unlikely to occur.)
+    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<QueryResult<()>, ClientError> {
         let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
         match res {
-            Response::Init => Ok(()),
+            Response::Init(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }
 
     /// Store a new user with `user_name`.
-    pub async fn register_user(&self, user_name: &str) -> Result<bool, ClientError> {
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn register_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
         let req = Request::RegisterUser(user_name.to_string());
         let res = self.sender.send(req).await?;
         match res {
-            Response::RegisterUser => Ok(true),
+            Response::RegisterUser(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }
 
     /// Create a new emulation net for `user` with `name` and `capacity`.
-    pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, ClientError> {
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
         let req= Request::CreateEmuNet(user, net, capacity);
         let res = self.sender.send(req).await?;
         match res {
-            Response::CreateEmuNet(uuid) => Ok(uuid),
+            Response::CreateEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }

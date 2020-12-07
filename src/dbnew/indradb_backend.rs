@@ -14,7 +14,8 @@ use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
 use super::indradb_util::ClientTransaction;
-use super::errors::{BackendError, BackendErrorKind};
+use super::errors::{BackendError};
+use super::QueryResult;
 
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
 const BYTES_SEED: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
@@ -50,39 +51,50 @@ impl TranWorker {
     }
 
     // get json property with name `property_name` from vertex with id `vid`
-    async fn get_vertex_json_value(&self, vid: Uuid, property_name: &str) -> Result<serde_json::Value, BackendError> {
+    async fn get_vertex_json_value(&self, vid: Uuid, property_name: &str) -> Result<Option<serde_json::Value>, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
         let q: VertexQuery = SpecificVertexQuery::single(vid.clone()).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() == 0 {
-            return Err(BackendError::invalid_arg(String::new()));
+            return Ok(None);
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         let mut property_list = ct.async_get_vertex_properties(q).await?;
         if property_list.len() == 0 {
-            return Err(BackendError::invalid_arg(String::new()));
+            return Ok(None);
         }
 
-        Ok(property_list.pop().unwrap().value)
+        Ok(Some(property_list.pop().unwrap().value))
     }
 
     // set json property with name `property_name` for vertex with id `vid`
-    async fn set_vertex_json_value(&self, vid: Uuid, property_name: &str, json: &serde_json::Value) -> Result<(), BackendError> {
+    async fn set_vertex_json_value(&self, vid: Uuid, property_name: &str, json: &serde_json::Value) -> Result<bool, BackendError> {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
         let q: VertexQuery = SpecificVertexQuery::single(vid).into();
         let vertex_list = ct.async_get_vertices(q).await?;
         if vertex_list.len() == 0 {
-            return Err(BackendError::invalid_arg(String::new()));
+            return Ok(false);
         }
 
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
-        ct.async_set_vertex_properties(q, json).await.map_err(|e|{e.into()})
+        ct.async_set_vertex_properties(q, json).await?;
+        Ok(true)
     }
+}
+
+// helper function for generating QueryResult::Ok
+fn query_ok<T>(t: T) -> QueryResult<T> {
+    Ok(t)
+}
+
+// helper function for generating QueryResult::Err
+fn query_fail<T>(s: String) -> QueryResult<T> {
+    Err(s)
 }
 
 #[derive(Clone)]
@@ -94,9 +106,9 @@ pub enum Request {
 
 #[derive(Clone)]
 pub enum Response {
-    Init,
-    RegisterUser,
-    CreateEmuNet(Uuid),
+    Init(QueryResult<()>),
+    RegisterUser(QueryResult<()>),
+    CreateEmuNet(QueryResult<Uuid>),
 }
 
 pub struct IndradbClientBackend {
@@ -114,33 +126,25 @@ impl IndradbClientBackend {
 
     // helper functions:
     async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
-        match self.worker.get_vertex_json_value(CORE_INFO_ID.clone(), property).await {
-            Ok(jv) => Ok(serde_json::from_value(jv).unwrap()),
-            Err(err) => {
-                match err.kind() {
-                    BackendErrorKind::CapnpError => Err(err),
-                    _ => panic!("database is not correctly initialized"),
-                }
-            }
+        let res = self.worker.get_vertex_json_value(CORE_INFO_ID.clone(), property).await?;
+        match res {
+            Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
+            None => panic!("database is not correctly initialized"),
         }
     }
 
     async fn set_core_property<T: Serialize>(&self, property: &str, t: T) -> Result<(), BackendError> {
         let jv = serde_json::to_value(t).unwrap();
-        match self.worker.set_vertex_json_value(CORE_INFO_ID.clone(), property, &jv).await {
-            Ok(_) => Ok(()),
-            Err(err) => {
-                match err.kind() {
-                    BackendErrorKind::CapnpError => Err(err),
-                    _ => panic!("database is not correctly initialized"),
-                }
-            }
+        let res = self.worker.set_vertex_json_value(CORE_INFO_ID.clone(), property, &jv).await?;
+        if !res {
+            panic!("database is not correctly initialized");
         }
+        Ok(())
     }
 }
 
 impl IndradbClientBackend {
-    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<(), BackendError> {
+    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<QueryResult<()>, BackendError> {
         let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await?;
         match res {
             Some(_) => {
@@ -150,17 +154,17 @@ impl IndradbClientBackend {
                 // initialize server list                
                 self.set_core_property("sever_list", servers).await?;
                         
-                Ok(())
+                Ok(query_ok(()))
             },
-            None => Err(BackendError::invalid_arg("the database has been initialized".to_string())),
+            None => Ok(query_fail("database has already been initialized".to_string())),
         }
     }
 
-    async fn register_user(&self, user_id: String) -> Result<(), BackendError> {        
+    async fn register_user(&self, user_id: String) -> Result<QueryResult<()>, BackendError> {        
         // read current user map
         let mut user_map: HashMap<String, user::EmuNetUser> = self.get_core_property("user_map").await?;
         if user_map.get(&user_id).is_some() {
-            return Err(BackendError::invalid_arg("user has registered".to_string()));
+            return Ok(query_fail("user has already registered".to_string()));
         }
 
         // register the new user
@@ -168,20 +172,22 @@ impl IndradbClientBackend {
         user_map.insert(user_id, user);        
         
         // sync update in the db
-        self.set_core_property("user_map", user_map).await
+        self.set_core_property("user_map", user_map).await?;
+        
+        Ok(query_ok(()))
     }
 
-    async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<Uuid, BackendError> {
+    async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, BackendError> {
         // get the user
         let mut user_map: HashMap<String, user::EmuNetUser> = self.get_core_property("user_map").await?;
         if user_map.get(&user).is_none() {
-            return Err(BackendError::invalid_arg("invalid user name".to_string()));
+            return Ok(query_fail("invalid user name".to_string()));
         }
         let user_mut = user_map.get_mut(&user).unwrap();
 
         // check whether the emunet has existed
         if user_mut.emu_net_exist(&net) {
-            return Err(BackendError::invalid_arg("invalid emu-net name".to_string()));
+            return Ok(query_fail("invalid emu-net name".to_string()));
         }
 
         // get the allocation of servers
@@ -189,7 +195,7 @@ impl IndradbClientBackend {
         let mut sp = server::ServerPool::from(server_list);
         let allocation = match sp.allocate_servers(capacity) {
             Some(alloc) => alloc,
-            None => return Err(BackendError::invalid_arg("invalid capacity".to_string())),
+            None => return Ok(query_fail("invalid capacity".to_string())),
         };
         self.set_core_property("server_list", sp.into_vec()).await?;
 
@@ -201,19 +207,16 @@ impl IndradbClientBackend {
         // create and initialize a new emu net node
         let emu_net_id = self.worker.create_vertex(None).await?.expect("vertex ID already exists");
         let jv = serde_json::to_value(emu_net).unwrap();
-        match self.worker.set_vertex_json_value(emu_net_id, "default", &jv).await {
-            Err(err) => match err.kind() {
-                BackendErrorKind::CapnpError => return Err(err),
-                _ => panic!("vertex not exist"),
-            },
-            _ => {},
-        };
+        let res = self.worker.set_vertex_json_value(emu_net_id, "default", &jv).await?;
+        if !res {
+            panic!("vertex not exist");
+        }
 
         // add the new emunet to user map
         user_mut.add_emu_net(net, emu_net_id.clone());
         self.set_core_property("user_map", user_map).await?;
 
-        Ok(emu_net_id)
+        Ok(query_ok(emu_net_id))
     }
 }
 
@@ -221,10 +224,10 @@ impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
             Request::Init(servers) => {
-                self.init(servers).await.map(|_|{Response::Init})
+                self.init(servers).await.map(|res|{Response::Init(res)})
             },
             Request::RegisterUser(user_name) => {
-                self.register_user(user_name).await.map(|_|{Response::RegisterUser})                
+                self.register_user(user_name).await.map(|res|{Response::RegisterUser(res)})                
             },
             Request::CreateEmuNet(user, net, capacity) => {
                 self.create_emu_net(user, net, capacity).await.map(|id|{Response::CreateEmuNet(id)})                
