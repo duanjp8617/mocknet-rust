@@ -20,9 +20,9 @@ build = "build.rs"
 #name = "test_db_conn"
 #path = "src/bins/test_db_conn.rs"
 
-#[[bin]]
-#name = "test_serde"
-#path = "src/bins/test_serde.rs"
+[[bin]]
+name = "test_serde"
+path = "src/bins/test_serde.rs"
 
 [[bin]]
 name = "test_warp"
