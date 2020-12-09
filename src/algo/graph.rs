@@ -9,6 +9,7 @@ pub struct InMemoryGraph {
     reverse_edges: BTreeMap<(u64, u64), ()> // incoming <- outgoing
 }
 
+// TODO: update the interfaces, now this is quite dum.
 impl InMemoryGraph {
     pub fn new() -> Self {
         Self {
