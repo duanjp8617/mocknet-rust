@@ -21,11 +21,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     launcher.with_db_client(|client| {
         async move {
             // an initial server pool
-            let mut sp = server::ServerPool::new();
-            sp.add_server("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5);
-            sp.add_server("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7);
-            sp.add_server("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9);
-            sp.add_server("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10);
+            let mut sp = server::ServerInfoList::new();
+            sp.add_server_info(server::ServerAddress::new("127.0.0.1", 128, "128.0.0.2", "129.0.0.5").unwrap(), 5).unwrap();
+            sp.add_server_info(server::ServerAddress::new("127.0.0.2", 128, "128.0.0.3", "129.0.0.4").unwrap(), 7).unwrap();
+            sp.add_server_info(server::ServerAddress::new("137.0.0.1", 128, "138.0.0.2", "139.0.0.5").unwrap(), 9).unwrap();
+            sp.add_server_info(server::ServerAddress::new("137.0.0.2", 128, "138.0.0.3", "139.0.0.4").unwrap(), 10).unwrap();
             
             // try to initialize the database
             let res = client.init(sp.into_vec()).await?;

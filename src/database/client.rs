@@ -37,7 +37,7 @@ impl Client {
     /// Ok(Err(s)) means the database has been initialized, and `s` is the error message.
     /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
     /// dropping backend worker (though the second error si unlikely to occur.)
-    pub async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<QueryResult<()>, ClientError> {
+    pub async fn init(&self, servers: Vec<server::ServerInfo>) -> Result<QueryResult<()>, ClientError> {
         let req = Request::Init(servers);
         let res = self.sender.send(req).await?;
         match res {

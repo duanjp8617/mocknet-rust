@@ -1,20 +1,22 @@
 use std::net::{IpAddr, SocketAddr};
 use std::cmp::Ord;
-use std::convert::From;
 
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
+use crate::algo::PartitionBin;
+
+// The IP addresses that are used to talk to the server.
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-struct ServerAddr {
+pub struct ServerAddress {
     conn_ip: IpAddr,
     conn_port: u16,
     data_ip: IpAddr,
     man_ip: IpAddr,
 }
 
-impl ServerAddr {
-    fn new(conn_ip: String, conn_port: u16, data_ip: String, man_ip: String) -> Option<Self> {
+impl ServerAddress {
+    pub fn new(conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str) -> Option<Self> {
         conn_ip.parse::<IpAddr>().ok().and_then(move |conn_ip| {
             data_ip.parse::<IpAddr>().ok().and_then(move |data_ip| {
                 man_ip.parse::<IpAddr>().ok().map(move |man_ip|{
@@ -30,43 +32,27 @@ impl ServerAddr {
     }
 }
 
+/// Core information of a server.
+/// 
+/// `id`: the id of the server, 
+/// `server_addr`: server addresses,
+/// `max_capacity`: the maximum number of containers that can be launched in the server
 #[derive(Serialize, Deserialize, Clone)]
-pub struct ContainerServer {
+pub struct ServerInfo {
     id: Uuid,
-    server_addr: ServerAddr,
-    capacity: u32,
+    server_addr: ServerAddress,
+    max_capacity: u32,
 }
 
-impl ContainerServer {
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
-
-    pub fn conn_addr(&self) -> SocketAddr {
-        SocketAddr::new(self.server_addr.conn_ip, self.server_addr.conn_port)
-    }
-
-    pub fn data_ip(&self) -> IpAddr {
-        self.server_addr.data_ip
-    }
-
-    pub fn man_ip(&self) -> IpAddr {
-        self.server_addr.man_ip
-    }
-
-    pub fn capacity(&self) -> u32 {
-        self.capacity
-    }
-}
-
+/// A list of `ServerInfo` that can be stored in the database as JSON value.
 #[derive(Serialize, Deserialize)]
-pub struct ServerPool {
-    servers: Vec<ContainerServer>
+pub struct ServerInfoList {
+    servers: Vec<ServerInfo>
 }
 
-impl ServerPool {
-    fn server_addr_exist(&self, server_addr: &ServerAddr) -> bool {
-        let mut sorted: Vec<&ServerAddr> = self.servers.iter().map(|e|{&e.server_addr}).collect();
+impl ServerInfoList {
+    fn server_addr_exist(&self, server_addr: &ServerAddress) -> bool {
+        let mut sorted: Vec<&ServerAddress> = self.servers.iter().map(|e|{&e.server_addr}).collect();
         sorted.sort();
         sorted.binary_search(&server_addr).is_ok()
     }
@@ -77,45 +63,44 @@ impl ServerPool {
         }
     }
 
-    pub fn add_server(&mut self, conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str, capacity: u32) {        
-        let target = ServerAddr::new(
-            conn_ip.to_string(), 
-            conn_port, 
-            data_ip.to_string(), 
-            man_ip.to_string()
-        ).expect("invalid server address");
-        if self.server_addr_exist(&target) {
-            panic!("ServerAddr {:?} exists in the pool", target);
+    /// Add a new server to the list.
+    pub fn add_server_info(&mut self, address: ServerAddress, max_capacity: u32) -> Result<(), String>{        
+        // validate the address
+        if self.server_addr_exist(&address) {
+            return Err(format!("Address {:?} is already stored in the list.", &address));
         }
         
-        self.servers.push(ContainerServer {
+        self.servers.push(ServerInfo {
             id: indradb::util::generate_uuid_v1(),
-            server_addr: target,
-            capacity,
+            server_addr: address,
+            max_capacity,
         });
+
+        Ok(())
     }
 
-    pub fn add_servers<I>(&mut self, i: I) 
-        where
-            I: std::iter::Iterator<Item = ContainerServer>
-    {
+    /// Build `Self` from `Iterator`.
+    pub fn from_iterator<I: std::iter::Iterator<Item = ServerInfo>>(i: I) -> Result<Self, String> {
+        let mut res = Self::new();
         for cs in i {
-            if self.server_addr_exist(&cs.server_addr) {
-                panic!("ServerAddr {:?} exists in the pool", &cs.server_addr);
+            if res.server_addr_exist(&cs.server_addr) {
+                return Err(format!("ServerAddr {:?} exists in the pool", &cs.server_addr));
             }
-            self.servers.push(cs);
-        }
+            res.servers.push(cs);
+        };
+        Ok(res)
     }
 
-    pub fn into_vec(self) -> Vec<ContainerServer> {
+    /// Convert `Self` into a `Vec`.
+    pub fn into_vec(self) -> Vec<ServerInfo> {
         self.servers
     }
 
-    // Use a simple greedy algorithm to allocate servers
+    /// Use a simple greedy algorithm to allocate servers
     pub fn allocate_servers(&mut self, quantity: u32) -> Option<Vec<ContainerServer>> {
         let mut target = 0;
 
-        let mut enumerate: Vec<(usize, u32)> = self.servers.iter().map(|e|{e.capacity}).enumerate().collect();
+        let mut enumerate: Vec<(usize, u32)> = self.servers.iter().map(|e|{e.max_capacity}).enumerate().collect();
         enumerate.sort_by(|a, b|{(&b.1).cmp(&a.1)});
         
         let mut index = 0;
@@ -125,7 +110,12 @@ impl ServerPool {
         };
         
         if target >= quantity {
-            Some(enumerate.iter().take(index).map(|e|{self.servers.remove(e.0)}).collect())
+            Some(enumerate.iter().take(index).map(|e|{
+                ContainerServer {
+                    server_info: self.servers.remove(e.0),
+                    curr_capacity: 0,
+                }
+            }).collect())
         }
         else {
             None
@@ -133,10 +123,33 @@ impl ServerPool {
     }
 }
 
-impl From<Vec<ContainerServer>> for ServerPool {
-    fn from(vec: Vec<ContainerServer>) -> Self {
-        let mut sp = Self::new();
-        sp.add_servers(vec.into_iter());
-        sp
+#[derive(Serialize, Deserialize)]
+pub struct ContainerServer {
+    server_info: ServerInfo,
+    curr_capacity: u32,
+}
+
+impl ContainerServer {
+    pub fn id(&self) -> Uuid {
+        self.server_info.id
+    }
+
+    pub fn conn_addr(&self) -> SocketAddr {
+        let server_addr = &self.server_info.server_addr;
+        SocketAddr::new(server_addr.conn_ip, server_addr.conn_port)
+    }
+}
+
+impl PartitionBin for ContainerServer {
+    type Size = u32;
+
+    fn fill(&mut self, resource_size: u32) -> bool {
+        if self.curr_capacity < resource_size {
+            return false;
+        }
+        else {
+            self.curr_capacity -= resource_size;
+            return true;
+        }
     }
 }

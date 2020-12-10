@@ -89,7 +89,7 @@ impl TranWorker {
 
 #[derive(Clone)]
 pub enum Request {
-    Init(Vec<server::ContainerServer>),
+    Init(Vec<server::ServerInfo>),
     RegisterUser(String),
     CreateEmuNet(String, String, u32),
 }
@@ -134,7 +134,7 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
-    async fn init(&self, servers: Vec<server::ContainerServer>) -> Result<QueryResult<()>, BackendError> {
+    async fn init(&self, server_infos: Vec<server::ServerInfo>) -> Result<QueryResult<()>, BackendError> {
         let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await?;
         match res {
             Some(_) => {
@@ -142,7 +142,7 @@ impl IndradbClientBackend {
                 self.set_core_property("user_map", HashMap::<String, user::EmuNetUser>::new()).await?;
 
                 // initialize server list                
-                self.set_core_property("sever_list", servers).await?;
+                self.set_core_property("sever_list", server_infos).await?;
                         
                 Ok(QueryOk(()))
             },
@@ -181,8 +181,8 @@ impl IndradbClientBackend {
         }
 
         // get the allocation of servers
-        let server_list: Vec<server::ContainerServer> = self.get_core_property("server_list").await?;
-        let mut sp = server::ServerPool::from(server_list);
+        let server_list: Vec<server::ServerInfo> = self.get_core_property("server_list").await?;
+        let mut sp = server::ServerInfoList::from_iterator(server_list.into_iter()).unwrap();
         let allocation = match sp.allocate_servers(capacity) {
             Some(alloc) => alloc,
             None => return Ok(QueryFail("invalid capacity".to_string())),
@@ -213,8 +213,8 @@ impl IndradbClientBackend {
 impl IndradbClientBackend {
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
-            Request::Init(servers) => {
-                self.init(servers).await.map(|res|{Response::Init(res)})
+            Request::Init(server_infos) => {
+                self.init(server_infos).await.map(|res|{Response::Init(res)})
             },
             Request::RegisterUser(user_name) => {
                 self.register_user(user_name).await.map(|res|{Response::RegisterUser(res)})                
