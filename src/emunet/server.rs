@@ -8,7 +8,7 @@ use crate::algo::PartitionBin;
 
 // The IP addresses that are used to talk to the server.
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Debug, Clone)]
-pub struct ServerAddress {
+struct ServerAddress {
     conn_ip: IpAddr,
     conn_port: u16,
     data_ip: IpAddr,
@@ -16,7 +16,7 @@ pub struct ServerAddress {
 }
 
 impl ServerAddress {
-    pub fn new(conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str) -> Option<Self> {
+    fn new(conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str) -> Option<Self> {
         conn_ip.parse::<IpAddr>().ok().and_then(move |conn_ip| {
             data_ip.parse::<IpAddr>().ok().and_then(move |data_ip| {
                 man_ip.parse::<IpAddr>().ok().map(move |man_ip|{
@@ -64,7 +64,10 @@ impl ServerInfoList {
     }
 
     /// Add a new server to the list.
-    pub fn add_server_info(&mut self, address: ServerAddress, max_capacity: u32) -> Result<(), String>{        
+    pub fn add_server_info(&mut self, conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str, 
+                           max_capacity: u32) -> Result<(), String>
+    {
+        let address = ServerAddress::new(conn_ip, conn_port, data_ip, man_ip).unwrap();
         // validate the address
         if self.server_addr_exist(&address) {
             return Err(format!("Address {:?} is already stored in the list.", &address));
