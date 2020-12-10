@@ -7,7 +7,7 @@ pub mod errors;
 pub mod container_backend;
 pub mod backend;
 pub mod autogen;
-pub mod dbnew;
+pub mod database;
 pub mod emunet;
 pub mod restful;
 pub mod algo;

@@ -2,7 +2,7 @@ use std::net::ToSocketAddrs;
 
 use warp::Filter;
 
-use mocknet::dbnew::{self, QueryOk, QueryFail};
+use mocknet::database::{self, QueryOk, QueryFail};
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
         .next()
         .expect("could not parse address");
 
-    let launcher = match dbnew::ClientLauncher::connect(&addr).await {
+    let launcher = match database::ClientLauncher::connect(&addr).await {
         Ok(l) => l,
         Err(e) => return Err(Box::new(e) as Box<dyn std::error::Error + Send>),
     };
