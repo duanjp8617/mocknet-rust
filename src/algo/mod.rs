@@ -45,4 +45,6 @@
 // pub type Result<T> = std::result::Result<T, &'static str>;
 
 pub mod in_memory_graph;
+
 mod traits;
+pub use traits::PartitionBin;
