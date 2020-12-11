@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
 use super::indradb_backend::build_backend_fut;
-use crate::emunet::server;
+use crate::emunet::{server, net};
 use super::message_queue;
 use super::ClientError;
 use super::errors::BackendError;
@@ -75,10 +75,22 @@ impl Client {
     /// 
     /// Note: I don't know if this is necessary
     pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
-        let req = Request::ListEmuNet(user);
+        let req = Request::ListEmuNetUuid(user);
         let res = self.sender.send(req).await?;
         match res {
-            Response::ListEmuNet(res) => Ok(res),
+            Response::ListEmuNetUuid(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, ClientError> {
+        let req = Request::GetEmuNet(uuid);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::GetEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }

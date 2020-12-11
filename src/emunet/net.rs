@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::server::{ContainerServer};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum EmuNetState {
     Uninit,
     Working,
@@ -13,7 +13,7 @@ pub enum EmuNetState {
     Error,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct EmuNet {
     name: String,
     capacity: u32,

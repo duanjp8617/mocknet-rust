@@ -37,7 +37,7 @@ impl ServerAddress {
 /// `id`: the id of the server, 
 /// `server_addr`: server addresses,
 /// `max_capacity`: the maximum number of containers that can be launched in the server
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerInfo {
     id: Uuid,
     server_addr: ServerAddress,
@@ -126,7 +126,7 @@ impl ServerInfoList {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContainerServer {
     server_info: ServerInfo,
     curr_capacity: u32,

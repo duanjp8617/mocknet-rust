@@ -76,6 +76,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
                 }
             }
 
+            let res = client.get_emu_net(wtf_emunet_uuid).await?;
+            match res {
+                QueryOk(emu_net) => {
+                    println!("{:?}", &emu_net);
+                },
+                QueryFail(s) => {
+                    println!("{}", &s);
+                }
+            }
+
             let vertexes: Vec<_> = vec!(1,2,3,4,5).into_iter().map(|e| {
                 (e, 0)
             }).collect();
