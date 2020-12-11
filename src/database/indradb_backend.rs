@@ -35,7 +35,7 @@ impl TranWorker {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let t = Type::new("").unwrap();
+        let t = Type::new("f").unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
             None => Vertex::with_id(indradb::util::generate_uuid_v1(), t),
@@ -134,7 +134,7 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
-    async fn init(&self, server_infos: Vec<server::ServerInfo>) -> Result<QueryResult<()>, BackendError> {
+    async fn init(&self, server_info_list: Vec<server::ServerInfo>) -> Result<QueryResult<()>, BackendError> {
         let res = self.worker.create_vertex(Some(CORE_INFO_ID.clone())).await?;
         match res {
             Some(_) => {
@@ -142,7 +142,7 @@ impl IndradbClientBackend {
                 self.set_core_property("user_map", HashMap::<String, user::EmuNetUser>::new()).await?;
 
                 // initialize server list                
-                self.set_core_property("sever_list", server_infos).await?;
+                self.set_core_property("server_info_list", server_info_list).await?;
                         
                 Ok(QueryOk(()))
             },
@@ -181,13 +181,13 @@ impl IndradbClientBackend {
         }
 
         // get the allocation of servers
-        let server_list: Vec<server::ServerInfo> = self.get_core_property("server_list").await?;
-        let mut sp = server::ServerInfoList::from_iterator(server_list.into_iter()).unwrap();
+        let server_info_list: Vec<server::ServerInfo> = self.get_core_property("server_info_list").await?;
+        let mut sp = server::ServerInfoList::from_iterator(server_info_list.into_iter()).unwrap();
         let allocation = match sp.allocate_servers(capacity) {
             Some(alloc) => alloc,
             None => return Ok(QueryFail("invalid capacity".to_string())),
         };
-        self.set_core_property("server_list", sp.into_vec()).await?;
+        self.set_core_property("server_info_list", sp.into_vec()).await?;
 
 
         // create a new emu net

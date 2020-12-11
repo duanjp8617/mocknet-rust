@@ -30,21 +30,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // try to initialize the database
             let res = client.init(sp.into_vec()).await?;
             match res {
-                QueryOk(_) => {},
+                QueryOk(_) => {
+                    println!("Successfully initialize the database.")
+                },
                 QueryFail(s) => {
                     println!("{}", &s);
                 }
             };
             
             // register a test user "wtf"
-            let _res = client.register_user("wtf").await.unwrap();
-
-
-            let ru = register_user::build_filter(client.clone());
-            let ce = create_emunet::build_filter(client.clone());
-            let ie = init_emunet::build_filter(client.clone());
-            let routes = ru.or(ce).or(ie);
-            warp::serve(routes).run(([127, 0, 0, 1], 3030)).await; 
+            let res = client.register_user("wtf").await?;
+            match res {
+                QueryOk(_) => {
+                    println!("successfully register user wtf");
+                }
+                QueryFail(s) => {
+                    println!("{}", &s);
+                }
+            };
+            // let ru = register_user::build_filter(client.clone());
+            // let ce = create_emunet::build_filter(client.clone());
+            // let ie = init_emunet::build_filter(client.clone());
+            // let routes = ru.or(ce).or(ie);
+            // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await; 
 
             Ok(())
         }
