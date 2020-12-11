@@ -74,7 +74,7 @@ impl Client {
     /// List all the emunet of a user.
     /// 
     /// Note: I don't know if this is necessary
-    pub async fn list_emu_net(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
+    pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
         let req = Request::ListEmuNet(user);
         let res = self.sender.send(req).await?;
         match res {

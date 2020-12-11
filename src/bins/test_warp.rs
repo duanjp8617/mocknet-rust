@@ -6,6 +6,9 @@ use mocknet::database::{self, QueryOk, QueryFail};
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
+use mocknet::algo::in_memory_graph::{InMemoryGraph};
+
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     let addr = "127.0.0.1:27615"
@@ -61,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             };
 
             // get the emunet wtf from user wtf
-            let res = client.list_emu_net("wtf".to_string()).await?;
+            let res = client.list_emu_net_uuid("wtf".to_string()).await?;
             let mut wtf_emunet_uuid = indradb::util::generate_uuid_v1();
             match res {
                 QueryOk(hmap) => {
@@ -72,6 +75,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
                     panic!("{}", &s);
                 }
             }
+
+            let vertexes: Vec<_> = vec!(1,2,3,4,5).into_iter().map(|e| {
+                (e, 0)
+            }).collect();
+            let edges: Vec<_> = vec!((1,2), (1,3), (1,4), (1,5), (2,3)).into_iter().map(|e| {
+                (e, 0)
+            }).collect();
+        
+            let vertex_json = serde_json::to_value(vertexes).unwrap();
+            let edge_json = serde_json::to_value(edges).unwrap();
+        
+            let graph: InMemoryGraph<u64, u64, u64> = InMemoryGraph::from_jsons(vertex_json, edge_json).unwrap();
+            graph.dump();
 
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());
