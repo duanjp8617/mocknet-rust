@@ -80,32 +80,35 @@ impl<Vid, Vertex, Edge> InMemoryGraph<Vid, Vertex, Edge>
 where 
     Vid: Eq + Hash + Clone
 {
-    pub fn partition<'a, I, T>(&self, bins: I) -> Result<HashMap<Vid, usize>> 
+    pub fn partition<'a, I, T>(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::Id>> 
     where
         T: 'a + PartitionBin<Size = u32>,
         I: Iterator<Item = &'a mut T>
     {
         // acquire an iterator of vids
         let mut vids = self.vertexes.keys();
-        // retrieve the first vid for processing
-        let mut curr_vid = vids.next().ok_or("empty graph".to_string())?;
+        // retrieve the first bin
+        let mut curr_bin = bins.next().ok_or("not enough resource".to_string())?;
         // initialize the resulting HashMap
         let mut res = HashMap::new();
-         
-        // do the partition
-        for (curr_idx, bin_mut) in bins.enumerate() {
-            if bin_mut.fill(1) == true {
-                res.insert(curr_vid.clone(), curr_idx);
-                if let Some(new_vid) = vids.next() {
-                    curr_vid = new_vid;
+        println!("wtf");
+        
+        // iterate through all the vids and make assignment
+        while let Some(vid) = vids.next() {
+            if curr_bin.fill(1) {
+                res.insert(vid.clone(), curr_bin.bin_id());
+            }
+            else {
+                if let Some(new_bin) = bins.next() {
+                    curr_bin = new_bin;
                 }
                 else {
-                    return Ok(res);
+                    return Err("not enough resource".to_string());
                 }
             }
-        };
+        }
 
-        Err("not enough resource".to_string())
+        Ok(res)
     }
 }
 

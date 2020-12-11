@@ -77,14 +77,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             }
 
             let res = client.get_emu_net(wtf_emunet_uuid).await?;
-            match res {
-                QueryOk(emu_net) => {
-                    println!("{:?}", &emu_net);
-                },
-                QueryFail(s) => {
-                    println!("{}", &s);
-                }
-            }
+            let mut emu_net = res.unwrap();
+            println!("{:?}", &emu_net);
 
             let vertexes: Vec<_> = vec!(1,2,3,4,5).into_iter().map(|e| {
                 (e, 0)
@@ -98,6 +92,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
         
             let graph: InMemoryGraph<u64, u64, u64> = InMemoryGraph::from_jsons(vertex_json, edge_json).unwrap();
             graph.dump();
+
+            let partition_result = graph.partition(emu_net.servers_mut()).unwrap();
+            println!("{:?}", &partition_result);
 
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::ValuesMut};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -39,6 +39,10 @@ impl EmuNet {
             }
             self.server_map.insert(server_id, cs);
         }
+    }
+
+    pub fn servers_mut<'a>(&'a mut self) ->  ValuesMut<'a, Uuid, ContainerServer>{
+        self.server_map.values_mut()
     }
 }
 

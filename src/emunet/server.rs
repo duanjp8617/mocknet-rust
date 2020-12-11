@@ -114,9 +114,11 @@ impl ServerInfoList {
         
         if target >= quantity {
             Some(enumerate.iter().take(index).map(|e|{
+                let server_info = self.servers.remove(e.0);
+                let curr_capacity = server_info.max_capacity;
                 ContainerServer {
-                    server_info: self.servers.remove(e.0),
-                    curr_capacity: 0,
+                    server_info,
+                    curr_capacity,
                 }
             }).collect())
         }
@@ -134,8 +136,9 @@ pub struct ContainerServer {
 
 impl ContainerServer {
     pub fn id(&self) -> Uuid {
-        self.server_info.id
+        return self.server_info.id;
     }
+
 
     pub fn conn_addr(&self) -> SocketAddr {
         let server_addr = &self.server_info.server_addr;
@@ -145,6 +148,7 @@ impl ContainerServer {
 
 impl PartitionBin for ContainerServer {
     type Size = u32;
+    type Id = Uuid;
 
     fn fill(&mut self, resource_size: u32) -> bool {
         if self.curr_capacity < resource_size {
@@ -154,5 +158,9 @@ impl PartitionBin for ContainerServer {
             self.curr_capacity -= resource_size;
             return true;
         }
+    }
+
+    fn bin_id(&self) -> Self::Id {
+        return self.id()
     }
 }
