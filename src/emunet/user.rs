@@ -30,4 +30,8 @@ impl EmuNetUser {
     pub fn emu_net_exist(&self, emu_net_name: &str) -> bool {
         self.emu_net_ids.get(emu_net_name).is_some()
     }
+
+    pub fn get_all_emu_nets(&self) -> HashMap<String, Uuid> {
+        return self.emu_net_ids.clone()
+    }
 }

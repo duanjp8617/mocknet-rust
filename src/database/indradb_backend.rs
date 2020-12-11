@@ -35,7 +35,7 @@ impl TranWorker {
         let trans = self.client.transaction_request().send().pipeline.get_transaction();
         let ct = ClientTransaction::new(trans);
         
-        let t = Type::new("f").unwrap();
+        let t = Type::new("t").unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
             None => Vertex::with_id(indradb::util::generate_uuid_v1(), t),
@@ -92,6 +92,7 @@ pub enum Request {
     Init(Vec<server::ServerInfo>),
     RegisterUser(String),
     CreateEmuNet(String, String, u32),
+    ListEmuNet(String),
 }
 
 #[derive(Clone)]
@@ -99,6 +100,7 @@ pub enum Response {
     Init(QueryResult<()>),
     RegisterUser(QueryResult<()>),
     CreateEmuNet(QueryResult<Uuid>),
+    ListEmuNet(QueryResult<HashMap<String, Uuid>>),
 }
 
 pub struct IndradbClientBackend {
@@ -208,6 +210,17 @@ impl IndradbClientBackend {
 
         Ok(QueryOk(emu_net_id))
     }
+
+    async fn list_emu_net(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, BackendError> {
+        // get user
+        let user_map: HashMap<String, user::EmuNetUser> = self.get_core_property("user_map").await?;
+        if !user_map.contains_key(&user) {
+            return Ok(QueryFail("invalid user name".to_string()));
+        }
+        let user = user_map.get(&user).unwrap();
+        
+        Ok(QueryOk(user.get_all_emu_nets()))
+    }
 }
 
 impl IndradbClientBackend {
@@ -221,6 +234,9 @@ impl IndradbClientBackend {
             },
             Request::CreateEmuNet(user, net, capacity) => {
                 self.create_emu_net(user, net, capacity).await.map(|id|{Response::CreateEmuNet(id)})                
+            },
+            Request::ListEmuNet(user) => {
+                self.list_emu_net(user).await.map(|hmap|{Response::ListEmuNet(hmap)})
             }
         }
     }

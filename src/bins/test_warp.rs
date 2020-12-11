@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     launcher.with_db_client(|client| {
         async move {
             // an initial server pool
-            let mut sp = server::ServerInfoList::new();
+            let mut sp = server::ServerInfoList::new(); 
             sp.add_server_info("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5).unwrap();
             sp.add_server_info("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7).unwrap();
             sp.add_server_info("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9).unwrap();
@@ -48,6 +48,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
                     println!("{}", &s);
                 }
             };
+
+            // create an emunet
+            let res = client.create_emu_net("wtf".to_string(), "wtf".to_string(), 12).await?;
+            match res {
+                QueryOk(uuid) => {
+                    println!("successfulily create an emunet with id {}", uuid);
+                }
+                QueryFail(s) => {
+                    println!("{}", &s);
+                }
+            };
+
+            // get the emunet wtf from user wtf
+            let res = client.list_emu_net("wtf".to_string()).await?;
+            let mut wtf_emunet_uuid = indradb::util::generate_uuid_v1();
+            match res {
+                QueryOk(hmap) => {
+                    wtf_emunet_uuid = hmap.get("wtf").unwrap().clone();
+                    println!("wtf emunet uuid is {}", &wtf_emunet_uuid);
+                },
+                QueryFail(s) => {
+                    panic!("{}", &s);
+                }
+            }
+
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());
             // let ie = init_emunet::build_filter(client.clone());

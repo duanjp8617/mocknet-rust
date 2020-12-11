@@ -1,9 +1,10 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
+use std::collections::HashMap;
+
 use futures::AsyncReadExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
-
 use uuid::Uuid;
 
 use super::indradb_backend::{Request, Response, IndradbClientBackend};
@@ -62,10 +63,22 @@ impl Client {
     /// 
     /// Return value has similar meaning as `Client::init`.
     pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
-        let req= Request::CreateEmuNet(user, net, capacity);
+        let req= Request::CreateEmuNet(user.to_string(), net.to_string(), capacity);
         let res = self.sender.send(req).await?;
         match res {
             Response::CreateEmuNet(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// List all the emunet of a user.
+    /// 
+    /// Note: I don't know if this is necessary
+    pub async fn list_emu_net(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
+        let req = Request::ListEmuNet(user);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::ListEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }
