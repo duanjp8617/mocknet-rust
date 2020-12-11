@@ -4,7 +4,8 @@ use std::fmt;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use super::traits::PartitionBin;
+use super::traits::{PartitionBin, Partition};
+use crate::emunet::server::ContainerServer;
 
 pub type Result<T> = std::result::Result<T, String>;
 
@@ -76,14 +77,15 @@ where
     }
 }
 
-impl<Vid, Vertex, Edge> InMemoryGraph<Vid, Vertex, Edge> 
-where 
+impl<'a, Vid, Vertex, Edge, T, I> Partition<'a, T, I> for InMemoryGraph<Vid, Vertex, Edge>
+where
+    T: 'a + PartitionBin<Size = u32>,
+    I: Iterator<Item = &'a mut T>,
     Vid: Eq + Hash + Clone
 {
-    pub fn partition<'a, I, T>(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::Id>> 
-    where
-        T: 'a + PartitionBin<Size = u32>,
-        I: Iterator<Item = &'a mut T>
+    type ItemId = Vid;
+
+    fn partition(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::BinId>> 
     {
         // acquire an iterator of vids
         let mut vids = self.vertexes.keys();
@@ -110,7 +112,44 @@ where
 
         Ok(res)
     }
+
 }
+
+// impl<Vid, Vertex, Edge> InMemoryGraph<Vid, Vertex, Edge> 
+// where 
+//     Vid: Eq + Hash + Clone
+// {
+//     pub fn partition<'a, I, T>(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::BinId>> 
+//     where
+//         T: 'a + PartitionBin<Size = u32>,
+//         I: Iterator<Item = &'a mut T>
+//     {
+//         // acquire an iterator of vids
+//         let mut vids = self.vertexes.keys();
+//         // retrieve the first bin
+//         let mut curr_bin = bins.next().ok_or("not enough resource".to_string())?;
+//         // initialize the resulting HashMap
+//         let mut res = HashMap::new();
+//         println!("wtf");
+        
+//         // iterate through all the vids and make assignment
+//         while let Some(vid) = vids.next() {
+//             if curr_bin.fill(1) {
+//                 res.insert(vid.clone(), curr_bin.bin_id());
+//             }
+//             else {
+//                 if let Some(new_bin) = bins.next() {
+//                     curr_bin = new_bin;
+//                 }
+//                 else {
+//                     return Err("not enough resource".to_string());
+//                 }
+//             }
+//         }
+
+//         Ok(res)
+//     }
+// }
 
 impl<Vid, Vertex, Edge> InMemoryGraph<Vid, Vertex, Edge>
 where

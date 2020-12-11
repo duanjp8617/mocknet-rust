@@ -7,6 +7,7 @@ use mocknet::emunet::server;
 use mocknet::restful::{*};
 
 use mocknet::algo::in_memory_graph::{InMemoryGraph};
+use mocknet::algo::Partition;
 
 
 #[tokio::main]
@@ -94,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             graph.dump();
 
             let partition_result = graph.partition(emu_net.servers_mut()).unwrap();
-            println!("{:?}", &partition_result);
+            // println!("{:?}", &partition_result);
 
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());

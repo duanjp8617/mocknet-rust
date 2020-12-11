@@ -148,7 +148,7 @@ impl ContainerServer {
 
 impl PartitionBin for ContainerServer {
     type Size = u32;
-    type Id = Uuid;
+    type BinId = Uuid;
 
     fn fill(&mut self, resource_size: u32) -> bool {
         if self.curr_capacity < resource_size {
@@ -160,7 +160,7 @@ impl PartitionBin for ContainerServer {
         }
     }
 
-    fn bin_id(&self) -> Self::Id {
+    fn bin_id(&self) -> Self::BinId {
         return self.id()
     }
 }

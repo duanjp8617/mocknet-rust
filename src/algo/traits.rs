@@ -1,12 +1,29 @@
-// A Bin with a capacity measured as u64.
+use std::collections::HashMap;
+
+/// Implementor is used as a bin for storing items.
 pub trait PartitionBin {
     type Size;
-    type Id;
+    type BinId;
 
-    // try to fill the bin with a resource of certain size, 
-    // return true on succeed, false on failure
-    fn fill(&mut self, resource_size: Self::Size) -> bool;
+    /// Try to fill the bin with an item of a certain size.
+    /// 
+    /// Return true on succeed, false on failure
+    fn fill(&mut self, item_size: Self::Size) -> bool;
 
-    // get the Id of this bin
-    fn bin_id(&self) -> Self::Id;
+    /// Get the id of this bin.
+    fn bin_id(&self) -> Self::BinId;
+}
+
+/// Implementor stores multiple items for partition.
+pub trait Partition<'a, T, I>
+where
+    T: 'a + PartitionBin,
+    I: Iterator<Item = &'a mut T>
+{
+    type ItemId;
+
+    /// Partition the stored items into bins.
+    /// 
+    /// Return the mapping from the item id to bin id.
+    fn partition(&self, bins: I) -> Result<HashMap<Self::ItemId, <T as PartitionBin>::BinId>, String>;
 }
