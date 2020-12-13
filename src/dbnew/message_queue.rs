@@ -40,9 +40,16 @@ impl<M, R, E> Message<M, R, E> {
     // }
 }
 
-#[derive(Clone)]
 pub struct Sender<M, R, E> {
     tx: UnboundedSender<Message<M, R, E>>,
+}
+
+impl<M, R, E> Clone for Sender<M, R, E> {
+    fn clone(&self) -> Self {
+        Self {
+            tx: self.tx.clone()
+        }
+    }
 }
 
 impl<M, R, E> Sender<M, R, E> 

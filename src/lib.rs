@@ -12,4 +12,4 @@ pub mod emunet;
 pub mod restful;
 pub mod algo;
 
-// pub mod dbnew;
+pub mod dbnew;

@@ -1,16 +1,19 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::collections::HashMap;
+use std::mem::replace;
 
 use super::indradb_backend::IndradbClientBackend;
 use super::errors::BackendError;
 use crate::emunet::server;
+use crate::emunet::user;
 use super::message_queue;
+use super::CORE_INFO_ID;
 
 type QueryResult<T> = Result<T, String>;
 use Result::Ok as QueryOk;
 use Result::Err as QueryFail;
 
-#[derive(Clone)]
 pub enum Response {
     InitResp(QueryResult<()>),
 }
@@ -18,34 +21,41 @@ pub enum Response {
 pub trait DatabaseMessage<Response, Error> {
     type RespFut: Future<Output = Result<Response, Error>>;
 
-    fn execute(self, backend: &IndradbClientBackend) -> Self::RespFut;
+    fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> Self::RespFut;
 }
 
-pub type ResponseFuture = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + Send + 'static>>;
+pub type ResponseFuture = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + 'static>>;
 pub type Request = Box<dyn DatabaseMessage<Response, BackendError, RespFut = ResponseFuture> + Send + 'static>;
 
-// pub struct InitDatabase {
-//     server_infos: Vec<server::ServerInfo>,
-// }
+pub struct InitDatabase {
+    server_infos: Vec<server::ServerInfo>,
+}
 
-// impl DatabaseMessage<Response, BackendError> for InitDatabase {
-//     type RespFut = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + Send + 'static>>;
+impl InitDatabase {
+    fn take(&mut self) -> Vec<server::ServerInfo> {
+        replace(&mut self.server_infos, Vec::new())
+    }
+}
 
-//     fn execute(self, backend: &IndradbClientBackend) -> Self::RespFut {
-//         Box::pin(async move {
-//             let res = self.create_vertex(Some(CORE_INFO_ID.clone())).await?;
-//             match res {
-//                 Some(_) => {
-//                     // initialize user map
-//                     self.set_core_property("user_map", HashMap::<String, user::EmuNetUser>::new()).await?;
+impl DatabaseMessage<Response, BackendError> for InitDatabase {
+    type RespFut = ResponseFuture;
 
-//                     // initialize server list                
-//                     self.set_core_property("server_info_list", server_info_list).await?;
+    fn execute(&mut self, backend: &'static IndradbClientBackend) -> Self::RespFut {
+        let server_info_list = self.take();
+        Box::pin(async move {
+            let res = backend.create_vertex(Some(CORE_INFO_ID.clone())).await?;
+            match res {
+                Some(_) => {
+                    // initialize user map
+                    backend.set_core_property("user_map", HashMap::<String, user::EmuNetUser>::new()).await?;
+
+                    // initialize server list                
+                    backend.set_core_property("server_info_list", server_info_list).await?;
                             
-//                     Ok(QueryOk(()))
-//                 },
-//                 None => Ok(QueryFail("database has already been initialized".to_string())),
-//             }
-//         })
-//     }
-// }
+                    Ok(Response::InitResp(QueryOk(())))
+                },
+                None => Ok(Response::InitResp(QueryFail("database has already been initialized".to_string()))),
+            }
+        })
+    }
+}

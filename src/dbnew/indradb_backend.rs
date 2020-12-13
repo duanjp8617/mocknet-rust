@@ -12,33 +12,11 @@ use crate::emunet::server;
 use crate::emunet::user;
 use crate::emunet::net;
 use super::message_queue::{Queue};
+use super::message::{Request, Response, DatabaseMessage};
 use super::indradb_util::ClientTransaction;
 use super::errors::{BackendError};
 use super::{QueryResult, QueryOk, QueryFail};
 use super::CORE_INFO_ID;
-
-#[derive(Clone)]
-pub enum Request {
-    Init(Vec<server::ServerInfo>),
-    RegisterUser(String),
-    CreateEmuNet(String, String, u32),
-    ListEmuNetUuid(String),
-    GetEmuNet(Uuid),
-    SetEmuNet(net::EmuNet),
-    CreateVertexes(Vec<Uuid>),
-}
-
-#[derive(Clone)]
-pub enum Response {
-    Init(QueryResult<()>),
-    RegisterUser(QueryResult<()>),
-    CreateEmuNet(QueryResult<Uuid>),
-    ListEmuNetUuid(QueryResult<HashMap<String, Uuid>>),
-    GetEmuNet(QueryResult<net::EmuNet>),
-    SetEmuNet(QueryResult<()>),
-    CreateVertexes(QueryResult<()>),
-}
-
 
 pub struct IndradbClientBackend {
     tran_worker: crate::autogen::service::Client,
@@ -145,9 +123,10 @@ pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request
                 break;
             }
             else {
-                let req = msg.try_get_msg().unwrap();
+                let mut req = msg.try_get_msg().unwrap();
+                let resp_result = req.execute(&backend).await;
                 // let resp_result = backend.dispatch_request(req).await.map_err(|e|{e.into()});
-                // let _ = msg.callback(resp_result);
+                let _ = msg.callback(resp_result);
             }
         }
         
