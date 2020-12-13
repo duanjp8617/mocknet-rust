@@ -94,6 +94,7 @@ pub enum Request {
     CreateEmuNet(String, String, u32),
     ListEmuNetUuid(String),
     GetEmuNet(Uuid),
+    SetEmuNet(net::EmuNet),
 }
 
 #[derive(Clone)]
@@ -103,6 +104,7 @@ pub enum Response {
     CreateEmuNet(QueryResult<Uuid>),
     ListEmuNetUuid(QueryResult<HashMap<String, Uuid>>),
     GetEmuNet(QueryResult<net::EmuNet>),
+    SetEmuNet(QueryResult<()>),
 }
 
 pub struct IndradbClientBackend {
@@ -230,6 +232,16 @@ impl IndradbClientBackend {
             Some(jv) => Ok(QueryOk(serde_json::from_value(jv).unwrap())),
         }
     }
+
+    async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, BackendError> {
+        let uuid = emu_net.get_uuid().clone();
+        let jv = serde_json::to_value(emu_net).unwrap();
+        let res = self.worker.set_vertex_json_value(uuid, "default", &jv).await?;
+        match res {
+            false => Ok(QueryFail("EmuNet not exist".to_string())),
+            true => Ok(QueryOk(())),
+        }
+    }
 }
 
 impl IndradbClientBackend {
@@ -250,6 +262,9 @@ impl IndradbClientBackend {
             Request::GetEmuNet(uuid) => {
                 self.get_emu_net(uuid).await.map(|net|{Response::GetEmuNet(net)})
             },
+            Request::SetEmuNet(emu_net) => {
+                self.set_emu_net(emu_net).await.map(|res|{Response::SetEmuNet(res)})
+            }
         }
     }
 }

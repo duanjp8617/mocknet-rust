@@ -94,6 +94,18 @@ impl Client {
             _ => panic!("invalid response")
         } 
     }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
+        let req = Request::SetEmuNet(emu_net);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::SetEmuNet(res) => Ok(res),
+            _ => panic!("invalid response")
+        } 
+    }
 }
 
 /// The launcher that runs the client in a closure.
