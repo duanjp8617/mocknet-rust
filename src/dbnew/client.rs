@@ -28,10 +28,6 @@ impl Clone for Client {
     }
 }
 
-impl Client {
-
-}
-
 /// The launcher that runs the client in a closure.
 pub struct ClientLauncher {
     conn: tokio::net::TcpStream,

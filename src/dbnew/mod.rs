@@ -14,4 +14,4 @@ pub use errors::BackendErrorKind as ClientErrorKind;
 pub use client::Client;
 pub use client::ClientLauncher;
 
-mod message_trait;
+mod message;
