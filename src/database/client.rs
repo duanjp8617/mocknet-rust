@@ -92,7 +92,7 @@ impl Client {
         match res {
             Response::GetEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
-        }
+        } 
     }
 }
 

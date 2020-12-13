@@ -94,8 +94,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             let graph: InMemoryGraph<u64, u64, u64> = InMemoryGraph::from_jsons(vertex_json, edge_json).unwrap();
             graph.dump();
 
-            let partition_result = graph.partition(emu_net.servers_mut()).unwrap();
-            // println!("{:?}", &partition_result);
+            let partition_result = graph.partition(emu_net.servers_mut()).unwrap(); 
+            println!("{:?}", &partition_result);
 
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());

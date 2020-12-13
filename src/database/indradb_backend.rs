@@ -192,14 +192,13 @@ impl IndradbClientBackend {
             None => return Ok(QueryFail("invalid capacity".to_string())),
         };
         self.set_core_property("server_info_list", sp.into_vec()).await?;
-
-
-        // create a new emu net
-        let mut emu_net = net::EmuNet::new(net.clone(), capacity);
-        emu_net.add_servers(allocation);
         
-        // create and initialize a new emu net node
+        // create a new emu net node
         let emu_net_id = self.worker.create_vertex(None).await?.expect("vertex ID already exists");
+        // create a new emu net
+        let mut emu_net = net::EmuNet::new(net.clone(), emu_net_id.clone(), capacity);
+        emu_net.add_servers(allocation);
+        // initialize the EmuNet in the database
         let jv = serde_json::to_value(emu_net).unwrap();
         let res = self.worker.set_vertex_json_value(emu_net_id, "default", &jv).await?;
         if !res {
@@ -222,7 +221,7 @@ impl IndradbClientBackend {
         let user = user_map.get(&user).unwrap();
         
         Ok(QueryOk(user.get_all_emu_nets()))
-    }
+    } 
 
     async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, BackendError> {
         let res = self.worker.get_vertex_json_value(uuid, "default").await?;
