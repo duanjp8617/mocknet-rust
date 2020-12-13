@@ -8,12 +8,12 @@ use crate::algo::in_memory_graph::InMemoryGraph;
 use crate::algo::Partition;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-struct Vertex {
+struct VDevice {
     id: u64,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-struct Edge {
+struct Vlink {
     edge_id: (u64, u64)
 }
 
@@ -32,9 +32,6 @@ pub struct EmuNet {
     capacity: u32,
     server_map: HashMap<Uuid, ContainerServer>,
     state: EmuNetState,
-    vertex_list: Vec<Vertex>,
-    edge_list: Vec<Edge>,
-    vertex_server_map: HashMap<u64, Uuid>,
 }
 
 impl EmuNet {
@@ -45,9 +42,6 @@ impl EmuNet {
             capacity,
             server_map: HashMap::new(),
             state: EmuNetState::Uninit,
-            vertex_list: Vec::new(),
-            edge_list: Vec::new(),
-            vertex_server_map: HashMap::new()
         }
     }
 

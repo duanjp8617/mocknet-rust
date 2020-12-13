@@ -95,6 +95,7 @@ pub enum Request {
     ListEmuNetUuid(String),
     GetEmuNet(Uuid),
     SetEmuNet(net::EmuNet),
+    CreateVertexes(Vec<Uuid>),
 }
 
 #[derive(Clone)]
@@ -105,6 +106,7 @@ pub enum Response {
     ListEmuNetUuid(QueryResult<HashMap<String, Uuid>>),
     GetEmuNet(QueryResult<net::EmuNet>),
     SetEmuNet(QueryResult<()>),
+    CreateVertexes(QueryResult<()>),
 }
 
 pub struct IndradbClientBackend {
@@ -242,6 +244,10 @@ impl IndradbClientBackend {
             true => Ok(QueryOk(())),
         }
     }
+
+    async fn create_vertexes(&self, vertexes: Vec<Uuid>) -> Result<QueryResult<()>, BackendError> {
+        Ok(QueryOk(()))
+    }
 }
 
 impl IndradbClientBackend {
@@ -264,6 +270,9 @@ impl IndradbClientBackend {
             },
             Request::SetEmuNet(emu_net) => {
                 self.set_emu_net(emu_net).await.map(|res|{Response::SetEmuNet(res)})
+            }
+            Request::CreateVertexes(vertexes) => {
+                self.create_vertexes(vertexes).await.map(|res|{Response::CreateVertexes(res)})
             }
         }
     }

@@ -106,6 +106,18 @@ impl Client {
             _ => panic!("invalid response")
         } 
     }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn set_create_vertexes(&self, vertexes: Vec<Uuid>) -> Result<QueryResult<()>, ClientError> {
+        let req = Request::CreateVertexes(vertexes);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::CreateVertexes(res) => Ok(res),
+            _ => panic!("invalid response")
+        } 
+    }
 }
 
 /// The launcher that runs the client in a closure.
