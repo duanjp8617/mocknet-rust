@@ -12,7 +12,7 @@ pub enum BackendErrorKind {
 }
 
 /// Error of database backend.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BackendError {
     kind: BackendErrorKind,
     description: String,

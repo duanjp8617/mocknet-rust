@@ -4,12 +4,14 @@ use std::pin::Pin;
 use super::indradb_backend::IndradbClientBackend;
 use super::errors::BackendError;
 use crate::emunet::server;
+use super::message_queue;
 
 type QueryResult<T> = Result<T, String>;
 use Result::Ok as QueryOk;
 use Result::Err as QueryFail;
 
-enum Response {
+#[derive(Clone)]
+pub enum Response {
     InitResp(QueryResult<()>),
 }
 
@@ -18,6 +20,9 @@ pub trait DatabaseMessage<Response, Error> {
 
     fn execute(self, backend: &IndradbClientBackend) -> Self::RespFut;
 }
+
+pub type ResponseFuture = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + Send + 'static>>;
+pub type Request = Box<dyn DatabaseMessage<Response, BackendError, RespFut = ResponseFuture> + Send + 'static>;
 
 // pub struct InitDatabase {
 //     server_infos: Vec<server::ServerInfo>,

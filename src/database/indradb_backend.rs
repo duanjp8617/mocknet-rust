@@ -87,7 +87,6 @@ impl TranWorker {
     }
 }
 
-#[derive(Clone)]
 pub enum Request {
     Init(Vec<server::ServerInfo>),
     RegisterUser(String),
@@ -98,7 +97,6 @@ pub enum Request {
     CreateVertexes(Vec<Uuid>),
 }
 
-#[derive(Clone)]
 pub enum Response {
     Init(QueryResult<()>),
     RegisterUser(QueryResult<()>),
