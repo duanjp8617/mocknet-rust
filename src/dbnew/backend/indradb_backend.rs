@@ -1,5 +1,6 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
+use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use indradb::{SpecificVertexQuery, VertexQueryExt, VertexQuery};
@@ -12,6 +13,7 @@ use crate::dbnew::message::{Request, Response};
 use super::indradb_util::ClientTransaction;
 use crate::dbnew::errors::{BackendError};
 use super::CORE_INFO_ID;
+use crate::emunet::{server, user};
 
 pub struct IndradbClientBackend {
     tran_worker: crate::autogen::service::Client,
@@ -19,6 +21,14 @@ pub struct IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
+    pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
+        Self{
+            tran_worker: client, 
+            disconnector
+        }
+    }
+
+
     // create a vertex with an optional uuid
     pub async fn create_vertex(&self, id: Option<Uuid>) -> Result<Option<Uuid>, BackendError> {
         let trans = self.tran_worker.transaction_request().send().pipeline.get_transaction();
@@ -77,15 +87,27 @@ impl IndradbClientBackend {
 }
 
 impl IndradbClientBackend {
-    pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
-        Self{
-            tran_worker: client, 
-            disconnector
-        }
+    // public interfaces for accessing core information
+    pub async fn get_server_info_list(&self) -> Result<Vec<server::ServerInfo>, BackendError> {
+        self.get_core_property("server_info_list").await
     }
 
-    // helper functions:
-    pub async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
+    pub async fn set_server_info_list(&self, server_info_list: Vec<server::ServerInfo>) -> Result<(), BackendError> {
+        self.set_core_property("server_info_list", server_info_list).await
+    }
+
+    pub async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
+        self.get_core_property("user_map").await
+    }
+
+    pub async fn set_user_map(&self, user_map: HashMap<String, user::EmuNetUser>) -> Result<(), BackendError> {
+        self.set_core_property("user_map", user_map).await
+    }
+}
+
+impl IndradbClientBackend {
+    // helpers function:
+    async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
         let res = self.get_vertex_json_value(super::CORE_INFO_ID.clone(), property).await?;
         match res {
             Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
@@ -93,7 +115,7 @@ impl IndradbClientBackend {
         }
     }
 
-    pub async fn set_core_property<T: Serialize>(&self, property: &str, t: T) -> Result<(), BackendError> {
+    async fn set_core_property<T: Serialize>(&self, property: &str, t: T) -> Result<(), BackendError> {
         let jv = serde_json::to_value(t).unwrap();
         let res = self.set_vertex_json_value(CORE_INFO_ID.clone(), property, &jv).await?;
         if !res {

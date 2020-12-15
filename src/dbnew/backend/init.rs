@@ -8,7 +8,7 @@ use crate::dbnew::errors::BackendError;
 use super::IndradbClientBackend;
 use super::CORE_INFO_ID;
 
-use Response::Init as InitResp;
+use Response::Init as Resp;
 
 pub struct InitDatabase {
     server_infos: Vec<server::ServerInfo>,
@@ -22,14 +22,14 @@ impl DatabaseMessage<Response, BackendError> for InitDatabase {
             match res {
                 Some(_) => {
                     // initialize user map
-                    backend.set_core_property("user_map", HashMap::<String, user::EmuNetUser>::new()).await?;
+                    backend.set_user_map(HashMap::<String, user::EmuNetUser>::new()).await?;
 
                     // initialize server list                
-                    backend.set_core_property("server_info_list", server_info_list).await?;
+                    backend.set_server_info_list(server_info_list).await?;
                             
-                    Ok(InitResp(Succeed(())))
+                    Ok(Resp(Succeed(())))
                 },
-                None => Ok(InitResp(Fail("database has already been initialized".to_string()))),
+                None => Ok(Resp(Fail("database has already been initialized".to_string()))),
             }
         })
     }

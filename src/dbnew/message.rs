@@ -1,6 +1,8 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use uuid::Uuid;
+
 use super::backend::IndradbClientBackend;
 use super::errors::BackendError;
 
@@ -23,7 +25,8 @@ pub trait DatabaseMessage<Response, Error> {
 /// the backend.
 pub enum Response {
     Init(QueryResult<()>),
-    RegisterUser(QueryResult<()>)
+    RegisterUser(QueryResult<()>),
+    CreateEmuNet(QueryResult<Uuid>),
 }
 
 /// The request that is sent from the client to the indradb backend.

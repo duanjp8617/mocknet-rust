@@ -6,7 +6,7 @@ use crate::dbnew::message::{Response, ResponseFuture, DatabaseMessage, Succeed, 
 use crate::dbnew::errors::BackendError;
 use super::IndradbClientBackend;
 
-use Response::RegisterUser as RegisterResp;
+use Response::RegisterUser as Resp;
 
 pub struct RegisterUser {
     user_name: String,
@@ -17,9 +17,9 @@ impl DatabaseMessage<Response, BackendError> for RegisterUser {
         let user_name = replace(&mut self.user_name, String::new());
         Box::pin(async move {
             // read current user map
-            let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_core_property("user_map").await?;
+            let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_user_map().await?;
             if user_map.get(&user_name).is_some() {
-                return Ok(RegisterResp(Fail("user has already registered".to_string())));
+                return Ok(Resp(Fail("user has already registered".to_string())));
             }
 
             // register the new user
@@ -27,9 +27,9 @@ impl DatabaseMessage<Response, BackendError> for RegisterUser {
             user_map.insert(user_name, user);
             
             // sync update in the db
-            backend.set_core_property("user_map", user_map).await?;
+            backend.set_user_map(user_map).await?;
             
-            Ok(RegisterResp(Succeed(())))
+            Ok(Resp(Succeed(())))
         })
     }
 }
