@@ -18,14 +18,12 @@ pub enum Response {
     InitResp(QueryResult<()>),
 }
 
+pub type ResponseFuture<'a> = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + 'a>>;
 pub trait DatabaseMessage<Response, Error> {
-    type RespFut: Future<Output = Result<Response, Error>>;
-
-    fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> Self::RespFut;
+    fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a>;
 }
 
-pub type ResponseFuture = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + 'static>>;
-pub type Request = Box<dyn DatabaseMessage<Response, BackendError, RespFut = ResponseFuture> + Send + 'static>;
+pub type Request = Box<dyn DatabaseMessage<Response, BackendError> + Send + 'static>;
 
 pub struct InitDatabase {
     server_infos: Vec<server::ServerInfo>,
@@ -38,9 +36,7 @@ impl InitDatabase {
 }
 
 impl DatabaseMessage<Response, BackendError> for InitDatabase {
-    type RespFut = ResponseFuture;
-
-    fn execute(&mut self, backend: &'static IndradbClientBackend) -> Self::RespFut {
+    fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let server_info_list = self.take();
         Box::pin(async move {
             let res = backend.create_vertex(Some(CORE_INFO_ID.clone())).await?;
