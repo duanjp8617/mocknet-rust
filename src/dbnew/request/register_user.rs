@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::emunet::user;
 use crate::dbnew::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
 use crate::dbnew::errors::BackendError;
-use super::IndradbClientBackend;
+use crate::dbnew::backend::IndradbClientBackend;
 
 use Response::RegisterUser as Resp;
 

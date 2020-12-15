@@ -2,7 +2,7 @@ use std::mem::replace;
 
 use crate::dbnew::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
 use crate::dbnew::errors::BackendError;
-use super::IndradbClientBackend;
+use crate::dbnew::backend::IndradbClientBackend;
 use crate::emunet::net;
 
 use Response::SetEmuNet as Resp;

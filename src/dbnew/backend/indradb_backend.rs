@@ -12,7 +12,7 @@ use crate::dbnew::message_queue::{Queue};
 use crate::dbnew::message::{Request, Response};
 use super::indradb_util::ClientTransaction;
 use crate::dbnew::errors::{BackendError};
-use super::CORE_INFO_ID;
+use crate::dbnew::CORE_INFO_ID;
 use crate::emunet::{server, user};
 
 pub struct IndradbClientBackend {
@@ -108,7 +108,7 @@ impl IndradbClientBackend {
 impl IndradbClientBackend {
     // helpers function:
     async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
-        let res = self.get_vertex_json_value(super::CORE_INFO_ID.clone(), property).await?;
+        let res = self.get_vertex_json_value(CORE_INFO_ID.clone(), property).await?;
         match res {
             Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
             None => panic!("database is not correctly initialized"),

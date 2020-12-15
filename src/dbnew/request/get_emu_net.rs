@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::dbnew::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
 use crate::dbnew::errors::BackendError;
-use super::IndradbClientBackend;
+use super::backend::IndradbClientBackend;
 
 use Response::GetEmuNet as Resp;
 

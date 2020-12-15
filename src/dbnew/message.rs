@@ -29,7 +29,7 @@ pub enum Response {
     Init(QueryResult<()>),
     RegisterUser(QueryResult<()>),
     CreateEmuNet(QueryResult<Uuid>),
-    ListEmuNets(QueryResult<HashMap<String, Uuid>>),
+    ListEmuNet(QueryResult<HashMap<String, Uuid>>),
     GetEmuNet(QueryResult<net::EmuNet>),
     SetEmuNet(QueryResult<()>),
 }
