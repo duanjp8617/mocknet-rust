@@ -1,0 +1,35 @@
+use std::mem::replace;
+use std::collections::HashMap;
+
+use crate::emunet::user;
+use crate::dbnew::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::dbnew::errors::BackendError;
+use super::IndradbClientBackend;
+
+use Response::RegisterUser as RegisterResp;
+
+pub struct RegisterUser {
+    user_name: String,
+}
+
+impl DatabaseMessage<Response, BackendError> for RegisterUser {
+    fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
+        let user_name = replace(&mut self.user_name, String::new());
+        Box::pin(async move {
+            // read current user map
+            let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_core_property("user_map").await?;
+            if user_map.get(&user_name).is_some() {
+                return Ok(RegisterResp(Fail("user has already registered".to_string())));
+            }
+
+            // register the new user
+            let user = user::EmuNetUser::new(&user_name);
+            user_map.insert(user_name, user);
+            
+            // sync update in the db
+            backend.set_core_property("user_map", user_map).await?;
+            
+            Ok(RegisterResp(Succeed(())))
+        })
+    }
+}

@@ -1,6 +1,5 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
-use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use indradb::{SpecificVertexQuery, VertexQueryExt, VertexQuery};
@@ -8,14 +7,10 @@ use indradb::{Vertex, Type};
 use uuid::Uuid;
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::emunet::server;
-use crate::emunet::user;
-use crate::emunet::net;
-use super::message_queue::{Queue};
-use super::message::{Request, Response, DatabaseMessage};
+use crate::dbnew::message_queue::{Queue};
+use crate::dbnew::message::{Request, Response};
 use super::indradb_util::ClientTransaction;
-use super::errors::{BackendError};
-use super::{QueryResult, QueryOk, QueryFail};
+use crate::dbnew::errors::{BackendError};
 use super::CORE_INFO_ID;
 
 pub struct IndradbClientBackend {
@@ -91,7 +86,7 @@ impl IndradbClientBackend {
 
     // helper functions:
     pub async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
-        let res = self.get_vertex_json_value(CORE_INFO_ID.clone(), property).await?;
+        let res = self.get_vertex_json_value(super::CORE_INFO_ID.clone(), property).await?;
         match res {
             Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
             None => panic!("database is not correctly initialized"),
@@ -125,7 +120,6 @@ pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request
             else {
                 let mut req = msg.try_get_msg().unwrap();
                 let resp_result = req.execute(&backend).await;
-                // let resp_result = backend.dispatch_request(req).await.map_err(|e|{e.into()});
                 let _ = msg.callback(resp_result);
             }
         }

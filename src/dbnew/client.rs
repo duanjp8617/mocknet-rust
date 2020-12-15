@@ -7,8 +7,8 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use uuid::Uuid;
 
-use super::indradb_backend::IndradbClientBackend;
-use super::indradb_backend::build_backend_fut;
+use super::backend::IndradbClientBackend;
+use super::backend::build_backend_fut;
 use crate::emunet::{server, net};
 use super::message::{Request, Response, ResponseFuture};
 use super::message_queue;
@@ -29,7 +29,7 @@ impl Clone for Client {
     }
 }
 
-/// The launcher that runs the client in a closure.
+/// The launcher that runs the client in a closure. 
 pub struct ClientLauncher {
     conn: tokio::net::TcpStream,
 }
