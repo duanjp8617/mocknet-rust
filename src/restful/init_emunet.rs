@@ -1,4 +1,4 @@
-use crate::database::{Client, QueryOk, QueryFail};
+use crate::database::{Client, Succeed, Fail};
 
 use warp::{http, Filter};
 use serde::Deserialize;

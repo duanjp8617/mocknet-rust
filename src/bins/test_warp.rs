@@ -2,7 +2,7 @@ use std::net::ToSocketAddrs;
 
 use warp::Filter;
 
-use mocknet::database::{self, QueryOk, QueryFail};
+use mocknet::database::{self, Succeed, Fail};
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
@@ -34,10 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // try to initialize the database
             let res = client.init(sp.into_vec()).await?;
             match res {
-                QueryOk(_) => {
+                Succeed(_) => {
                     println!("Successfully initialize the database.")
                 },
-                QueryFail(s) => {
+                Fail(s) => {
                     println!("{}", &s);
                 }
             };
@@ -45,10 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // register a test user "wtf"
             let res = client.register_user("wtf").await?;
             match res {
-                QueryOk(_) => {
+                Succeed(_) => {
                     println!("successfully register user wtf");
                 }
-                QueryFail(s) => {
+                Fail(s) => {
                     println!("{}", &s);
                 }
             };
@@ -56,10 +56,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // create an emunet
             let res = client.create_emu_net("wtf".to_string(), "wtf".to_string(), 12).await?;
             match res {
-                QueryOk(uuid) => {
+                Succeed(uuid) => {
                     println!("successfulily create an emunet with id {}", uuid);
                 }
-                QueryFail(s) => {
+                Fail(s) => {
                     println!("{}", &s);
                 }
             };
@@ -68,11 +68,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             let res = client.list_emu_net_uuid("wtf".to_string()).await?;
             let mut wtf_emunet_uuid = indradb::util::generate_uuid_v1();
             match res {
-                QueryOk(hmap) => {
+                Succeed(hmap) => {
                     wtf_emunet_uuid = hmap.get("wtf").unwrap().clone();
                     println!("wtf emunet uuid is {}", &wtf_emunet_uuid);
                 },
-                QueryFail(s) => {
+                Fail(s) => {
                     panic!("{}", &s);
                 }
             }

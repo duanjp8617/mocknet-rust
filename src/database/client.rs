@@ -7,13 +7,15 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use uuid::Uuid;
 
-use super::indradb_backend::{Request, Response, IndradbClientBackend};
-use super::indradb_backend::build_backend_fut;
+use super::backend::IndradbClientBackend;
+use super::backend::build_backend_fut;
 use crate::emunet::{server, net};
+use super::message::{Request, Response};
 use super::message_queue;
 use super::ClientError;
 use super::errors::BackendError;
 use super::QueryResult;
+use super::request::{self, build_request};
 
 /// The database client that stores core mocknet information.
 pub struct Client {
@@ -39,8 +41,8 @@ impl Client {
     /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
     /// dropping backend worker (though the second error si unlikely to occur.)
     pub async fn init(&self, servers: Vec<server::ServerInfo>) -> Result<QueryResult<()>, ClientError> {
-        let req = Request::Init(servers);
-        let res = self.sender.send(req).await?;
+        let req = request::Init::new(servers);
+        let res = self.sender.send(build_request(req)).await?;
         match res {
             Response::Init(res) => Ok(res),
             _ => panic!("invalid response")
@@ -51,8 +53,8 @@ impl Client {
     /// 
     /// Return value has similar meaning as `Client::init`.
     pub async fn register_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
-        let req = Request::RegisterUser(user_name.to_string());
-        let res = self.sender.send(req).await?;
+        let req = request::RegisterUser::new(user_name.to_string());
+        let res = self.sender.send(build_request(req)).await?;
         match res {
             Response::RegisterUser(res) => Ok(res),
             _ => panic!("invalid response")
@@ -63,8 +65,8 @@ impl Client {
     /// 
     /// Return value has similar meaning as `Client::init`.
     pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
-        let req= Request::CreateEmuNet(user.to_string(), net.to_string(), capacity);
-        let res = self.sender.send(req).await?;
+        let req= request::CreateEmuNet::new(user.to_string(), net.to_string(), capacity);
+        let res = self.sender.send(build_request(req)).await?;
         match res {
             Response::CreateEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
@@ -75,10 +77,10 @@ impl Client {
     /// 
     /// Note: I don't know if this is necessary
     pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
-        let req = Request::ListEmuNetUuid(user);
-        let res = self.sender.send(req).await?;
+        let req = request::ListEmuNet::new(user);
+        let res = self.sender.send(build_request(req)).await?;
         match res {
-            Response::ListEmuNetUuid(res) => Ok(res),
+            Response::ListEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
         }
     }
@@ -87,8 +89,8 @@ impl Client {
     /// 
     /// Note: I don't know if this is necessary as well.
     pub async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, ClientError> {
-        let req = Request::GetEmuNet(uuid);
-        let res = self.sender.send(req).await?;
+        let req = request::GetEmuNet::new(uuid);
+        let res = self.sender.send(build_request(req)).await?;
         match res {
             Response::GetEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
@@ -99,28 +101,16 @@ impl Client {
     /// 
     /// Note: I don't know if this is necessary as well.
     pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
-        let req = Request::SetEmuNet(emu_net);
-        let res = self.sender.send(req).await?;
+        let req = request::SetEmuNet::new(emu_net);
+        let res = self.sender.send(build_request(req)).await?;
         match res {
             Response::SetEmuNet(res) => Ok(res),
             _ => panic!("invalid response")
         } 
     }
-
-    /// Get the emunet from an uuid.
-    /// 
-    /// Note: I don't know if this is necessary as well.
-    pub async fn set_create_vertexes(&self, vertexes: Vec<Uuid>) -> Result<QueryResult<()>, ClientError> {
-        let req = Request::CreateVertexes(vertexes);
-        let res = self.sender.send(req).await?;
-        match res {
-            Response::CreateVertexes(res) => Ok(res),
-            _ => panic!("invalid response")
-        } 
-    }
 }
 
-/// The launcher that runs the client in a closure.
+/// The launcher that runs the client in a closure. 
 pub struct ClientLauncher {
     conn: tokio::net::TcpStream,
 }

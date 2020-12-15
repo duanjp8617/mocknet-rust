@@ -1,4 +1,4 @@
-use crate::database::{Client, QueryOk, QueryFail};
+use crate::database::{Client, Succeed, Fail};
 
 use warp::{http, Filter};
 use serde::Deserialize;
@@ -20,10 +20,10 @@ async fn register_user(user_name: String, db_client: Client) -> Result<impl warp
         },
         Ok(query_res) => {
             match query_res {
-                QueryOk(_) => {
+                Succeed(_) => {
                     Ok(warp::reply::with_status(format!("user registration succeed: {}", user_name), http::StatusCode::OK))
                 },
-                QueryFail(err_msg) => {
+                Fail(err_msg) => {
                     Ok(warp::reply::with_status(format!("operation fail: {}", err_msg), http::StatusCode::BAD_REQUEST))
                 }
             }
