@@ -12,9 +12,17 @@ pub struct RegisterUser {
     user_name: String,
 }
 
+impl RegisterUser {
+    pub fn new(user_name: String) -> Self {
+        Self{ user_name }
+    }
+}
+
+
 impl DatabaseMessage<Response, BackendError> for RegisterUser {
     fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let user_name = replace(&mut self.user_name, String::new());
+        
         Box::pin(async move {
             // read current user map
             let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_user_map().await?;

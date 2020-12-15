@@ -10,13 +10,20 @@ use super::CORE_INFO_ID;
 
 use Response::Init as Resp;
 
-pub struct InitDatabase {
+pub struct Init {
     server_infos: Vec<server::ServerInfo>,
 }
 
-impl DatabaseMessage<Response, BackendError> for InitDatabase {
+impl Init {
+    pub fn new(server_infos: Vec<server::ServerInfo>) -> Self {
+        Self{ server_infos }
+    }
+}
+
+impl DatabaseMessage<Response, BackendError> for Init {
     fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let server_info_list = replace(&mut self.server_infos, Vec::new());
+        
         Box::pin(async move {
             let res = backend.create_vertex(Some(CORE_INFO_ID.clone())).await?;
             match res {

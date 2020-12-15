@@ -29,6 +29,86 @@ impl Clone for Client {
     }
 }
 
+impl Client {
+    /// Initilize a table for storing core information of the mocknet database.
+    /// 
+    /// `servers` stores information about backend servers for launching containers.
+    /// 
+    /// Interpretation of return values:
+    /// Ok(Ok(())) means successful initialization.
+    /// Ok(Err(s)) means the database has been initialized, and `s` is the error message.
+    /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
+    /// dropping backend worker (though the second error si unlikely to occur.)
+    pub async fn init(&self, servers: Vec<server::ServerInfo>) -> Result<QueryResult<()>, ClientError> {
+        let req = Request::Init(servers);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::Init(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// Store a new user with `user_name`.
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn register_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
+        let req = Request::RegisterUser(user_name.to_string());
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::RegisterUser(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// Create a new emulation net for `user` with `name` and `capacity`.
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
+        let req= Request::CreateEmuNet(user.to_string(), net.to_string(), capacity);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::CreateEmuNet(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// List all the emunet of a user.
+    /// 
+    /// Note: I don't know if this is necessary
+    pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
+        let req = Request::ListEmuNetUuid(user);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::ListEmuNetUuid(res) => Ok(res),
+            _ => panic!("invalid response")
+        }
+    }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, ClientError> {
+        let req = Request::GetEmuNet(uuid);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::GetEmuNet(res) => Ok(res),
+            _ => panic!("invalid response")
+        } 
+    }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
+        let req = Request::SetEmuNet(emu_net);
+        let res = self.sender.send(req).await?;
+        match res {
+            Response::SetEmuNet(res) => Ok(res),
+            _ => panic!("invalid response")
+        } 
+    }
+}
+
 /// The launcher that runs the client in a closure. 
 pub struct ClientLauncher {
     conn: tokio::net::TcpStream,

@@ -2,6 +2,7 @@ mod message;
 mod message_queue;
 mod client;
 mod errors;
+mod request;
 
 // this is made public to remove warnings
 mod backend;

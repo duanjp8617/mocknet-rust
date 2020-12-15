@@ -7,6 +7,9 @@ pub use indradb_backend::build_backend_fut;
 mod init;
 mod register_user;
 mod create_emu_net;
+mod list_emu_net;
+mod get_emu_net;
+mod set_emu_net;
 
 use lazy_static::lazy_static;
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.

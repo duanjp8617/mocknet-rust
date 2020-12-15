@@ -1,10 +1,12 @@
 use std::future::Future;
 use std::pin::Pin;
+use std::collections::HashMap;
 
 use uuid::Uuid;
 
 use super::backend::IndradbClientBackend;
 use super::errors::BackendError;
+use crate::emunet::net;
 
 pub type QueryResult<T> = Result<T, String>;
 pub use Result::Ok as Succeed;
@@ -27,6 +29,9 @@ pub enum Response {
     Init(QueryResult<()>),
     RegisterUser(QueryResult<()>),
     CreateEmuNet(QueryResult<Uuid>),
+    ListEmuNets(QueryResult<HashMap<String, Uuid>>),
+    GetEmuNet(QueryResult<net::EmuNet>),
+    SetEmuNet(QueryResult<()>),
 }
 
 /// The request that is sent from the client to the indradb backend.

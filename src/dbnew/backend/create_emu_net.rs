@@ -16,6 +16,12 @@ pub struct CreateEmuNet {
     capacity: u32,
 }
 
+impl CreateEmuNet {
+    pub fn new(user: String, emu_net: String, capacity: u32) -> Self {
+        Self { user, emu_net, capacity }
+    }
+}
+
 impl DatabaseMessage<Response, BackendError> for CreateEmuNet {
     fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let msg = replace(self, CreateEmuNet {
