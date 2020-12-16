@@ -12,7 +12,7 @@ use mocknet::algo::Partition;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
-    let addr = "127.0.0.1:27615"
+    let addr = "172.16.30.173:27615"
         .to_socket_addrs()
         .unwrap()
         .next()
@@ -99,9 +99,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
 
             // let ru = register_user::build_filter(client.clone());
             // let ce = create_emunet::build_filter(client.clone());
-            // let ie = init_emunet::build_filter(client.clone());
-            // let routes = ru.or(ce).or(ie);
-            // warp::serve(routes).run(([127, 0, 0, 1], 3030)).await; 
+            // // let ie = init_emunet::build_filter(client.clone());
+            // let routes = ru.or(ce);//.or(ie);
+            // warp::serve(routes).run(([172, 16, 30, 182], 3030)).await; 
 
             Ok(())
         }
