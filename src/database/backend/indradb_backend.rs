@@ -28,7 +28,6 @@ impl IndradbClientBackend {
         }
     }
 
-
     // create a vertex with an optional uuid
     pub async fn create_vertex(&self, id: Option<Uuid>) -> Result<Option<Uuid>, BackendError> {
         let trans = self.tran_worker.transaction_request().send().pipeline.get_transaction();

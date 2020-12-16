@@ -13,6 +13,7 @@ pub use Result::Ok as Succeed;
 pub use Result::Err as Fail;
 
 pub type ResponseFuture<'a> = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + 'a>>;
+
 /// Every message sends to the indradb backend should implement this trait.
 /// We use this trait to emulate polymorphism.
 pub trait DatabaseMessage<Response, Error> {

@@ -18,7 +18,6 @@ impl ListEmuNet {
     }
 }
 
-
 impl DatabaseMessage<Response, BackendError> for ListEmuNet {
     fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let msg = replace(self, ListEmuNet {

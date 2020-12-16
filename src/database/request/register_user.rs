@@ -18,7 +18,6 @@ impl RegisterUser {
     }
 }
 
-
 impl DatabaseMessage<Response, BackendError> for RegisterUser {
     fn execute<'a>(&mut self, backend: &'a IndradbClientBackend) -> ResponseFuture<'a> {
         let user_name = replace(&mut self.user_name, String::new());
