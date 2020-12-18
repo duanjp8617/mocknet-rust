@@ -33,6 +33,7 @@ pub enum Response {
     ListEmuNet(QueryResult<HashMap<String, Uuid>>),
     GetEmuNet(QueryResult<net::EmuNet>),
     SetEmuNet(QueryResult<()>),
+    InitEmuNet(QueryResult<()>),
 }
 
 /// The request that is sent from the client to the indradb backend.
