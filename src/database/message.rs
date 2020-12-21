@@ -36,5 +36,6 @@ pub enum Response {
     InitEmuNet(QueryResult<()>),
 }
 
+
 /// The request that is sent from the client to the indradb backend.
 pub type Request = Box<dyn DatabaseMessage<Response, BackendError> + Send + 'static>;

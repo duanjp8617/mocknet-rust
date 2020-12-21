@@ -32,12 +32,9 @@ where
     Edge: DeserializeOwned
 
 {
-    pub fn from_jsons(vertexes_json: serde_json::Value, edges_json: serde_json::Value) -> Result<Self> {
+    pub fn from_vecs(vertexes: Vec<(Vid, Vertex)>, edges: Vec<(EdgeId<Vid>, Edge)>) -> Result<Self> {
         let mut vertex_map = HashMap::new();
-        let vertex_vec: Vec<(Vid, Vertex)> = serde_json::from_value(vertexes_json).map_err(|e|{
-            format!("fail to convert vertex json message: {}", &e)
-        })?;
-        let insert_res: Result<Vec<_>> = vertex_vec.into_iter().map(|(vid, v)| {
+        let insert_res: Result<Vec<_>> = vertexes.into_iter().map(|(vid, v)| {
             // insert vertex into map, report error on id collision
             match vertex_map.insert(vid, v) {
                 None => Ok(()),
@@ -48,10 +45,7 @@ where
 
         let mut edge_map = BTreeMap::new();
         let mut reverse_edge_map = BTreeMap::new();
-        let edge_vec: Vec<(EdgeId<Vid>, Edge)> = serde_json::from_value(edges_json).map_err(|e| {
-            format!("fail to convert edge json message: {}", &e)
-        })?;
-        let insert_res: Result<Vec<_>> = edge_vec.into_iter().map(|(eid, e)| {
+        let insert_res: Result<Vec<_>> = edges.into_iter().map(|(eid, e)| {
             // report error for invalid edges
             if !vertex_map.contains_key(&eid.0) || !vertex_map.contains_key(&eid.1) {
                 return Err("edge is not connected to a valid vertex".to_string());

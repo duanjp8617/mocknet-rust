@@ -17,6 +17,17 @@ use super::errors::BackendError;
 use super::QueryResult;
 use super::request::{self, build_request};
 
+macro_rules! generate_request {
+    ($who: ident,
+     $RequestType: ident,
+     $($arg: expr,)+) => {
+         match $who.sender.send(Box::new(request::$RequestType::new($($arg,)+))).await? {
+             Response::$RequestType(inner) => Ok(inner),
+             _ => panic!("invalid response")
+         }
+     }
+}
+
 /// The database client that stores core mocknet information.
 pub struct Client {
     sender: message_queue::Sender<Request, Response, BackendError>,
@@ -41,72 +52,42 @@ impl Client {
     /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
     /// dropping backend worker (though the second error si unlikely to occur.)
     pub async fn init(&self, servers: Vec<server::ServerInfo>) -> Result<QueryResult<()>, ClientError> {
-        let req = request::Init::new(servers);
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::Init(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
+        generate_request!(self, Init, servers,)
     }
 
     /// Store a new user with `user_name`.
     /// 
     /// Return value has similar meaning as `Client::init`.
     pub async fn register_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
-        let req = request::RegisterUser::new(user_name.to_string());
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::RegisterUser(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
+        generate_request!(self, RegisterUser, user_name.to_string(),)
     }
 
     /// Create a new emulation net for `user` with `name` and `capacity`.
     /// 
     /// Return value has similar meaning as `Client::init`.
     pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
-        let req= request::CreateEmuNet::new(user.to_string(), net.to_string(), capacity);
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::CreateEmuNet(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
+        generate_request!(self, CreateEmuNet, user, net, capacity,)
     }
 
     /// List all the emunet of a user.
     /// 
     /// Note: I don't know if this is necessary
     pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
-        let req = request::ListEmuNet::new(user);
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::ListEmuNet(res) => Ok(res),
-            _ => panic!("invalid response")
-        }
+        generate_request!(self, ListEmuNet, user,)
     }
 
     /// Get the emunet from an uuid.
     /// 
     /// Note: I don't know if this is necessary as well.
     pub async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, ClientError> {
-        let req = request::GetEmuNet::new(uuid);
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::GetEmuNet(res) => Ok(res),
-            _ => panic!("invalid response")
-        } 
+        generate_request!(self, GetEmuNet, uuid,)
     }
 
     /// Get the emunet from an uuid.
     /// 
     /// Note: I don't know if this is necessary as well.
     pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
-        let req = request::SetEmuNet::new(emu_net);
-        let res = self.sender.send(build_request(req)).await?;
-        match res {
-            Response::SetEmuNet(res) => Ok(res),
-            _ => panic!("invalid response")
-        } 
+        generate_request!(self, SetEmuNet, emu_net,)
     }
 }
 

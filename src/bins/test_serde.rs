@@ -24,9 +24,6 @@ fn main() {
         (e, 0)
     }).collect();
 
-    let vertex_json = serde_json::to_value(vertexes).unwrap();
-    let edge_json = serde_json::to_value(edges).unwrap();
-
-    let graph: InMemoryGraph<u64, u64, u64> = InMemoryGraph::from_jsons(vertex_json, edge_json).unwrap();
+    let graph: InMemoryGraph<u64, u64, u64> = InMemoryGraph::from_vecs(vertexes, edges).unwrap();
     graph.dump();
 }
