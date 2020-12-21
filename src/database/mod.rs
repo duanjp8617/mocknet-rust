@@ -1,4 +1,3 @@
-
 use lazy_static::lazy_static;
 // CORE_INFO_ID is a vertex id that stores core inforamtion of mocknet.
 const BYTES_SEED: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
@@ -6,6 +5,8 @@ const BYTES_SEED: [u8; 16] = [1, 2,  3,  4,  5,  6,  7,  8,
 lazy_static! {
     static ref CORE_INFO_ID: uuid::Uuid = uuid::Uuid::from_bytes(BYTES_SEED);
 }
+
+#[macro_use] mod macros;
 
 mod message;
 mod message_queue;
@@ -17,8 +18,6 @@ mod request;
 mod backend;
 pub use backend::indradb_util;
 
-pub use message::Succeed;
-pub use message::Fail;
 pub use message::QueryResult;
 pub use errors::BackendError as ClientError;
 pub use errors::BackendErrorKind as ClientErrorKind;

@@ -1,4 +1,4 @@
-use crate::database::{Client, Succeed, Fail};
+use crate::database::{Client};
 
 use warp::{http, Filter};
 use serde::Deserialize;
@@ -23,10 +23,10 @@ async fn create_emunet(json_value: Json, db_client: Client) -> Result<impl warp:
         },
         Ok(query_res) => {
             match query_res {
-                Succeed(uuid) => {
+                Ok(uuid) => {
                     Ok(warp::reply::with_status(format!("emunet_uuid: {}", uuid), http::StatusCode::OK))
                 },
-                Fail(err_msg) => {
+                Err(err_msg) => {
                     Ok(warp::reply::with_status(format!("operation fail: {}", err_msg), http::StatusCode::BAD_REQUEST))
                 }
             }

@@ -15,18 +15,7 @@ use super::message_queue;
 use super::ClientError;
 use super::errors::BackendError;
 use super::QueryResult;
-use super::request::{self, build_request};
-
-macro_rules! generate_request {
-    ($who: ident,
-     $RequestType: ident,
-     $($arg: expr,)+) => {
-         match $who.sender.send(Box::new(request::$RequestType::new($($arg,)+))).await? {
-             Response::$RequestType(inner) => Ok(inner),
-             _ => panic!("invalid response")
-         }
-     }
-}
+use super::request::{self};
 
 /// The database client that stores core mocknet information.
 pub struct Client {
