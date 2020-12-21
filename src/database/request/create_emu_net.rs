@@ -3,12 +3,10 @@ use std::collections::HashMap;
 
 use crate::emunet::user;
 use crate::emunet::server;
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
 use crate::emunet::net;
-
-use Response::CreateEmuNet as Resp;
 
 pub struct CreateEmuNet {
     user: String,
@@ -36,13 +34,13 @@ impl DatabaseMessage<Response, BackendError> for CreateEmuNet {
             // get the user
             let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_user_map().await?;
             if user_map.get(&msg.user).is_none() {
-                return Ok(Resp(Fail("invalid user name".to_string())));
+                return fail!(CreateEmuNet, "invalid user name".to_string());
             }
             let user_mut = user_map.get_mut(&msg.user).unwrap();
 
             // check whether the emunet has existed
             if user_mut.emu_net_exist(&msg.emu_net) {
-                return Ok(Resp(Fail("invalid emu-net name".to_string())));
+                return fail!(CreateEmuNet, "invalid emu-net name".to_string())
             }
 
             // get the allocation of servers
@@ -50,7 +48,7 @@ impl DatabaseMessage<Response, BackendError> for CreateEmuNet {
             let mut sp = server::ServerInfoList::from_iterator(server_info_list.into_iter()).unwrap();
             let allocation = match sp.allocate_servers(msg.capacity) {
                 Some(alloc) => alloc,
-                None => return Ok(Resp(Fail("invalid capacity".to_string()))),
+                None => return fail!(CreateEmuNet, "invalid capacity".to_string()),
             };
             backend.set_server_info_list(sp.into_vec()).await?;
             
@@ -70,7 +68,7 @@ impl DatabaseMessage<Response, BackendError> for CreateEmuNet {
             user_mut.add_emu_net(msg.emu_net, emu_net_id.clone());
             backend.set_user_map(user_map).await?;
 
-            Ok(Resp(Succeed(emu_net_id)))
+            succeed!(CreateEmuNet, emu_net_id,)
         })
     }
 }

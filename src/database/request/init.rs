@@ -3,12 +3,10 @@ use std::collections::HashMap;
 
 use crate::emunet::server;
 use crate::emunet::user;
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
 use crate::database::CORE_INFO_ID;
-
-use Response::Init as Resp;
 
 pub struct Init {
     server_infos: Vec<server::ServerInfo>,
@@ -34,9 +32,9 @@ impl DatabaseMessage<Response, BackendError> for Init {
                     // initialize server list                
                     backend.set_server_info_list(server_info_list).await?;
                             
-                    Ok(Resp(Succeed(())))
+                    succeed!(Init, (),)
                 },
-                None => Ok(Resp(Fail("database has already been initialized".to_string()))),
+                None => fail!(Init, "database has already been initialized".to_string()),
             }
         })
     }

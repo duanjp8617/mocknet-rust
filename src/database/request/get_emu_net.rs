@@ -2,11 +2,9 @@ use std::mem::replace;
 
 use uuid::Uuid;
 
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
-
-use Response::GetEmuNet as Resp;
 
 pub struct GetEmuNet {
     emu_net_id: Uuid,
@@ -25,8 +23,8 @@ impl DatabaseMessage<Response, BackendError> for GetEmuNet {
         Box::pin(async move {
             let res = backend.get_vertex_json_value(emu_net_id, "default").await?;
             match res {
-                None => Ok(Resp(Fail("EmuNet not exist".to_string()))),
-                Some(jv) => Ok(Resp(Succeed(serde_json::from_value(jv).unwrap()))),
+                None => fail!(GetEmuNet, "emunet not exist".to_string()),
+                Some(jv) => succeed!(GetEmuNet, serde_json::from_value(jv).unwrap(),),
             }
         })
     }

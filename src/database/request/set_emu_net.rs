@@ -1,11 +1,9 @@
 use std::mem::replace;
 
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
 use crate::emunet::net;
-
-use Response::SetEmuNet as Resp;
 
 pub struct SetEmuNet {
     emu_net: net::EmuNet
@@ -26,8 +24,8 @@ impl DatabaseMessage<Response, BackendError> for SetEmuNet {
             let jv = serde_json::to_value(emu_net).unwrap();
             let res = backend.set_vertex_json_value(uuid, "default", &jv).await?;
             match res {
-                false => Ok(Resp(Fail("EmuNet not exist".to_string()))),
-                true => Ok(Resp(Succeed(()))),
+                false => fail!(SetEmuNet, "EmuNet not exist".to_string()),
+                true => succeed!(SetEmuNet, (),),
             }
         })
     }

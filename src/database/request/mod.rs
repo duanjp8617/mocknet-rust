@@ -16,4 +16,4 @@ pub use get_emu_net::GetEmuNet;
 mod set_emu_net;
 pub use set_emu_net::SetEmuNet;
 
-// mod init_emu_net;
+mod init_emu_net;

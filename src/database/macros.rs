@@ -10,3 +10,16 @@ macro_rules! generate_request {
          }
      }
 }
+
+macro_rules! succeed {
+    ($RequestType: ident,
+     $($arg: expr,)+) => {
+         Ok(Response::$RequestType(Ok($($arg,)+)))
+     }
+}
+
+macro_rules! fail {
+    ($RequestType: ident, $s: expr) => {
+        Ok(Response::$RequestType(Err($s)))
+    }
+}

@@ -2,13 +2,11 @@ use std::mem::replace;
 
 use serde::{Deserialize, Serialize};
 
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
 use crate::emunet::net;
 use crate::algo::in_memory_graph::InMemoryGraph;
-
-use Response::InitEmuNet as Resp;
 
 #[derive(Deserialize, Serialize)]
 pub struct VertexInfo {
@@ -57,14 +55,14 @@ impl DatabaseMessage<Response, BackendError> for InitEmuNet {
 
             let convert_res = serde_json::from_value(msg.vertexes_json);
             if convert_res.is_err() {
-                return Ok(Resp(Fail("invalid json format for vertexes".to_string())));
+                return fail!(InitEmuNet, "invalid json format for vertexes".to_string());
             }
             let input_vertexes: Vec<(u64, VertexInfo)> = convert_res.unwrap();
             let input_edges: Vec<((u64, u64), EdgeInfo)> = serde_json::from_value(msg.edges_json).unwrap();
 
             let graph: InMemoryGraph<u64, VertexInfo,EdgeInfo> = InMemoryGraph::from_vecs(input_vertexes, input_edges).unwrap();
-
-            Ok(Resp(Succeed(())))
+            
+            succeed!(InitEmuNet, (),)
         })
     }
 }

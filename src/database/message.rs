@@ -9,8 +9,6 @@ use super::errors::BackendError;
 use crate::emunet::net;
 
 pub type QueryResult<T> = Result<T, String>;
-pub use Result::Ok as Succeed;
-pub use Result::Err as Fail;
 
 pub type ResponseFuture<'a> = Pin<Box<dyn Future<Output = Result<Response, BackendError>> + 'a>>;
 

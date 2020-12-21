@@ -2,11 +2,9 @@ use std::mem::replace;
 use std::collections::HashMap;
 
 use crate::emunet::user;
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
-
-use Response::RegisterUser as Resp;
 
 pub struct RegisterUser {
     user_name: String,
@@ -26,7 +24,7 @@ impl DatabaseMessage<Response, BackendError> for RegisterUser {
             // read current user map
             let mut user_map: HashMap<String, user::EmuNetUser> = backend.get_user_map().await?;
             if user_map.get(&user_name).is_some() {
-                return Ok(Resp(Fail("user has already registered".to_string())));
+                return fail!(RegisterUser, "user has already registered".to_string());
             }
 
             // register the new user
@@ -36,7 +34,7 @@ impl DatabaseMessage<Response, BackendError> for RegisterUser {
             // sync update in the db
             backend.set_user_map(user_map).await?;
             
-            Ok(Resp(Succeed(())))
+            succeed!(RegisterUser, (),)
         })
     }
 }

@@ -2,11 +2,9 @@ use std::mem::replace;
 use std::collections::HashMap;
 
 use crate::emunet::user;
-use crate::database::message::{Response, ResponseFuture, DatabaseMessage, Succeed, Fail};
+use crate::database::message::{Response, ResponseFuture, DatabaseMessage};
 use crate::database::errors::BackendError;
 use crate::database::backend::IndradbClientBackend;
-
-use Response::ListEmuNet as Resp;
 
 pub struct ListEmuNet {
     user: String,
@@ -30,11 +28,11 @@ impl DatabaseMessage<Response, BackendError> for ListEmuNet {
             // get user
             let user_map: HashMap<String, user::EmuNetUser> = backend.get_user_map().await?;
             if !user_map.contains_key(&msg.user) {
-                return Ok(Resp(Fail("invalid user name".to_string())));
+                return fail!(ListEmuNet, "invalid user name".to_string());
             }
             let user = user_map.get(&msg.user).unwrap();
             
-            Ok(Resp(Succeed(user.get_all_emu_nets())))
+            succeed!(ListEmuNet, user.get_all_emu_nets(),)
         })
     }
 }

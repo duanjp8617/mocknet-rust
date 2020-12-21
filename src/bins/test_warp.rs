@@ -2,7 +2,7 @@ use std::net::ToSocketAddrs;
 
 use warp::Filter;
 
-use mocknet::database::{self, Succeed, Fail};
+use mocknet::database::{self};
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
@@ -34,10 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // try to initialize the database
             let res = client.init(sp.into_vec()).await?;
             match res {
-                Succeed(_) => {
+                Ok(_) => {
                     println!("Successfully initialize the database.")
                 },
-                Fail(s) => {
+                Err(s) => {
                     println!("{}", &s);
                 }
             };
