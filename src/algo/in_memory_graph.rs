@@ -69,6 +69,12 @@ where
             reverse_edges: reverse_edge_map,
         })
     }
+
+    pub fn into(self) -> (Vec<Vertex>, Vec<Edge>) {
+        let vertexes = self.vertexes.into_iter().map(|(_, vertex)| {vertex});
+        let edges = self.edges.into_iter().map(|(_, edge)| {edge});
+        (vertexes.collect(), edges.collect())
+    }
 }
 
 impl<'a, Vid, Vertex, Edge, T, I> Partition<'a, T, I> for InMemoryGraph<Vid, Vertex, Edge>

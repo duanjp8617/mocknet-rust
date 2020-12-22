@@ -28,8 +28,9 @@ pub struct EmuNet {
     name: String,
     uuid: Uuid,
     capacity: u32,
-    server_map: HashMap<Uuid, ContainerServer>,
     state: EmuNetState,
+    server_map: HashMap<Uuid, ContainerServer>,
+    vertex_map: HashMap<u64, Uuid>,
 }
 
 impl EmuNet {
@@ -38,8 +39,9 @@ impl EmuNet {
             name,
             uuid,
             capacity,
-            server_map: HashMap::new(),
             state: EmuNetState::Uninit,
+            server_map: HashMap::new(),
+            vertex_map: HashMap::new(),
         }
     }
 
@@ -60,5 +62,15 @@ impl EmuNet {
     pub fn get_uuid(&self) -> &Uuid {
         &self.uuid
     }
+
+    pub fn add_vertex_assignment(&mut self, vertex_client_id: u64, vertex_uuid: Uuid) {
+        self.vertex_map.insert(vertex_client_id, vertex_uuid);
+    }
 }
 
+impl EmuNet {
+    // modifying the state of the EmuNet
+    pub fn state(&self) -> EmuNetState {
+        self.state.clone()
+    }
+}
