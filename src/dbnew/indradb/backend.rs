@@ -4,9 +4,11 @@ use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use indradb::{SpecificVertexQuery, VertexQueryExt, VertexQuery};
-use indradb::{Vertex, Type};
+use indradb::{Vertex, VertexPropertyQuery, VertexProperty};
 use uuid::Uuid;
 use serde::{de::DeserializeOwned, Serialize};
+use capnp::Error as CapnpError;
+use super::indradb_util::ClientTransaction;
 
 // use crate::database::message_queue::{Queue};
 // use crate::database::message::{Request, Response};
@@ -34,12 +36,42 @@ impl IndradbClientBackend {
     }
 }
 
+macro_rules! transaction_wrapper {
+    ( $method_name: ident, 
+      $( $variable: ident : $t: ty ,)+
+      => $rt: ty
+    ) => {
+        async fn $method_name(&self, $( $variable:$t ,)+) -> Result<$rt, CapnpError> {
+            let trans = self.tran_worker.transaction_request().send().pipeline.get_transaction();
+            let ct = ClientTransaction::new(trans);
+            ct.$method_name( $( $variable ,)+ ).await
+        }
+    }
+}
+
 impl IndradbClientBackend {
+    transaction_wrapper!(async_create_vertex, v: &Vertex, => bool);
+    transaction_wrapper!(async_get_vertices, q: VertexQuery,  => Vec<Vertex>);
+    transaction_wrapper!(async_get_vertex_properties, q: VertexPropertyQuery, => Vec<VertexProperty>);
+    transaction_wrapper!(async_set_vertex_properties, q: VertexPropertyQuery, value: &serde_json::Value, => ());
+
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
             Request::Init => {
                 Ok(Response::Init)
             },
+            Request::AsyncCreateVertex(v) => {
+                Ok(Response::AsyncCreateVertex(self.async_create_vertex(&v).await?))
+            },
+            Request::AsyncGetVertices(q) => {
+                Ok(Response::AsyncGetVertices(self.async_get_vertices(q).await?))
+            },
+            Request::AsyncGetVertexProperties(q) => {
+                Ok(Response::AsyncGetVertexProperties(self.async_get_vertex_properties(q).await?))
+            },
+            Request::AsyncSetVertexProperties(q, value) => {
+                Ok(Response::AsyncSetVertexProperties(self.async_set_vertex_properties(q, &value).await?))
+            }
         }
     }
 }

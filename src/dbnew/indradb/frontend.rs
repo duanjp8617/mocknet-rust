@@ -1,3 +1,4 @@
+use indradb::{Vertex};
 
 use crate::dbnew::errors::BackendError;
 
@@ -18,6 +19,18 @@ impl Clone for FrontEnd {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone()
+        }
+    }
+}
+
+
+
+impl FrontEnd {
+    async fn async_create_vertex(&self, v: Vertex) -> Result<bool, BackendError> {
+        let res = self.sender.send(Request::AsyncCreateVertex(v)).await?;
+        match res {
+            Response::AsyncCreateVertex(res) => Ok(res),
+            _ => panic!("invalid response!")
         }
     }
 }
