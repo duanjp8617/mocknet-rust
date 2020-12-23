@@ -26,13 +26,51 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     // do the allocation
     let res = network_graph.partition(emunet.servers_mut());
     if res.is_err() {
-        return
+        // set the state of the emunet to fail
+        emunet.Error(EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err())));
+        
+        // store the state in the database, panic the server program on failure
+        let res = client.set_emu_net(emunet).await.unwrap();
+        if res.is_err() {
+            panic!("this should never happen");
+        }
+        
+        // quit the background task
+        return;
     }
+
+    // acquire the partition result
     let assignment = res.unwrap();
-    
     // get the lists of vertex_info and edge_info
     let (vertex_infos, edge_infos) = network_graph.into();
-    
+
+    // build up the list of vertexes
+    let vertexes: Vec<Vertex> = vertex_infos.into_iter().map(|vi| {
+        let client_id = vi.id();
+        Vertex::new(
+            vi, 
+            indradb::util::generate_uuid_v1(), 
+            assignment.get(&client_id).unwrap().clone()
+        )
+    }).collect();
+
+    // prepare the list of bulk insert items
+    let mut bulk_vertexes: Vec<indradb::BulkInsertItem> = Vec::new();
+    let _: Vec<()> = vertexes.iter().map(|v| {
+        let uuid = v.uuid();
+        emunet.add_vertex_assignment(v.id(), uuid.clone());
+        let vertex = indradb::Vertex::with_id(uuid, indradb::Type::new("t").unwrap());
+        bulk_vertexes.push(indradb::BulkInsertItem::Vertex(vertex));
+    }).collect();
+    // insert the bulk vertexes into the fucking database
+
+    let mut bulk_vertex_properties: Vec<indradb::BulkInsertItem> = Vec::new();
+    let _: Vec<()> = vertexes.into_iter().map(|v|{
+        let uuid = v.uuid();
+        let json_value = serde_json::to_value(v).unwrap();
+        bulk_vertex_properties.push(indradb::BulkInsertItem::VertexProperty(uuid, "default".to_string(), json_value));
+    }).collect();
+    // insert the bulk vertexes into the database
     
 }
 

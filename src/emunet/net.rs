@@ -36,10 +36,35 @@ pub struct Vertex {
     server_uuid: uuid::Uuid, // which server this vertex is launched on
 }
 
+impl Vertex {
+    pub fn new(info: VertexInfo, uuid: uuid::Uuid, server_uuid: uuid::Uuid) -> Self {
+        Self{info, uuid, server_uuid}
+    }
+
+    pub fn id(&self) -> u64 {
+        return self.info.id;
+    }
+
+    pub fn uuid(&self) -> uuid::Uuid {
+        return self.uuid.clone()
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct Edge {
     info: EdgeInfo,
     edge_uuid: (uuid::Uuid, uuid::Uuid), // out-going vertex -> incoming vertex
+}
+
+impl Edge {
+    pub fn new(info: EdgeInfo, edge_uuid: (uuid::Uuid, uuid::Uuid)) -> Self {
+        Self{info, edge_uuid}
+    }
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub enum EmuNetError {
+    PartitionFail(String),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -47,7 +72,7 @@ pub enum EmuNetState {
     Uninit,
     Working,
     Normal,
-    Error,
+    Error(EmuNetError),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -103,5 +128,9 @@ impl EmuNet {
 
     pub fn working(&mut self) {
         self.state = EmuNetState::Working;
+    }
+
+    pub fn Error(&mut self, reason: EmuNetError) {
+        self.state = EmuNetState::Error(reason);
     }
 }
