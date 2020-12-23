@@ -22,6 +22,19 @@ use super::CORE_INFO_ID;
 
 type QueryResult<T> = Result<T, String>;
 
+macro_rules! succeed {
+    ($arg: expr) => {
+         Ok(Ok($arg))
+     }
+}
+
+macro_rules! fail {
+    ($s: expr) => {
+        Ok(Err($s))
+    }
+}
+
+
 /// The database client that stores core mocknet information.
 pub struct Client {
     fe: IndradbFrontend,
@@ -32,18 +45,6 @@ impl Clone for Client {
         Self {
             fe: self.fe.clone()
         }
-    }
-}
-
-macro_rules! succeed {
-    ($($arg: expr,)+) => {
-         Ok(Ok( $($arg,)+ ))
-     }
-}
-
-macro_rules! fail {
-    ($s: expr) => {
-        Ok(Err($s))
     }
 }
 
@@ -67,10 +68,30 @@ impl Client {
                 // initialize server list                
                 self.fe.set_server_info_list(servers).await?;
                         
-                succeed!((),)
+                succeed!(())
             },
             None => fail!("database has already been initialized".to_string()),
         }
+    }
+
+    /// Store a new user with `user_name`.
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn register_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
+        // read current user map
+        let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
+        if user_map.get(user_name).is_some() {
+            return fail!("user has already registered".to_string());
+        }
+
+        // register the new user
+        let user = user::EmuNetUser::new(&user_name);
+        user_map.insert(user_name.to_string(), user);
+        
+        // sync update in the db
+        self.fe.set_user_map(user_map).await?;
+        
+        succeed!(())
     }
 }
 
