@@ -176,8 +176,6 @@ impl Client {
             true => succeed!(()),
         }
     }
-
-
 }
 
 /// The launcher that runs the client in a closure. 
