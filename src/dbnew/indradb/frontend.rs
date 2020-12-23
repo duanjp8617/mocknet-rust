@@ -9,7 +9,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use crate::dbnew::errors::BackendError;
 use crate::emunet::{server, user};
-use super::CORE_INFO_ID;
+use crate::dbnew::CORE_INFO_ID;
 use super::message_queue;
 use super::message::{Request, Response};
 

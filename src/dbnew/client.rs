@@ -11,15 +11,16 @@ use super::indradb::Backend as IndradbBackend;
 use super::indradb::build_backend_fut;
 use super::indradb::message_queue;
 // use super::backend::build_backend_fut;
-// use crate::emunet::{server, net};
+use crate::emunet::{server, user};
 // use super::message::{Request, Response};
 // use super::message_queue;
-// use super::ClientError;
-// use super::errors::BackendError;
-// use super::QueryResult;
+use super::ClientError;
+use super::errors::BackendError;
 // use super::request::{self};
-
 use super::indradb::Frontend as IndradbFrontend;
+use super::CORE_INFO_ID;
+
+type QueryResult<T> = Result<T, String>;
 
 /// The database client that stores core mocknet information.
 pub struct Client {
@@ -30,6 +31,45 @@ impl Clone for Client {
     fn clone(&self) -> Self {
         Self {
             fe: self.fe.clone()
+        }
+    }
+}
+
+macro_rules! succeed {
+    ($($arg: expr,)+) => {
+         Ok(Ok( $($arg,)+ ))
+     }
+}
+
+macro_rules! fail {
+    ($s: expr) => {
+        Ok(Err($s))
+    }
+}
+
+impl Client {
+    /// Initilize a table for storing core information of the mocknet database.
+    /// 
+    /// `servers` stores information about backend servers for launching containers.
+    /// 
+    /// Interpretation of return values:
+    /// Ok(Ok(())) means successful initialization.
+    /// Ok(Err(s)) means the database has been initialized, and `s` is the error message.
+    /// Err(e) means fatal errors occur, the errors include disconnection with backend servers and 
+    /// dropping backend worker (though the second error si unlikely to occur.)
+    pub async fn init(&self, servers: Vec<server::ServerInfo>) -> Result<QueryResult<()>, ClientError> {
+        let res = self.fe.create_vertex(Some(CORE_INFO_ID.clone())).await?;
+        match res {
+            Some(_) => {
+                // initialize user map
+                self.fe.set_user_map(HashMap::<String, user::EmuNetUser>::new()).await?;
+
+                // initialize server list                
+                self.fe.set_server_info_list(servers).await?;
+                        
+                succeed!((),)
+            },
+            None => fail!("database has already been initialized".to_string()),
         }
     }
 }
