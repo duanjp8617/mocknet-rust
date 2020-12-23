@@ -7,8 +7,8 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use uuid::Uuid;
 
-use super::indradb::backend::IndradbClientBackend;
-use super::indradb::backend::build_backend_fut;
+use super::indradb::Backend as IndradbBackend;
+use super::indradb::build_backend_fut;
 use super::indradb::message_queue;
 // use super::backend::build_backend_fut;
 // use crate::emunet::{server, net};
@@ -19,11 +19,11 @@ use super::indradb::message_queue;
 // use super::QueryResult;
 // use super::request::{self};
 
-use super::indradb::frontend::FrontEnd;
+use super::indradb::Frontend as IndradbFrontend;
 
 /// The database client that stores core mocknet information.
 pub struct Client {
-    fe: FrontEnd,
+    fe: IndradbFrontend,
 }
 
 impl Clone for Client {
@@ -72,7 +72,7 @@ impl ClientLauncher {
             // create client_backend
             let indradb_capnp_client = capnp_rpc_system.bootstrap(Side::Server);
             let disconnector = capnp_rpc_system.get_disconnector();
-            let indradb_client_backend = IndradbClientBackend::new(indradb_capnp_client, disconnector);
+            let indradb_client_backend = IndradbBackend::new(indradb_capnp_client, disconnector);
     
             // run rpc_system
             tokio::task::spawn_local(async move {
@@ -87,7 +87,7 @@ impl ClientLauncher {
 
         // launch the backend task to run entry function
         let client = Client {
-            fe: FrontEnd::new(sender)
+            fe: IndradbFrontend::new(sender)
         };
         let entry_fn_jh = tokio::spawn(entry_fn(client));
 

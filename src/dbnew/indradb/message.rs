@@ -1,8 +1,8 @@
-use indradb::{Vertex, VertexQuery, VertexPropertyQuery, VertexProperty};
+use indradb::{Vertex, VertexQuery};
+use indradb::{VertexProperty, VertexPropertyQuery};
 
 #[derive(Clone)]
 pub enum Request {
-    Init,
     AsyncCreateVertex(Vertex),
     AsyncGetVertices(VertexQuery),
     AsyncGetVertexProperties(VertexPropertyQuery),
@@ -11,7 +11,6 @@ pub enum Request {
 
 #[derive(Clone)]
 pub enum Response {
-    Init,
     AsyncCreateVertex(bool),
     AsyncGetVertices(Vec<Vertex>),
     AsyncGetVertexProperties(Vec<VertexProperty>),

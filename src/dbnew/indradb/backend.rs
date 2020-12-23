@@ -1,33 +1,22 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
-use std::collections::HashMap;
 
 use capnp_rpc::rpc_twoparty_capnp::Side;
-use indradb::{SpecificVertexQuery, VertexQueryExt, VertexQuery};
-use indradb::{Vertex, VertexPropertyQuery, VertexProperty};
-use uuid::Uuid;
-use serde::{de::DeserializeOwned, Serialize};
+use indradb::{Vertex, VertexQuery};
+use indradb::{VertexProperty, VertexPropertyQuery};
 use capnp::Error as CapnpError;
+
 use super::indradb_util::ClientTransaction;
-
-// use crate::database::message_queue::{Queue};
-// use crate::database::message::{Request, Response};
-// use super::indradb_util::ClientTransaction;
-// use crate::database::errors::{BackendError};
-// use crate::database::CORE_INFO_ID;
-// use crate::emunet::{server, user};
-
 use super::message_queue::Queue;
 use super::message::{Request, Response};
-
 use crate::dbnew::errors::BackendError;
 
-pub struct IndradbClientBackend {
+pub struct Backend {
     tran_worker: crate::autogen::service::Client,
     disconnector: capnp_rpc::Disconnector<Side>,
 }
 
-impl IndradbClientBackend {
+impl Backend {
     pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
         Self{
             tran_worker: client, 
@@ -49,7 +38,7 @@ macro_rules! transaction_wrapper {
     }
 }
 
-impl IndradbClientBackend {
+impl Backend {
     transaction_wrapper!(async_create_vertex, v: &Vertex, => bool);
     transaction_wrapper!(async_get_vertices, q: VertexQuery,  => Vec<Vertex>);
     transaction_wrapper!(async_get_vertex_properties, q: VertexPropertyQuery, => Vec<VertexProperty>);
@@ -57,9 +46,6 @@ impl IndradbClientBackend {
 
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
-            Request::Init => {
-                Ok(Response::Init)
-            },
             Request::AsyncCreateVertex(v) => {
                 Ok(Response::AsyncCreateVertex(self.async_create_vertex(&v).await?))
             },
@@ -76,7 +62,7 @@ impl IndradbClientBackend {
     }
 }
 
-pub fn build_backend_fut(backend: IndradbClientBackend, mut queue: Queue<Request, Response, BackendError>) 
+pub fn build_backend_fut(backend: Backend, mut queue: Queue<Request, Response, BackendError>) 
     -> impl Future<Output = Result<(), BackendError>> + 'static 
 {
     fn drain_queue(mut queue: Queue<Request, Response, BackendError>) {
