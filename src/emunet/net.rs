@@ -5,14 +5,41 @@ use uuid::Uuid;
 
 use super::server::{ContainerServer};
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-struct VDevice {
-    id: u64,
+#[derive(Deserialize, Serialize)]
+pub struct VertexInfo {
+    id: u64, // client side vertex id in the form of u64
+    description: String, // a description string to hold the place
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-struct Vlink {
-    edge_id: (u64, u64)
+impl VertexInfo {
+    pub fn id(&self) -> u64 {
+        return self.id;
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct EdgeInfo {
+    edge_id: (u64, u64), // client side edge id in the form of (u64, u64)
+    description: String, // a description string to hold the place
+}
+
+impl EdgeInfo {
+    pub fn edge_id(&self) -> (u64, u64) {
+        return self.edge_id;
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Vertex {
+    info: VertexInfo,
+    uuid: uuid::Uuid,
+    server_uuid: uuid::Uuid, // which server this vertex is launched on
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Edge {
+    info: EdgeInfo,
+    edge_uuid: (uuid::Uuid, uuid::Uuid), // out-going vertex -> incoming vertex
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -72,5 +99,9 @@ impl EmuNet {
     // modifying the state of the EmuNet
     pub fn state(&self) -> EmuNetState {
         self.state.clone()
+    }
+
+    pub fn working(&mut self) {
+        self.state = EmuNetState::Working;
     }
 }
