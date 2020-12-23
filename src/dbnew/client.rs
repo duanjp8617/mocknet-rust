@@ -138,6 +138,46 @@ impl Client {
 
         succeed!(emu_net_id)
     }
+
+    /// List all the emunet of a user.
+    /// 
+    /// Note: I don't know if this is necessary
+    pub async fn list_emu_net_uuid(&self, user: String) -> Result<QueryResult<HashMap<String, Uuid>>, ClientError> {
+        // get user
+        let user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
+        if !user_map.contains_key(&user) {
+            return fail!("invalid user name".to_string());
+        }
+        let user = user_map.get(&user).unwrap();
+        
+        succeed!(user.get_all_emu_nets())
+    }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn get_emu_net(&self, uuid: Uuid) -> Result<QueryResult<net::EmuNet>, ClientError> {
+        let res = self.fe.get_vertex_json_value(uuid, "default").await?;
+        match res {
+            None => fail!("emunet not exist".to_string()),
+            Some(jv) => succeed!(serde_json::from_value(jv).unwrap()),
+        }
+    }
+
+    /// Get the emunet from an uuid.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
+        let uuid = emu_net.get_uuid().clone();
+        let jv = serde_json::to_value(emu_net).unwrap();
+        let res = self.fe.set_vertex_json_value(uuid, "default", jv).await?;
+        match res {
+            false => fail!("EmuNet not exist".to_string()),
+            true => succeed!(()),
+        }
+    }
+
+
 }
 
 /// The launcher that runs the client in a closure. 
