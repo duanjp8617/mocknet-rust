@@ -11,7 +11,7 @@ use super::indradb::Backend as IndradbBackend;
 use super::indradb::build_backend_fut;
 use super::indradb::message_queue;
 // use super::backend::build_backend_fut;
-use crate::emunet::{server, user};
+use crate::emunet::{server, user, net};
 // use super::message::{Request, Response};
 // use super::message_queue;
 use super::ClientError;
@@ -92,6 +92,51 @@ impl Client {
         self.fe.set_user_map(user_map).await?;
         
         succeed!(())
+    }
+
+
+    /// Create a new emulation net for `user` with `name` and `capacity`.
+    /// 
+    /// Return value has similar meaning as `Client::init`.
+    pub async fn create_emu_net(&self, user: String, net: String, capacity: u32) -> Result<QueryResult<Uuid>, ClientError> {
+        // get the user
+        let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
+        if user_map.get(&user).is_none() {
+            return fail!("invalid user name".to_string());
+        }
+        let user_mut = user_map.get_mut(&user).unwrap();
+
+        // check whether the emunet has existed
+        if user_mut.emu_net_exist(&net) {
+            return fail!("invalid emu-net name".to_string())
+        }
+
+        // get the allocation of servers
+        let server_info_list: Vec<server::ServerInfo> = self.fe.get_server_info_list().await?;
+        let mut sp = server::ServerInfoList::from_iterator(server_info_list.into_iter()).unwrap();
+        let allocation = match sp.allocate_servers(capacity) {
+            Some(alloc) => alloc,
+            None => return fail!("invalid capacity".to_string()),
+        };
+        self.fe.set_server_info_list(sp.into_vec()).await?;
+        
+        // create a new emu net node
+        let emu_net_id = self.fe.create_vertex(None).await?.expect("vertex ID already exists");
+        // create a new emu net
+        let mut emu_net = net::EmuNet::new(net.clone(), emu_net_id.clone(), capacity);
+        emu_net.add_servers(allocation);
+        // initialize the EmuNet in the database
+        let jv = serde_json::to_value(emu_net).unwrap();
+        let res = self.fe.set_vertex_json_value(emu_net_id, "default", jv).await?;
+        if !res {
+            panic!("vertex not exist");
+        }
+
+        // add the new emunet to user map
+        user_mut.add_emu_net(net, emu_net_id.clone());
+        self.fe.set_user_map(user_map).await?;
+
+        succeed!(emu_net_id)
     }
 }
 
