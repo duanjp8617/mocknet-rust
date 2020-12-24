@@ -4,9 +4,11 @@ use std::future::Future;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
+use indradb::BulkInsertItem;
 use capnp::Error as CapnpError;
 
 use super::indradb_util::ClientTransaction;
+use super::indradb_util::converters;
 use super::message_queue::Queue;
 use super::message::{Request, Response};
 use crate::dbnew::errors::BackendError;
@@ -44,6 +46,15 @@ impl Backend {
     transaction_wrapper!(async_get_vertex_properties, q: VertexPropertyQuery, => Vec<VertexProperty>);
     transaction_wrapper!(async_set_vertex_properties, q: VertexPropertyQuery, value: &serde_json::Value, => ());
 
+    async fn async_bulk_insert(&self, qs: Vec<BulkInsertItem>) -> Result<(), CapnpError> {
+        let mut req = self.tran_worker.bulk_insert_request();
+        converters::from_bulk_insert_items(&qs, req.get().init_items(qs.len() as u32)).unwrap();
+
+        let res = req.send().promise.await?;
+        res.get()?;
+        Ok(())
+    }
+
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
             Request::AsyncCreateVertex(v) => {
@@ -57,6 +68,9 @@ impl Backend {
             },
             Request::AsyncSetVertexProperties(q, value) => {
                 Ok(Response::AsyncSetVertexProperties(self.async_set_vertex_properties(q, &value).await?))
+            },
+            Request::AsyncBulkInsert(qs) => {
+                Ok(Response::AsyncBulkInsert(self.async_bulk_insert(qs).await?))
             }
         }
     }

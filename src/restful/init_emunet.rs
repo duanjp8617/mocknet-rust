@@ -54,6 +54,8 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         )
     }).collect();
 
+
+
     // prepare the list of bulk insert items
     let mut bulk_vertexes: Vec<indradb::BulkInsertItem> = Vec::new();
     let _: Vec<()> = vertexes.iter().map(|v| {

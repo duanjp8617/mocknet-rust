@@ -6,12 +6,46 @@ use capnp::Error as CapnpError;
 use uuid::Uuid;
 use serde_json::value::Value as JsonValue;
 
-mod converters {
+pub mod converters {
     use crate::autogen;
     use std::fmt::Display;
     use uuid::Uuid;
     use capnp::Error as CapnpError;
     use chrono::{TimeZone, Utc};
+
+    pub fn from_bulk_insert_items<'a>(
+        items: &[indradb::BulkInsertItem],
+        mut builder: capnp::struct_list::Builder<'a, autogen::bulk_insert_item::Owned>,
+    ) -> Result<(), CapnpError> {
+        for (i, item) in items.iter().enumerate() {
+            let builder = builder.reborrow().get(i as u32);
+    
+            match item {
+                indradb::BulkInsertItem::Vertex(vertex) => {
+                    let builder = builder.init_vertex();
+                    from_vertex(vertex, builder.get_vertex()?);
+                }
+                indradb::BulkInsertItem::Edge(edge) => {
+                    let builder = builder.init_edge();
+                    from_edge_key(edge, builder.get_key()?);
+                }
+                indradb::BulkInsertItem::VertexProperty(id, name, value) => {
+                    let mut builder = builder.init_vertex_property();
+                    builder.set_id(id.as_bytes());
+                    builder.set_name(name);
+                    builder.set_value(&value.to_string());
+                }
+                indradb::BulkInsertItem::EdgeProperty(key, name, value) => {
+                    let mut builder = builder.init_edge_property();
+                    builder.set_name(name);
+                    builder.set_value(&value.to_string());
+                    from_edge_key(key, builder.get_key()?);
+                }
+            }
+        }
+    
+        Ok(())
+    }
 
     pub fn from_vertex<'a>(vertex: &indradb::Vertex, mut builder: autogen::vertex::Builder<'a>) {
         builder.set_id(vertex.id.as_bytes());

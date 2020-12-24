@@ -33,6 +33,10 @@ where
 
 {
     pub fn from_vecs(vertexes: Vec<(Vid, Vertex)>, edges: Vec<(EdgeId<Vid>, Edge)>) -> Result<Self> {
+        if vertexes.len() == 0 {
+            return Err("no vertexes".to_string());
+        }
+
         let mut vertex_map = HashMap::new();
         let insert_res: Result<Vec<_>> = vertexes.into_iter().map(|(vid, v)| {
             // insert vertex into map, report error on id collision

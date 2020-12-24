@@ -1,5 +1,6 @@
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
+use indradb::BulkInsertItem;
 
 #[derive(Clone)]
 pub enum Request {
@@ -7,6 +8,7 @@ pub enum Request {
     AsyncGetVertices(VertexQuery),
     AsyncGetVertexProperties(VertexPropertyQuery),
     AsyncSetVertexProperties(VertexPropertyQuery, serde_json::Value),
+    AsyncBulkInsert(Vec<BulkInsertItem>),
 }
 
 #[derive(Clone)]
@@ -15,4 +17,5 @@ pub enum Response {
     AsyncGetVertices(Vec<Vertex>),
     AsyncGetVertexProperties(Vec<VertexProperty>),
     AsyncSetVertexProperties(()),
+    AsyncBulkInsert(()),
 }

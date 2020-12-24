@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
+use indradb::BulkInsertItem;
 use indradb::{SpecificVertexQuery, VertexQueryExt};
 use indradb::Type;
 use uuid::Uuid;
@@ -101,6 +102,15 @@ impl Frontend {
         let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
         self.async_set_vertex_properties(q, json).await?;
         Ok(true)
+    }
+
+    // perform a bulk insertion
+    pub async fn bulk_insert(&self, qs: Vec<BulkInsertItem>) -> Result<(), BackendError> {
+        let res = self.sender.send(Request::AsyncBulkInsert(qs)).await?;
+        match res {
+            Response::AsyncBulkInsert(()) => Ok(()),
+            _ => panic!("invalid response!")
+        }
     }
 }
 
