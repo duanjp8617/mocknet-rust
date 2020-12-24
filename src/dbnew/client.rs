@@ -6,6 +6,7 @@ use futures::AsyncReadExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use uuid::Uuid;
+use indradb::{BulkInsertItem, Vertex, EdgeKey, Type};
 
 use super::indradb::Backend as IndradbBackend;
 use super::indradb::build_backend_fut;
@@ -175,6 +176,77 @@ impl Client {
             false => fail!("EmuNet not exist".to_string()),
             true => succeed!(()),
         }
+    }
+
+    /// Create a bulk of vertexes from a vector of vertex uuids.
+    /// 
+    /// Note, we assume this method to be never fail. 
+    /// However, if there is an uuid collision, this method can still finish without 
+    /// returning useful error messages. 
+    /// Consider repairing this in the future?
+    pub async fn bulk_create_vertexes(&self, vertexes: Vec<Uuid>) -> Result<QueryResult<()>, ClientError> {
+        let qs: Vec<BulkInsertItem> = vertexes.into_iter().fold(Vec::new(), |mut qs, uuid| {
+            let v = Vertex::with_id(uuid, Type::new("t").unwrap());
+            qs.push(BulkInsertItem::Vertex(v));
+            qs
+        });
+
+        self.fe.bulk_insert(qs).await?;
+        succeed!(())
+    }
+
+    /// Create a bulk of edges from a vector of edge ids.
+    /// 
+    /// Note, we assume this method to be never fail. 
+    /// However, if there is an uuid collision, this method can still finish without 
+    /// returning useful error messages. 
+    /// Consider repairing this in the future?
+    pub async fn bulk_create_edges(&self, edges: Vec<(Uuid, Uuid)>) -> Result<QueryResult<()>, ClientError> {
+        let qs: Vec<BulkInsertItem> = edges.into_iter().fold(Vec::new(), |mut qs, edge_id| {
+            let edge_key = EdgeKey::new(edge_id.0, Type::new("t").unwrap(), edge_id.1);
+            qs.push(BulkInsertItem::Edge(edge_key));
+            qs
+        });
+
+        self.fe.bulk_insert(qs).await?;
+        succeed!(())
+    }
+
+    /// Set properties for all the vertexes from the list.
+    /// 
+    /// Note, we assume this method to be never fail. 
+    /// However, if a particular vertex is not created in the datbase, this method can still finish without 
+    /// returning useful error messages. 
+    /// Consider repairing this in the future?
+    pub async fn bulk_set_vertex_properties(&self, vertex_properties: Vec<(Uuid, serde_json::Value)>) 
+    -> Result<QueryResult<()>, ClientError> 
+    {
+        let qs: Vec<BulkInsertItem> = vertex_properties.into_iter().fold(Vec::new(), |mut qs, vertex_property| {            
+            qs.push(BulkInsertItem::VertexProperty(vertex_property.0, "default".to_string(), vertex_property.1));
+            qs
+        });
+
+        self.fe.bulk_insert(qs).await?;
+        succeed!(())
+    }
+
+    /// Set properties for all the edges from the list.
+    /// 
+    /// Note, we assume this method to be never fail. 
+    /// However, if a particular edge is not created in the datbase, this method can still finish without 
+    /// returning useful error messages. 
+    /// Consider repairing this in the future?
+    pub async fn bulk_set_edge_properties(&self, edge_properties: Vec<((Uuid, Uuid), serde_json::Value)>) 
+    -> Result<QueryResult<()>, ClientError> 
+    {
+        let qs: Vec<BulkInsertItem> = edge_properties.into_iter().fold(Vec::new(), |mut qs, edge_property| {            
+            let edge_key = EdgeKey::new((edge_property.0).0, Type::new("t").unwrap(), (edge_property.0).1);
+            qs.push(BulkInsertItem::EdgeProperty(edge_key, "default".to_string(), edge_property.1));
+            qs
+        });
+
+        self.fe.bulk_insert(qs).await?;
+        succeed!(())
     }
 }
 
