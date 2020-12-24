@@ -4,6 +4,7 @@ use warp::{http, Filter};
 use warp::reply::with_status;
 use http::StatusCode;
 use serde::Deserialize;
+use tokio::time;
 
 use crate::dbnew::{Client};
 use crate::emunet::net::*;
@@ -27,7 +28,7 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     let res = network_graph.partition(emunet.servers_mut());
     if res.is_err() {
         // set the state of the emunet to fail
-        emunet.Error(EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err())));
+        emunet.error(EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err())));
         
         // store the state in the database, panic the server program on failure
         let res = client.set_emu_net(emunet).await.unwrap();
@@ -54,26 +55,58 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         )
     }).collect();
 
+    // create the vertexes
+    let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect()).await;
+    match res {
+        Ok(_) => {},
+        Err(err) => {
+            // set the state of the emunet to fail
+            emunet.error(EmuNetError::DatabaseFail(format!("{:?}", err)));
+            
+            // store the state in the database, panic the server program on failure
+            let res = client.set_emu_net(emunet).await.unwrap();
+            if res.is_err() {
+                panic!("this should never happen");
+            }
 
+            return;
+        }
+    };
 
-    // prepare the list of bulk insert items
-    let mut bulk_vertexes: Vec<indradb::BulkInsertItem> = Vec::new();
-    let _: Vec<()> = vertexes.iter().map(|v| {
-        let uuid = v.uuid();
-        emunet.add_vertex_assignment(v.id(), uuid.clone());
-        let vertex = indradb::Vertex::with_id(uuid, indradb::Type::new("t").unwrap());
-        bulk_vertexes.push(indradb::BulkInsertItem::Vertex(vertex));
-    }).collect();
-    // insert the bulk vertexes into the fucking database
+    // set the vertex properties
+    let res = client.bulk_set_vertex_properties(vertexes.iter().map(
+        |v| {
+            (v.uuid(), serde_json::to_value(v.clone()).unwrap())
+        }
+    ).collect()).await;
+    match res {
+        Ok(_) => {},
+        Err(err) => {
+            // set the state of the emunet to fail
+            emunet.error(EmuNetError::DatabaseFail(format!("{:?}", err)));
+            
+            // store the state in the database, panic the server program on failure
+            let res = client.set_emu_net(emunet).await.unwrap();
+            if res.is_err() {
+                panic!("this should never happen");
+            }
 
-    let mut bulk_vertex_properties: Vec<indradb::BulkInsertItem> = Vec::new();
-    let _: Vec<()> = vertexes.into_iter().map(|v|{
-        let uuid = v.uuid();
-        let json_value = serde_json::to_value(v).unwrap();
-        bulk_vertex_properties.push(indradb::BulkInsertItem::VertexProperty(uuid, "default".to_string(), json_value));
-    }).collect();
-    // insert the bulk vertexes into the database
-    
+            return;
+        }
+    };
+
+    // emulate the background task of launching containers and creating connections
+    time::delay_for(time::Duration::new(5,0)).await;
+    // potentially perform an update on the vertexes
+
+    // set the state of the emunet to fail
+    emunet.normal();
+            
+    // store the state in the database, panic the server program on failure
+    let res = client.set_emu_net(emunet).await.unwrap();
+    if res.is_err() {
+        panic!("this should never happen");
+    }
 }
 
 // path/create_emunet/

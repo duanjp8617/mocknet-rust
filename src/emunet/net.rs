@@ -65,6 +65,7 @@ impl Edge {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum EmuNetError {
     PartitionFail(String),
+    DatabaseFail(String),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -130,7 +131,11 @@ impl EmuNet {
         self.state = EmuNetState::Working;
     }
 
-    pub fn Error(&mut self, reason: EmuNetError) {
+    pub fn error(&mut self, reason: EmuNetError) {
         self.state = EmuNetState::Error(reason);
+    }
+
+    pub fn normal(&mut self) {
+        self.state = EmuNetState::Normal;
     }
 }
