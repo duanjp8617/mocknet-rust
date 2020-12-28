@@ -1,2 +1,3 @@
 1. Implement the new graph storage system, we only store a HashTable of vertexes, each mapping the user id to
 vertex uuid.
+2. define a new function in init_emunet.rs to simplify error handling

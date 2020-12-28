@@ -23,20 +23,22 @@ use crate::algo::Partition;
 //     "links": [],
 // }'
 
+async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
+    emunet.error(err);
+    // store the error state in the database, panic the server program on failure
+    let res = client.set_emu_net(emunet).await.expect("this should not happen");
+    if res.is_err() {
+        panic!("this should never happen");
+    }
+}
+
 async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo,EdgeInfo>) {
     // do the allocation
     let res = network_graph.partition(emunet.servers_mut());
     if res.is_err() {
         // set the state of the emunet to fail
-        emunet.error(EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err())));
-        
-        // store the state in the database, panic the server program on failure
-        let res = client.set_emu_net(emunet).await.unwrap();
-        if res.is_err() {
-            panic!("this should never happen");
-        }
-        
-        // quit the background task
+        let err = EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err()));
+        emunet_error(client, emunet, err).await;
         return;
     }
 
@@ -65,14 +67,8 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         Ok(_) => {},
         Err(err) => {
             // set the state of the emunet to fail
-            emunet.error(EmuNetError::DatabaseFail(format!("{:?}", err)));
-            
-            // store the state in the database, panic the server program on failure
-            let res = client.set_emu_net(emunet).await.unwrap();
-            if res.is_err() {
-                panic!("this should never happen");
-            }
-
+            let err = EmuNetError::DatabaseFail(format!("{:?}", err));
+            emunet_error(client, emunet, err).await;
             return;
         }
     };
@@ -87,14 +83,8 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         Ok(_) => {},
         Err(err) => {
             // set the state of the emunet to fail
-            emunet.error(EmuNetError::DatabaseFail(format!("{:?}", err)));
-            
-            // store the state in the database, panic the server program on failure
-            let res = client.set_emu_net(emunet).await.unwrap();
-            if res.is_err() {
-                panic!("this should never happen");
-            }
-
+            let err = EmuNetError::DatabaseFail(format!("{:?}", err));
+            emunet_error(client, emunet, err).await;
             return;
         }
     };
