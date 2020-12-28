@@ -54,6 +54,10 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
             assignment.get(&client_id).unwrap().clone()
         )
     }).collect();
+    // Save the current vertex mapping from the client-side id to backend uuid
+    let vertex_mapping: Vec<(u64, uuid::Uuid)> = vertexes.iter().map(|v|{
+        (v.id(), v.uuid())
+    }).collect();
 
     // create the vertexes
     let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect()).await;
@@ -101,6 +105,11 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
 
     // set the state of the emunet to fail
     emunet.normal();
+    // store the vertex mappings in to the emunet
+    vertex_mapping.into_iter().fold(&mut emunet, |emunet, mapping| {
+        emunet.add_vertex_assignment(mapping.0, mapping.1);
+        emunet
+    });
             
     // store the state in the database, panic the server program on failure
     let res = client.set_emu_net(emunet).await.unwrap();
