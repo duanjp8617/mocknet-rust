@@ -62,7 +62,7 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     }).collect();
 
     // create the vertexes
-    let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect()).await;
+    let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect(), emunet.vertex_type()).await;
     match res {
         Ok(_) => {},
         Err(err) => {

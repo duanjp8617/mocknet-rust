@@ -78,6 +78,7 @@ pub enum EmuNetState {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct EmuNet {
+    user: String,
     name: String,
     uuid: Uuid,
     capacity: u32,
@@ -87,8 +88,9 @@ pub struct EmuNet {
 }
 
 impl EmuNet {
-    pub fn new(name: String, uuid: Uuid, capacity: u32) -> Self {
+    pub fn new(user: String, name: String, uuid: Uuid, capacity: u32) -> Self {
         Self {
+            user,
             name,
             uuid,
             capacity,
@@ -118,6 +120,10 @@ impl EmuNet {
 
     pub fn add_vertex_assignment(&mut self, vertex_client_id: u64, vertex_uuid: Uuid) {
         self.vertex_map.insert(vertex_client_id, vertex_uuid);
+    }
+
+    pub fn vertex_type(&self) -> String {
+        format!("{}.{}", &self.user, &self.name)
     }
 }
 

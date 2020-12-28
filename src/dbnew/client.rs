@@ -124,7 +124,7 @@ impl Client {
         // create a new emu net node
         let emu_net_id = self.fe.create_vertex(None).await?.expect("vertex ID already exists");
         // create a new emu net
-        let mut emu_net = net::EmuNet::new(net.clone(), emu_net_id.clone(), capacity);
+        let mut emu_net = net::EmuNet::new(user, net.clone(), emu_net_id.clone(), capacity);
         emu_net.add_servers(allocation);
         // initialize the EmuNet in the database
         let jv = serde_json::to_value(emu_net).unwrap();
@@ -184,9 +184,9 @@ impl Client {
     /// However, if there is an uuid collision, this method can still finish without 
     /// returning useful error messages. 
     /// Consider repairing this in the future?
-    pub async fn bulk_create_vertexes(&self, vertexes: Vec<Uuid>) -> Result<QueryResult<()>, ClientError> {
+    pub async fn bulk_create_vertexes(&self, vertexes: Vec<Uuid>, t: String) -> Result<QueryResult<()>, ClientError> {
         let qs: Vec<BulkInsertItem> = vertexes.into_iter().fold(Vec::new(), |mut qs, uuid| {
-            let v = Vertex::with_id(uuid, Type::new("t").unwrap());
+            let v = Vertex::with_id(uuid, Type::new(&t).unwrap());
             qs.push(BulkInsertItem::Vertex(v));
             qs
         });
