@@ -25,7 +25,11 @@ pub struct EdgeInfo {
 
 impl EdgeInfo {
     pub fn edge_id(&self) -> (u64, u64) {
-        return self.edge_id;
+        self.edge_id
+    }
+
+    pub fn description(&self) -> String {
+        self.description.clone()
     }
 }
 
@@ -34,11 +38,15 @@ pub struct Vertex {
     info: VertexInfo,
     uuid: uuid::Uuid,
     server_uuid: uuid::Uuid, // which server this vertex is launched on
+    edges: HashMap<uuid::Uuid, Edge>
 }
 
 impl Vertex {
     pub fn new(info: VertexInfo, uuid: uuid::Uuid, server_uuid: uuid::Uuid) -> Self {
-        Self{info, uuid, server_uuid}
+        Self{
+            info, uuid, server_uuid, 
+            edges: HashMap::new()
+        }
     }
 
     pub fn id(&self) -> u64 {
@@ -48,17 +56,28 @@ impl Vertex {
     pub fn uuid(&self) -> uuid::Uuid {
         return self.uuid.clone()
     }
+
+    pub fn add_edge(&mut self, edge: Edge) -> Result<(), String> {
+        // valid the edge
+        if self.uuid() != edge.edge_uuid.0 || self.edges.contains_key(&edge.edge_uuid.1) {
+            return Err("invalid edge id".to_string());
+        }
+        if self.edges.insert(edge.edge_uuid.1.clone(), edge).is_some() {
+            panic!("fatal!".to_string());
+        }
+        Ok(())
+    }
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct Edge {
-    info: EdgeInfo,
     edge_uuid: (uuid::Uuid, uuid::Uuid), // out-going vertex -> incoming vertex
+    description: String,
 }
 
 impl Edge {
-    pub fn new(info: EdgeInfo, edge_uuid: (uuid::Uuid, uuid::Uuid)) -> Self {
-        Self{info, edge_uuid}
+    pub fn new(edge_uuid: (uuid::Uuid, uuid::Uuid), description: String) -> Self {
+        Self{edge_uuid, description}
     }
 }
 
@@ -118,7 +137,7 @@ impl EmuNet {
         &self.uuid
     }
 
-    pub fn add_vertex_assignment(&mut self, vertex_client_id: u64, vertex_uuid: Uuid) {
+    pub fn add_vertex(&mut self, vertex_client_id: u64, vertex_uuid: Uuid) {
         self.vertex_map.insert(vertex_client_id, vertex_uuid);
     }
 

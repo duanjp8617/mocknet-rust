@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use warp::{http, Filter};
 use warp::reply::with_status;
@@ -42,24 +42,47 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         return;
     }
 
-    // acquire the partition result
+    // acquire the partition result, which assigns each vertex to a server
     let assignment = res.unwrap();
     // get the lists of vertex_info and edge_info
     let (vertex_infos, edge_infos) = network_graph.into();
 
-    // build up the list of vertexes
-    let vertexes: Vec<Vertex> = vertex_infos.into_iter().map(|vi| {
+    // create a vertex id to uuid map
+    let id_map: HashMap<u64, uuid::Uuid> = vertex_infos.iter().fold(HashMap::new(), |mut map, vi| {
+        if map.insert(vi.id(), indradb::util::generate_uuid_v1()).is_some() {
+            panic!("fatal".to_string());
+        }
+        map
+    });
+
+    // build up a map from the client-side id to the vertex
+    let mut vertexes_map: HashMap<u64, Vertex> = vertex_infos.into_iter().fold(HashMap::new(), |mut map, vi| {
         let client_id = vi.id();
-        Vertex::new(
+        let v = Vertex::new(
             vi, 
-            indradb::util::generate_uuid_v1(), 
+            id_map.get(&client_id).unwrap().clone(), 
             assignment.get(&client_id).unwrap().clone()
-        )
+        );
+        if map.insert(client_id, v).is_some() {
+            panic!("fatal".to_string());
+        }
+        map
+    });
+    // insert the edges into the vertexes
+    let _: Vec<_> = edge_infos.into_iter().map(|ei| {
+        let e_id = ei.edge_id();
+        let e_uuid = (id_map.get(&e_id.0).unwrap().clone(), id_map.get(&e_id.1).unwrap().clone());
+        let vertex_mut = vertexes_map.get_mut(&e_id.0).unwrap();
+        
+        let edge = Edge::new(e_uuid, ei.description());
+
+        vertex_mut.add_edge(edge).unwrap();
     }).collect();
-    // Save the current vertex mapping from the client-side id to backend uuid
-    let vertex_mapping: Vec<(u64, uuid::Uuid)> = vertexes.iter().map(|v|{
-        (v.id(), v.uuid())
-    }).collect();
+    // convert the vertexes_map back into a list of vertexes
+    let vertexes = vertexes_map.into_iter().fold(Vec::new(), |mut vec, (_, v)| {
+        vec.push(v);
+        vec
+    });
 
     // create the vertexes
     let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect(), emunet.vertex_type()).await;
@@ -74,11 +97,13 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     };
 
     // set the vertex properties
-    let res = client.bulk_set_vertex_properties(vertexes.iter().map(
-        |v| {
-            (v.uuid(), serde_json::to_value(v.clone()).unwrap())
-        }
-    ).collect()).await;
+    let res = client.bulk_set_vertex_properties(
+        vertexes.iter().map(
+            |v| {
+                (v.uuid(), serde_json::to_value(v.clone()).unwrap())
+            }
+        ).collect()
+    ).await;
     match res {
         Ok(_) => {},
         Err(err) => {
@@ -96,8 +121,8 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     // set the state of the emunet to fail
     emunet.normal();
     // store the vertex mappings in to the emunet
-    vertex_mapping.into_iter().fold(&mut emunet, |emunet, mapping| {
-        emunet.add_vertex_assignment(mapping.0, mapping.1);
+    id_map.into_iter().fold(&mut emunet, |emunet, mapping| {
+        emunet.add_vertex(mapping.0, mapping.1);
         emunet
     });
             
