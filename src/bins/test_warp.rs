@@ -1,6 +1,8 @@
 use std::net::ToSocketAddrs;
+use std::io::{Error, ErrorKind};
 
 use warp::Filter;
+use tokio::time::{timeout, Duration};
 
 use mocknet::dbnew::{self};
 use mocknet::emunet::server;
@@ -9,22 +11,45 @@ use mocknet::restful::{*};
 use mocknet::algo::in_memory_graph::{InMemoryGraph};
 use mocknet::algo::Partition;
 
+const LOCAL_ADDR: [u32; 4] = [127, 0, 0, 1];
+const LOCAL_PORT: u32 = 3030;
+
+const DB_ADDR: [u32; 4] = [127, 0, 0, 1];
+const DB_PORT: u32 = 27615;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
-    let addr = "172.16.30.173:27615"
+    // build up the database address
+    let db_addr_str = DB_ADDR.iter().enumerate().fold(String::new(), |mut s, (idx, part)| {
+        if idx < DB_ADDR.len()-1 {
+            s = s + &format!("{}.", part);
+        }
+        else {
+            s = s + &format!("{}:{}", part, DB_PORT);
+        }
+        s
+    });
+    println!("{}", &db_addr_str);
+    let db_addr = &db_addr_str
         .to_socket_addrs()
         .unwrap()
         .next()
         .expect("could not parse address");
 
-    let launcher = match dbnew::ClientLauncher::connect(&addr).await {
-        Ok(l) => l,
-        Err(e) => return Err(Box::new(e) as Box<dyn std::error::Error + Send>),
-    };
+    // create the database launcher
+    let res = timeout(Duration::from_secs(2), dbnew::ClientLauncher::connect(&db_addr)).await.map_err(|_| {
+        let err_msg: &str = &format!("connection to {} timeout", &db_addr_str);
+        Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>
+    })?;
+    let launcher = res.map_err(|e| {
+        let err_msg: &str = &format!("connection to {} fails: {}", &db_addr_str, e);
+        Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>
+    })?;
+    
     launcher.with_db_client(|client| {
         async move {
-            // an initial server pool
+            // an initial server pool for testing purpose, the server pool should 
+            // be initialized from program inputs
             let mut sp = server::ServerInfoList::new(); 
             sp.add_server_info("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5).unwrap();
             sp.add_server_info("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7).unwrap();
@@ -101,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             let ce = create_emunet::build_filter(client.clone());
             // let ie = init_emunet::build_filter(client.clone());
             let routes = ru.or(ce);//.or(ie);
-            warp::serve(routes).run(([172, 16, 30, 182], 3030)).await; 
+            warp::serve(routes).run(([127, 0, 0, 1], 3030)).await; 
 
             Ok(())
         }
