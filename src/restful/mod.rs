@@ -1,16 +1,27 @@
+// a macro which is used to extract the response from nested Result types
 macro_rules! extract_response {
     ($resp: expr,
      $fatal: expr,
      $err: expr) => {
         match $resp {
             Err(e) => {
-                return Ok(warp::reply::with_status(format!("{}: {}", $fatal, e), http::StatusCode::INTERNAL_SERVER_ERROR));
+                return Ok(
+                    warp::reply::with_status(
+                        format!("{{ \"reason\": \"{}: {}\" }}", $fatal, e), 
+                        http::StatusCode::INTERNAL_SERVER_ERROR
+                    )
+                );
             },
             Ok(query_resp) => {
                 match query_resp {
                     Ok(inner) => inner,
                     Err(err_msg) => {
-                        return Ok(warp::reply::with_status(format!("{}: {}", $err, err_msg), http::StatusCode::BAD_REQUEST));
+                        return Ok(
+                            warp::reply::with_status(
+                                format!("{{ \"reason\": \"{}: {}\" }}", $err, err_msg), 
+                                http::StatusCode::BAD_REQUEST
+                            )
+                        );
                     },
                 }
             }
@@ -20,6 +31,7 @@ macro_rules! extract_response {
 
 use warp::Filter;
 use serde::de::DeserializeOwned;
+
 // parse the input JSON message
 //
 // Note: when accepting a body, we want a JSON body and reject huge payloads

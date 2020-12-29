@@ -17,8 +17,18 @@ const LOCAL_PORT: u16 = 3030;
 const DB_ADDR: [u8; 4] = [127, 0, 0, 1];
 const DB_PORT: u16 = 27615;
 
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    err_reason: String,
+}
+
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
+    println!("{}", serde_json::to_string(&ErrorResponse{ err_reason: "wtf".to_string()}).unwrap());
+    
     // build up the database address
     let db_addr_str = DB_ADDR.iter().enumerate().fold(String::new(), |mut s, (idx, part)| {
         if idx < DB_ADDR.len()-1 {
