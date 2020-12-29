@@ -7,7 +7,7 @@ macro_rules! extract_response {
             Err(e) => {
                 return Ok(
                     warp::reply::with_status(
-                        format!("{{ \"reason\": \"{}: {}\" }}", $fatal, e), 
+                        format!("{{ \"err_reason\": \"{}: {}\" }}", $fatal, e), 
                         http::StatusCode::INTERNAL_SERVER_ERROR
                     )
                 );
@@ -18,7 +18,7 @@ macro_rules! extract_response {
                     Err(err_msg) => {
                         return Ok(
                             warp::reply::with_status(
-                                format!("{{ \"reason\": \"{}: {}\" }}", $err, err_msg), 
+                                format!("{{ \"err_reason\": \"{}: {}\" }}", $err, err_msg), 
                                 http::StatusCode::BAD_REQUEST
                             )
                         );

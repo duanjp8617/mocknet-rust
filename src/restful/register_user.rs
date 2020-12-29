@@ -1,11 +1,17 @@
 use crate::dbnew::{Client};
 
 use warp::{http, Filter};
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize)]
 struct Json {
     name: String,
+}
+
+#[derive(Serialize)] 
+struct Response {
+    status: String,
+    user_name: String,
 }
 
 async fn register_user(json_msg: Json, db_client: Client) -> Result<impl warp::Reply,  warp::Rejection> {
@@ -15,7 +21,11 @@ async fn register_user(json_msg: Json, db_client: Client) -> Result<impl warp::R
         "operation fail"
     ); 
     
-    Ok(warp::reply::with_status(format!("user registration succeed: {}", &json_msg.name), http::StatusCode::OK))
+    let resp = Response {
+        status: "OK".to_string(),
+        user_name: json_msg.name
+    };
+    Ok(warp::reply::with_status(serde_json::to_string(&resp).unwrap(), http::StatusCode::OK))
 }
 
 pub fn build_filter(db_client: Client) 
