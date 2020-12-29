@@ -18,6 +18,16 @@ macro_rules! extract_response {
     };
 }
 
+use warp::Filter;
+use serde::de::DeserializeOwned;
+// parse the input JSON message
+//
+// Note: when accepting a body, we want a JSON body and reject huge payloads
+fn parse_json_body<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone {
+    warp::body::content_length_limit(1024 * 16).and(warp::body::json())
+}
+
+
 pub mod register_user;
 pub mod create_emunet;
 pub mod init_emunet;

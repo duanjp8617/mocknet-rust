@@ -166,10 +166,9 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
         // map it to () and then extract the error message
         return Ok(with_status(format!("invalid input graph: {}", res.map(|_|{()}).unwrap_err()), StatusCode::BAD_REQUEST));
     }
-    // create the in-memory graph if the input graph is valid
     let network_graph: InMemoryGraph<u64, VertexInfo, EdgeInfo> = res.unwrap();
     
-    // update the state of the emunet into working
+    // update the state of the emunet object into working
     emunet.working();
     let _ = extract_response!(
         db_client.set_emu_net(emunet.clone()).await,
@@ -184,13 +183,6 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     Ok(warp::reply::with_status(format!("emunet is initializing."), http::StatusCode::CREATED))
 }
 
-fn parse_json_body() -> impl Filter<Extract = (Json,), Error = warp::Rejection> + Clone {
-    // When accepting a body, we want a JSON body
-    // (and to reject huge payloads)...
-    warp::body::content_length_limit(1024 * 16)
-        .and(warp::body::json())
-}
-
 pub fn build_filter(db_client: Client) 
     -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {
@@ -202,7 +194,7 @@ pub fn build_filter(db_client: Client)
         .and(warp::path("v1"))
         .and(warp::path("init_emunet"))
         .and(warp::path::end())
-        .and(parse_json_body())
+        .and(super::parse_json_body())
         .and(db_filter)
         .and_then(init_emunet)
 }
