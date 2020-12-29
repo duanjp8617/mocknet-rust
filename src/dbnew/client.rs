@@ -169,7 +169,7 @@ impl Client {
     /// 
     /// Note: I don't know if this is necessary as well.
     pub async fn set_emu_net(&self, emu_net: net::EmuNet) -> Result<QueryResult<()>, ClientError> {
-        let uuid = emu_net.get_uuid().clone();
+        let uuid = emu_net.uuid().clone();
         let jv = serde_json::to_value(emu_net).unwrap();
         let res = self.fe.set_vertex_json_value(uuid, "default", jv).await?;
         match res {

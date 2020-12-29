@@ -133,7 +133,7 @@ impl EmuNet {
         self.server_map.values_mut()
     }
 
-    pub fn get_uuid(&self) -> &Uuid {
+    pub fn uuid(&self) -> &Uuid {
         &self.uuid
     }
 
@@ -148,8 +148,11 @@ impl EmuNet {
 
 impl EmuNet {
     // modifying the state of the EmuNet
-    pub fn state(&self) -> EmuNetState {
-        self.state.clone()
+    pub fn is_uninit(&self) -> bool {
+        match self.state {
+            EmuNetState::Uninit => true,
+            _ => false,
+        }
     }
 
     pub fn working(&mut self) {

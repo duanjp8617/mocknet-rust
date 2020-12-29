@@ -17,4 +17,3 @@ pub use self::indradb::indradb_util;
 mod client;
 pub use client::Client;
 pub use client::ClientLauncher;
-// pub use client::QueryResult;

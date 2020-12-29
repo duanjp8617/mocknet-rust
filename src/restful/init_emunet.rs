@@ -23,6 +23,15 @@ use crate::algo::Partition;
 //     "links": [],
 // }'
 
+// format of the incoming json message
+#[derive(Deserialize)]
+struct Json {
+    emunet_uuid: uuid::Uuid, // uuid of the emunet object on the database
+    devs: Vec<VertexInfo>, // a list of vertexes to be created
+    links: Vec<EdgeInfo>, // a list of edges to be created
+}
+
+// helper function to update error state on the emunet object
 async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
     emunet.error(err);
     // store the error state in the database, panic the server program on failure
@@ -32,6 +41,7 @@ async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
     }
 }
 
+// the actual work is done in a background task
 async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo,EdgeInfo>) {
     // do the allocation
     let res = network_graph.partition(emunet.servers_mut());
@@ -135,16 +145,15 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
 
 // path/create_emunet/
 async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
-    // retrieve the emunet from the database
+    // retrieve the emunet object from the database
     let mut emunet = extract_response!(
         db_client.get_emu_net(json.emunet_uuid.clone()).await,
         "internal server error",
         "operation fail"
-    );
-    // make sure that the emunet has not been initialized
-    match emunet.state() {
-        EmuNetState::Uninit => {},
-        _ => return Ok(with_status("operation fail: EmuNet is not initialized".to_string(), StatusCode::BAD_REQUEST)),
+    );    
+    if !emunet.is_uninit() {
+        // emunet can only be initialized once
+        return Ok(with_status("operation fail: EmuNet can not be initialized".to_string(), StatusCode::BAD_REQUEST));
     };
 
     // build up the in memory graph
@@ -173,13 +182,6 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     
     // reply to the client
     Ok(warp::reply::with_status(format!("emunet is initializing."), http::StatusCode::CREATED))
-}
-
-#[derive(Deserialize)]
-struct Json {
-    emunet_uuid: uuid::Uuid,
-    devs: Vec<VertexInfo>,
-    links: Vec<EdgeInfo>,
 }
 
 fn parse_json_body() -> impl Filter<Extract = (Json,), Error = warp::Rejection> + Clone {
