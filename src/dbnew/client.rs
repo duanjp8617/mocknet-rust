@@ -12,13 +12,8 @@ use indradb::{BulkInsertItem, Vertex, RangeVertexQuery, Type};
 use super::indradb::Backend as IndradbBackend;
 use super::indradb::build_backend_fut;
 use super::indradb::message_queue;
-// use super::backend::build_backend_fut;
 use crate::emunet::{server, user, net};
-// use super::message::{Request, Response};
-// use super::message_queue;
 use super::ClientError;
-use super::errors::BackendError;
-// use super::request::{self};
 use super::indradb::Frontend as IndradbFrontend;
 use super::CORE_INFO_ID;
 
@@ -205,17 +200,24 @@ impl Client {
             });
         
         // build up the list of edge_info
-        let edge_infos: Vec<net::EdgeInfo> = vertex_map.values().fold(Vec::new(), |vec, v| {
+        let edge_infos: HashMap<(u64, u64), net::EdgeInfo> = vertex_map.values().fold(HashMap::new(), |map, v| {
             let edges = v.edges();
-            edges.fold(vec, |mut vec, edge| {
+            edges.fold(map, |mut map, edge| {
                 // build up the client-side edge id
                 let edge_uuid = edge.edge_uuid();
                 let edge_id = (vertex_map.get(& edge_uuid.0).unwrap().id(), vertex_map.get(& edge_uuid.1).unwrap().id());
                 // build up the rest of the fields needed to construct EdgeInfo
                 let description = edge.description();
 
-                vec.push(net::EdgeInfo::new(edge_id, description));
-                vec
+                // the EdgeInfo contains undirected edge, so only one of the directed
+                // edges between a pair of vertexes is inserted into the hash map
+                if !map.contains_key(&(edge_id.1, edge_id.0)) {
+                    let ei = net::EdgeInfo::new(edge_id, description);
+                    if map.insert(edge_id, ei).is_some() {
+                        panic!("this should not happen!");
+                    }
+                };
+                map
             })
         });
         // build up the list of vertex_info
@@ -224,7 +226,7 @@ impl Client {
             vec
         });
 
-        succeed!((vertex_infos, edge_infos))
+        succeed!((vertex_infos, edge_infos.into_iter().map(|(_, v)|{v}).collect()))
     }
 
     /// Get the emunet from an uuid.

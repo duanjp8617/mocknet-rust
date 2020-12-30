@@ -92,6 +92,7 @@ impl Vertex {
     }
 }
 
+// This represents a directed Edge!!
 #[derive(Deserialize, Serialize)]
 pub struct Edge {
     edge_uuid: (uuid::Uuid, uuid::Uuid), // out-going vertex -> incoming vertex

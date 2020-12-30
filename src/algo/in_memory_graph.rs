@@ -2,10 +2,9 @@ use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 use std::fmt;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
 
 use super::traits::{PartitionBin, Partition};
-use crate::emunet::server::ContainerServer;
 
 type Result<T> = std::result::Result<T, String>;
 
