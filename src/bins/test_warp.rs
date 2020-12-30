@@ -8,26 +8,29 @@ use mocknet::dbnew::{self};
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
-use mocknet::algo::in_memory_graph::{InMemoryGraph};
-use mocknet::algo::Partition;
-
 const LOCAL_ADDR: [u8; 4] = [127, 0, 0, 1];
 const LOCAL_PORT: u16 = 3030;
 
 const DB_ADDR: [u8; 4] = [127, 0, 0, 1];
 const DB_PORT: u16 = 27615;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 #[derive(Serialize)]
 pub struct ErrorResponse {
     err_reason: String,
 }
 
+#[derive(Deserialize, Serialize)]
+pub struct EdgeInfo {
+    edge_id: (u64, u64), // client side edge id in the form of (u64, u64)
+    description: String, // a description string to hold the place
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
-    println!("{}", serde_json::to_string(&ErrorResponse{ err_reason: "wtf".to_string()}).unwrap());
+    println!("{}", serde_json::to_string(&EdgeInfo{ description: "wtf".to_string(), edge_id: (1, 2)}).unwrap());
     
     // build up the database address
     let db_addr_str = DB_ADDR.iter().enumerate().fold(String::new(), |mut s, (idx, part)| {
@@ -82,8 +85,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             let ru = register_user::build_filter(client.clone());
             let ce = create_emunet::build_filter(client.clone());
             let le = list_emunet::build_filter(client.clone());
-            // let ie = init_emunet::build_filter(client.clone());
-            let routes = ru.or(ce).or(le);//.or(ie);
+            let ge = get_emunet::build_filter(client.clone());
+            let ie = init_emunet::build_filter(client.clone());
+            let routes = ru.or(ce).or(le).or(ge).or(ie);
 
             // launch the warp server
             warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await; 

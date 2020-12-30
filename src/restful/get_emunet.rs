@@ -2,27 +2,26 @@ use warp::{http, Filter};
 use serde::{Serialize, Deserialize};
 
 use crate::dbnew::{Client};
+use crate::emunet::net;
 
 #[derive(Deserialize)]
 struct Json {
-    user: String,
-    emunet: String,
-    capacity: u32,
+    emunet_uuid: uuid::Uuid,
 }
 
 #[derive(Serialize)]
 struct Response {
-    emunet_uuid: uuid::Uuid,
+    emunet: net::EmuNet,
 }
 
-async fn create_emunet(json_msg: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
-    let emunet_uuid = extract_response!(
-        db_client.create_emu_net(json_msg.user, json_msg.emunet, json_msg.capacity).await,
+async fn get_emunet(json_msg: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
+    let emunet = extract_response!(
+        db_client.get_emu_net(json_msg.emunet_uuid).await,
         "internal_server_error",
         "operation_fail"
     ); 
 
-    let resp = Response {emunet_uuid};
+    let resp = Response {emunet};
 
     Ok(warp::reply::with_status(serde_json::to_string(&resp).unwrap(), http::StatusCode::OK))
 }
@@ -40,9 +39,9 @@ pub fn build_filter(db_client: Client)
     });
     warp::post()
         .and(warp::path("v1"))
-        .and(warp::path("create_emunet"))
+        .and(warp::path("get_emunet"))
         .and(warp::path::end())
         .and(super::parse_json_body())
         .and(db_filter)
-        .and_then(create_emunet)
+        .and_then(get_emunet)
 }

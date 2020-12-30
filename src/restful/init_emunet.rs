@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use warp::{http, Filter};
 use warp::reply::with_status;
 use http::StatusCode;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use tokio::time;
 
 use crate::dbnew::{Client};
@@ -148,8 +148,8 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     // retrieve the emunet object from the database
     let mut emunet = extract_response!(
         db_client.get_emu_net(json.emunet_uuid.clone()).await,
-        "internal server error",
-        "operation fail"
+        "internal_server_error",
+        "operation_fail"
     );    
     if !emunet.is_uninit() {
         // emunet can only be initialized once
@@ -172,15 +172,15 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     emunet.working();
     let _ = extract_response!(
         db_client.set_emu_net(emunet.clone()).await,
-        "internal server error",
-        "this should never happen!"
+        "internal_server_error",
+        "fatal(this-should-never-happen)"
     );
     
     // do the actual initialization work in the background
-    tokio::spawn(background_task(db_client, emunet, network_graph));
+    // tokio::spawn(background_task(db_client, emunet, network_graph));
     
     // reply to the client
-    Ok(warp::reply::with_status(format!("emunet is initializing."), http::StatusCode::CREATED))
+    Ok(warp::reply::with_status(format!("{{ \"status\": \"working\" }}"), http::StatusCode::CREATED))
 }
 
 pub fn build_filter(db_client: Client) 
