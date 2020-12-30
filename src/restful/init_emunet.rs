@@ -31,6 +31,17 @@ struct Json {
     links: Vec<EdgeInfo>, // a list of edges to be created
 }
 
+// given a client-side edge id, return the database-side edge uuid and the 
+// corresponding vertex to insert this directed edge
+// note: the caller should ensure that this function never panics the program
+fn insert_edge_helper<'a>(e_id: (u64, u64), id_map: &HashMap<u64, uuid::Uuid>, vertex_map: &'a mut HashMap<u64, Vertex>)
+-> ((uuid::Uuid, uuid::Uuid), &'a mut Vertex)
+{
+    let e_uuid = (id_map.get(&e_id.0).unwrap().clone(), id_map.get(&e_id.1).unwrap().clone());
+    let vertex_mut = vertex_map.get_mut(&e_id.0).unwrap();
+    (e_uuid, vertex_mut)
+}
+
 // helper function to update error state on the emunet object
 async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
     emunet.error(err);
@@ -43,21 +54,19 @@ async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
 
 // the actual work is done in a background task
 async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo,EdgeInfo>) {
-    // do the allocation
+    // do the partition
     let res = network_graph.partition(emunet.servers_mut());
     if res.is_err() {
         // set the state of the emunet to fail
         let err = EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err()));
         emunet_error(client, emunet, err).await;
         return;
-    }
-
-    // acquire the partition result, which assigns each vertex to a server
+    }    
     let assignment = res.unwrap();
-    // get the lists of vertex_info and edge_info
+    
+    // create a vertex-id-to-uuid map
+    // prepare the EdgeInfo list, which will be used later
     let (vertex_infos, edge_infos) = network_graph.into();
-
-    // create a vertex id to uuid map
     let id_map: HashMap<u64, uuid::Uuid> = vertex_infos.iter().fold(HashMap::new(), |mut map, vi| {
         if map.insert(vi.id(), indradb::util::generate_uuid_v1()).is_some() {
             panic!("fatal".to_string());
@@ -80,22 +89,21 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     });
     // insert the edges into the vertexes
     let _: Vec<_> = edge_infos.into_iter().map(|ei| {
+        // insert the edge with forward direction
         let e_id = ei.edge_id();
-        let e_uuid = (id_map.get(&e_id.0).unwrap().clone(), id_map.get(&e_id.1).unwrap().clone());
-        let vertex_mut = vertexes_map.get_mut(&e_id.0).unwrap();
-        
+        let (e_uuid, vertex_mut) = insert_edge_helper(e_id, &id_map, &mut vertexes_map);
         let edge = Edge::new(e_uuid, ei.description());
+        vertex_mut.add_edge(edge).unwrap();
 
+        // insert the edge with reverse direction
+        let e_id = ei.reverse_edge_id();
+        let (e_uuid, vertex_mut) = insert_edge_helper(e_id, &id_map, &mut vertexes_map);
+        let edge = Edge::new(e_uuid, ei.description());
         vertex_mut.add_edge(edge).unwrap();
     }).collect();
-    // convert the vertexes_map back into a list of vertexes
-    let vertexes = vertexes_map.into_iter().fold(Vec::new(), |mut vec, (_, v)| {
-        vec.push(v);
-        vec
-    });
 
-    // create the vertexes
-    let res = client.bulk_create_vertexes(vertexes.iter().map(|v|{v.uuid()}).collect(), emunet.vertex_type()).await;
+    // create the vertexes in the database
+    let res = client.bulk_create_vertexes(vertexes_map.values().map(|v|{v.uuid()}), emunet.vertex_type()).await;
     match res {
         Ok(_) => {},
         Err(err) => {
@@ -108,11 +116,11 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
 
     // set the vertex properties
     let res = client.bulk_set_vertex_properties(
-        vertexes.iter().map(
+        vertexes_map.values().map(
             |v| {
                 (v.uuid(), serde_json::to_value(v.clone()).unwrap())
             }
-        ).collect()
+        )
     ).await;
     match res {
         Ok(_) => {},
@@ -128,7 +136,7 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
     time::delay_for(time::Duration::new(5,0)).await;
     // potentially perform an update on the vertexes
 
-    // set the state of the emunet to fail
+    // set the state of the emunet to normal
     emunet.normal();
     // store the vertex mappings in to the emunet
     id_map.into_iter().fold(&mut emunet, |emunet, mapping| {
@@ -153,7 +161,7 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     );    
     if !emunet.is_uninit() {
         // emunet can only be initialized once
-        return Ok(with_status("operation fail: EmuNet can not be initialized".to_string(), StatusCode::BAD_REQUEST));
+        return Ok(with_status("{ \"operation_fail\": \"EmuNet can only be initialized once\"}".to_string(), StatusCode::BAD_REQUEST));
     };
 
     // build up the in memory graph
@@ -177,7 +185,7 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     );
     
     // do the actual initialization work in the background
-    // tokio::spawn(background_task(db_client, emunet, network_graph));
+    tokio::spawn(background_task(db_client, emunet, network_graph));
     
     // reply to the client
     Ok(warp::reply::with_status(format!("{{ \"status\": \"working\" }}"), http::StatusCode::CREATED))

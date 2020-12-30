@@ -18,6 +18,8 @@ impl VertexInfo {
 }
 
 #[derive(Deserialize, Serialize)]
+// The edge connecting two devices.
+// Note: this represents an undirected edge
 pub struct EdgeInfo {
     edge_id: (u64, u64), // client side edge id in the form of (u64, u64)
     description: String, // a description string to hold the place
@@ -26,6 +28,10 @@ pub struct EdgeInfo {
 impl EdgeInfo {
     pub fn edge_id(&self) -> (u64, u64) {
         self.edge_id
+    }
+
+    pub fn reverse_edge_id(&self) -> (u64, u64) {
+        (self.edge_id.1, self.edge_id.0)
     }
 
     pub fn description(&self) -> String {
@@ -142,7 +148,7 @@ impl EmuNet {
     }
 
     pub fn vertex_type(&self) -> String {
-        format!("{}.{}", &self.user, &self.name)
+        format!("{}-{}", &self.user, &self.name)
     }
 }
 

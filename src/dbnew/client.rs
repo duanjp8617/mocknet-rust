@@ -1,6 +1,7 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
 use std::collections::HashMap;
+use std::iter::Iterator;
 
 use futures::AsyncReadExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
@@ -184,8 +185,10 @@ impl Client {
     /// However, if there is an uuid collision, this method can still finish without 
     /// returning useful error messages. 
     /// Consider repairing this in the future?
-    pub async fn bulk_create_vertexes(&self, vertexes: Vec<Uuid>, t: String) -> Result<QueryResult<()>, ClientError> {
-        let qs: Vec<BulkInsertItem> = vertexes.into_iter().fold(Vec::new(), |mut qs, uuid| {
+    pub async fn bulk_create_vertexes<I: Iterator<Item = Uuid>>(&self, vertexes: I, t: String)
+    -> Result<QueryResult<()>, ClientError> 
+    {
+        let qs: Vec<BulkInsertItem> = vertexes.fold(Vec::new(), |mut qs, uuid| {
             let v = Vertex::with_id(uuid, Type::new(&t).unwrap());
             qs.push(BulkInsertItem::Vertex(v));
             qs
@@ -201,10 +204,10 @@ impl Client {
     /// However, if a particular vertex is not created in the datbase, this method can still finish without 
     /// returning useful error messages. 
     /// Consider repairing this in the future?
-    pub async fn bulk_set_vertex_properties(&self, vertex_properties: Vec<(Uuid, serde_json::Value)>) 
+    pub async fn bulk_set_vertex_properties<I: Iterator<Item = (Uuid, serde_json::Value)>>(&self, vertex_properties: I) 
     -> Result<QueryResult<()>, ClientError> 
     {
-        let qs: Vec<BulkInsertItem> = vertex_properties.into_iter().fold(Vec::new(), |mut qs, vertex_property| {            
+        let qs: Vec<BulkInsertItem> = vertex_properties.fold(Vec::new(), |mut qs, vertex_property| {            
             qs.push(BulkInsertItem::VertexProperty(vertex_property.0, "default".to_string(), vertex_property.1));
             qs
         });
