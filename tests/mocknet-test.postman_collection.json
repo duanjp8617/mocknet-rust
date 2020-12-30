@@ -1,0 +1,149 @@
+{
+	"info": {
+		"_postman_id": "356dc581-c16d-48b5-b414-4b15ef176207",
+		"name": "mocknet-test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "localhost:3030/v1/list_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"user\": \"fuck\"}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/list_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"list_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/create_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user\": \"fuck\",\n    \"emunet\": \"fuck1\",\n    \"capacity\": 20\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/create_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"create_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/get_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"9e77ff04-4a45-11eb-8004-000000000000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/get_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"get_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/register_user",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"fuck\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/register_user",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"register_user"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/init_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"9e77ff04-4a45-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 1, \"description\": \"fuck\"}, {\"id\": 2, \"description\": \"fuck\"}, {\"id\": 3, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [1, 2], \"description\": \"fuck\"}, {\"edge_id\": [1, 3], \"description\": \"fuck\"}]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/init_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"init_emunet"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

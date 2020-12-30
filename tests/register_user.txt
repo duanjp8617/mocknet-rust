@@ -1,6 +1,0 @@
-curl --location --request POST 'localhost:3030/v1/register_user' \
---header 'Content-Type: application/json' \
---header 'Content-Type: text/plain' \
---data-raw '{
-    "name": "fuck"
-}'
