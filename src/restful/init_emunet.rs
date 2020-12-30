@@ -6,7 +6,7 @@ use http::StatusCode;
 use serde::Deserialize;
 use tokio::time;
 
-use crate::dbnew::{Client};
+use crate::database::{Client};
 use crate::emunet::net::*;
 use crate::algo::in_memory_graph::InMemoryGraph;
 use crate::algo::Partition;

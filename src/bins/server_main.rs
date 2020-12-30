@@ -4,7 +4,7 @@ use std::io::{Error, ErrorKind};
 use warp::Filter;
 use tokio::time::{timeout, Duration};
 
-use mocknet::dbnew::{self};
+use mocknet::database;
 use mocknet::emunet::server;
 use mocknet::restful::{*};
 
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
         .expect("could not parse address");
 
     // create the database launcher
-    let res = timeout(Duration::from_secs(2), dbnew::ClientLauncher::connect(&db_addr)).await.map_err(|_| {
+    let res = timeout(Duration::from_secs(2), database::ClientLauncher::connect(&db_addr)).await.map_err(|_| {
         let err_msg: &str = &format!("connection to {} timeout", &db_addr_str);
         Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>
     })?;

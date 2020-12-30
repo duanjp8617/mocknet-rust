@@ -8,9 +8,9 @@ use indradb::Type;
 use uuid::Uuid;
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::dbnew::errors::BackendError;
+use crate::database::errors::BackendError;
 use crate::emunet::{server, user};
-use crate::dbnew::CORE_INFO_ID;
+use crate::database::CORE_INFO_ID;
 use super::message_queue;
 use super::message::{Request, Response};
 

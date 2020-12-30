@@ -11,7 +11,7 @@ use super::indradb_util::ClientTransaction;
 use super::indradb_util::converters;
 use super::message_queue::Queue;
 use super::message::{Request, Response};
-use crate::dbnew::errors::BackendError;
+use crate::database::errors::BackendError;
 
 pub struct Backend {
     tran_worker: crate::autogen::service::Client,
