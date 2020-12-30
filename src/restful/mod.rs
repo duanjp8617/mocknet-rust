@@ -7,7 +7,7 @@ macro_rules! extract_response {
             Err(e) => {
                 return Ok(
                     warp::reply::with_status(
-                        format!("{{ \"err_reason\": \"{}: {}\" }}", $fatal, e), 
+                        format!("{{ \"{}\": \"{}\" }}", $fatal, e), 
                         http::StatusCode::INTERNAL_SERVER_ERROR
                     )
                 );
@@ -18,7 +18,7 @@ macro_rules! extract_response {
                     Err(err_msg) => {
                         return Ok(
                             warp::reply::with_status(
-                                format!("{{ \"err_reason\": \"{}: {}\" }}", $err, err_msg), 
+                                format!("{{ \"{}\": \"{}\" }}", $err, err_msg), 
                                 http::StatusCode::BAD_REQUEST
                             )
                         );
@@ -43,3 +43,4 @@ fn parse_json_body<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), 
 pub mod register_user;
 pub mod create_emunet;
 pub mod init_emunet;
+pub mod list_emunet;

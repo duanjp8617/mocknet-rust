@@ -116,8 +116,8 @@ impl Client {
         let server_info_list: Vec<server::ServerInfo> = self.fe.get_server_info_list().await?;
         let mut sp = server::ServerInfoList::from_iterator(server_info_list.into_iter()).unwrap();
         let allocation = match sp.allocate_servers(capacity) {
-            Some(alloc) => alloc,
-            None => return fail!("invalid capacity".to_string()),
+            Ok(alloc) => alloc,
+            Err(remaining) => return fail!(format!("not enough capacity, remaining capacity: {}", remaining)),
         };
         self.fe.set_server_info_list(sp.into_vec()).await?;
         

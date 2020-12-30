@@ -1,36 +1,37 @@
+use std::collections::HashMap;
+
 use warp::{http, Filter};
 use serde::{Serialize, Deserialize};
+use uuid::Uuid;
 
 use crate::dbnew::{Client};
 
 #[derive(Deserialize)]
 struct Json {
-    name: String,
+    user: String,
 }
 
 #[derive(Serialize)] 
 struct Response {
-    status: String,
-    user_name: String,
+    emunets: HashMap<String, Uuid>,
 }
 
-async fn register_user(json_msg: Json, db_client: Client) -> Result<impl warp::Reply,  warp::Rejection> {
-    let _ = extract_response!(
-        db_client.register_user(&json_msg.name).await,
+async fn list_all_emunets(json_msg: Json, db_client: Client) -> Result<impl warp::Reply,  warp::Rejection> {
+    let emunets = extract_response!(
+        db_client.list_emu_net_uuid(json_msg.user).await,
         "internal_server_error",
         "operation_fail"
     ); 
     
     let resp = Response {
-        status: "OK".to_string(),
-        user_name: json_msg.name
+        emunets,
     };
     Ok(warp::reply::with_status(serde_json::to_string(&resp).unwrap(), http::StatusCode::OK))
 }
 
-/// This filter handles an HTTP request containing a new user name.
-/// It will register the user in the database and report to the sending-side 
-/// whether the registration succeeds.
+/// This filter accepts an HTTP request containing the name of an existing user.
+/// It will retrieve all the emunet that the user currently has, place the emunet name
+/// and uuid inside a JSON map, and return the result back to the client side
 pub fn build_filter(db_client: Client) 
 -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {
@@ -40,9 +41,9 @@ pub fn build_filter(db_client: Client)
     });
     warp::post()
         .and(warp::path("v1"))
-        .and(warp::path("register_user"))
+        .and(warp::path("list_emunet"))
         .and(warp::path::end())
         .and(super::parse_json_body())
         .and(db_filter)
-        .and_then(register_user)
+        .and_then(list_all_emunets)
 }

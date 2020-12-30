@@ -81,8 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
             // build up the warp filters
             let ru = register_user::build_filter(client.clone());
             let ce = create_emunet::build_filter(client.clone());
+            let le = list_emunet::build_filter(client.clone());
             // let ie = init_emunet::build_filter(client.clone());
-            let routes = ru.or(ce);//.or(ie);
+            let routes = ru.or(ce).or(le);//.or(ie);
 
             // launch the warp server
             warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await; 

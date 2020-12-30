@@ -100,7 +100,7 @@ impl ServerInfoList {
     }
 
     /// Use a simple greedy algorithm to allocate servers
-    pub fn allocate_servers(&mut self, quantity: u32) -> Option<Vec<ContainerServer>> {
+    pub fn allocate_servers(&mut self, quantity: u32) -> Result<Vec<ContainerServer>, u32> {
         let mut target = 0;
 
         let mut enumerate: Vec<(usize, u32)> = self.servers.iter().map(|e|{e.max_capacity}).enumerate().collect();
@@ -113,17 +113,19 @@ impl ServerInfoList {
         };
         
         if target >= quantity {
-            Some(enumerate.iter().take(index).map(|e|{
-                let server_info = self.servers.remove(e.0);
-                let curr_capacity = server_info.max_capacity;
-                ContainerServer {
-                    server_info,
-                    curr_capacity,
-                }
-            }).collect())
+            Ok(
+                enumerate.iter().take(index).map(|e|{
+                    let server_info = self.servers.remove(e.0);
+                    let curr_capacity = server_info.max_capacity;
+                    ContainerServer {
+                        server_info,
+                        curr_capacity,
+                    }
+                }).collect()
+            )
         }
         else {
-            None
+            Err(target)
         }
     }
 }
