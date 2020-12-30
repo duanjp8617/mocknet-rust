@@ -26,6 +26,10 @@ pub struct EdgeInfo {
 }
 
 impl EdgeInfo {
+    pub fn new(edge_id: (u64, u64), description: String) -> EdgeInfo {
+        EdgeInfo{edge_id, description}
+    }
+
     pub fn edge_id(&self) -> (u64, u64) {
         self.edge_id
     }
@@ -55,14 +59,6 @@ impl Vertex {
         }
     }
 
-    pub fn id(&self) -> u64 {
-        return self.info.id;
-    }
-
-    pub fn uuid(&self) -> uuid::Uuid {
-        return self.uuid.clone()
-    }
-
     pub fn add_edge(&mut self, edge: Edge) -> Result<(), String> {
         // valid the edge
         if self.uuid() != edge.edge_uuid.0 || self.edges.contains_key(&edge.edge_uuid.1) {
@@ -75,6 +71,27 @@ impl Vertex {
     }
 }
 
+impl Vertex {
+    pub fn id(&self) -> u64 {
+        return self.info.id;
+    }
+
+    pub fn uuid(&self) -> uuid::Uuid {
+        return self.uuid.clone()
+    }
+
+    pub fn vertex_info(&self) -> VertexInfo {
+        VertexInfo {
+            id: self.info.id,
+            description: self.info.description.clone()
+        }
+    }
+
+    pub fn edges<'a>(&'a self) -> impl Iterator<Item = &'a Edge> + 'a {
+        self.edges.values()
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct Edge {
     edge_uuid: (uuid::Uuid, uuid::Uuid), // out-going vertex -> incoming vertex
@@ -84,6 +101,16 @@ pub struct Edge {
 impl Edge {
     pub fn new(edge_uuid: (uuid::Uuid, uuid::Uuid), description: String) -> Self {
         Self{edge_uuid, description}
+    }
+}
+
+impl Edge {
+    pub fn edge_uuid(&self) -> &(uuid::Uuid, uuid::Uuid) {
+        &self.edge_uuid
+    }
+
+    pub fn description(&self) -> String {
+        self.description.clone()
     }
 }
 
@@ -139,16 +166,33 @@ impl EmuNet {
         self.server_map.values_mut()
     }
 
-    pub fn uuid(&self) -> &Uuid {
-        &self.uuid
-    }
-
     pub fn add_vertex(&mut self, vertex_client_id: u64, vertex_uuid: Uuid) {
         self.vertex_map.insert(vertex_client_id, vertex_uuid);
     }
 
+    pub fn reserve_capacity(&mut self, reserved_capacity: u32) {
+        if reserved_capacity > self.capacity {
+            panic!("this should never happen");
+        }
+        self.capacity -= reserved_capacity;
+    }
+}
+
+impl EmuNet {
+    pub fn uuid(&self) -> &Uuid {
+        &self.uuid
+    }
+
     pub fn vertex_type(&self) -> String {
         format!("{}-{}", &self.user, &self.name)
+    }
+
+    pub fn capacity(&self) -> u32 {
+        self.capacity
+    }
+
+    pub fn vertex_uuids<'a>(&'a self) -> impl Iterator<Item = &'a Uuid> + 'a{
+        self.vertex_map.values()
     }
 }
 

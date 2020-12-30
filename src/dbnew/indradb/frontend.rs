@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
 use indradb::BulkInsertItem;
-use indradb::{SpecificVertexQuery, VertexQueryExt};
+use indradb::{SpecificVertexQuery, VertexQueryExt, RangeVertexQuery};
 use indradb::Type;
 use uuid::Uuid;
 use serde::{de::DeserializeOwned, Serialize};
@@ -111,6 +111,17 @@ impl Frontend {
             Response::AsyncBulkInsert(()) => Ok(()),
             _ => panic!("invalid response!")
         }
+    }
+
+    // get all the vertexes
+    pub async fn get_vertex_properties(&self, q: RangeVertexQuery) -> Result<Vec<serde_json::Value>, BackendError> {
+        let q = q.property("default".to_string());
+        self.async_get_vertex_properties(q).await.map(|vp| {
+            vp.into_iter().fold(Vec::new(), |mut vec, vp| {
+                vec.push(vp.value);
+                vec
+            })
+        })
     }
 }
 

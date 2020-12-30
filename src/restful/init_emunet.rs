@@ -11,18 +11,6 @@ use crate::emunet::net::*;
 use crate::algo::in_memory_graph::InMemoryGraph;
 use crate::algo::Partition;
 
-
-// curl --location --request POST 'localhost:3030/v1/init_emunet' \
-// --header 'Content-Type: application/json' \
-// --header 'Content-Type: text/plain' \
-// --data-raw '{
-//     "user": "wtf",
-//     "emunet": "you",
-//     "capacity": 24,
-//     "devs": [],
-//     "links": [],
-// }'
-
 // format of the incoming json message
 #[derive(Deserialize)]
 struct Json {
@@ -54,6 +42,9 @@ async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
 
 // the actual work is done in a background task
 async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo,EdgeInfo>) {
+    // record the network size
+    let size = network_graph.size() as u32;
+    
     // do the partition
     let res = network_graph.partition(emunet.servers_mut());
     if res.is_err() {
@@ -143,6 +134,8 @@ async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMe
         emunet.add_vertex(mapping.0, mapping.1);
         emunet
     });
+    // reserve the capacity for the emunet
+    emunet.reserve_capacity(size);
             
     // store the state in the database, panic the server program on failure
     let res = client.set_emu_net(emunet).await.unwrap();
@@ -172,9 +165,14 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     if res.is_err() {
         // InMemoryGraph<u64, VertexInfo,EdgeInfo> does not implement fmt::Debug,
         // map it to () and then extract the error message
-        return Ok(with_status(format!("invalid input graph: {}", res.map(|_|{()}).unwrap_err()), StatusCode::BAD_REQUEST));
+        return Ok(with_status(format!("\"invalid_input_graph\": \"{}\"", res.map(|_|{()}).unwrap_err()), StatusCode::BAD_REQUEST));
     }
     let network_graph: InMemoryGraph<u64, VertexInfo, EdgeInfo> = res.unwrap();
+    if network_graph.size() > emunet.capacity() as usize {
+        // report error if the input network topology exceeds the capacity 
+        // of the emunet
+        return Ok(with_status(format!("\"invalid_input_graph\": \"input graph exceeds capacity limitation\""), StatusCode::BAD_REQUEST));
+    }
     
     // update the state of the emunet object into working
     emunet.working();
@@ -191,6 +189,7 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     Ok(warp::reply::with_status(format!("{{ \"status\": \"working\" }}"), http::StatusCode::CREATED))
 }
 
+/// This filter initializes the emunet by creating the vertexes and edges of the emulation network.
 pub fn build_filter(db_client: Client) 
     -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
 {

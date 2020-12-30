@@ -79,6 +79,10 @@ where
         let edges = self.edges.into_iter().map(|(_, edge)| {edge});
         (vertexes.collect(), edges.collect())
     }
+
+    pub fn size(&self) -> usize {
+        self.vertexes.len()
+    }
 }
 
 impl<'a, Vid, Vertex, Edge, T, I> Partition<'a, T, I> for InMemoryGraph<Vid, Vertex, Edge>

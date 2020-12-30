@@ -7,7 +7,7 @@ use futures::AsyncReadExt;
 use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use uuid::Uuid;
-use indradb::{BulkInsertItem, Vertex, EdgeKey, Type};
+use indradb::{BulkInsertItem, Vertex, RangeVertexQuery, Type};
 
 use super::indradb::Backend as IndradbBackend;
 use super::indradb::build_backend_fut;
@@ -118,7 +118,7 @@ impl Client {
         let mut sp = server::ServerInfoList::from_iterator(server_info_list.into_iter()).unwrap();
         let allocation = match sp.allocate_servers(capacity) {
             Ok(alloc) => alloc,
-            Err(remaining) => return fail!(format!("not enough capacity, remaining capacity: {}", remaining)),
+            Err(remaining) => return fail!(format!("not enough capacity at backend, remaining capacity: {}", remaining)),
         };
         self.fe.set_server_info_list(sp.into_vec()).await?;
         
@@ -164,6 +164,67 @@ impl Client {
             None => fail!("emunet not exist".to_string()),
             Some(jv) => succeed!(serde_json::from_value(jv).unwrap()),
         }
+    }
+
+    /// Get the client-side emunet information from the database.
+    /// 
+    /// Note: I don't know if this is necessary as well.
+    pub async fn get_emu_net_infos(&self, emunet: &net::EmuNet) 
+    -> Result<QueryResult<(Vec<net::VertexInfo>, Vec<net::EdgeInfo>)>, ClientError> 
+    {
+        // acquire the minimum uuid of the vertex
+        let minium_uuid_opt = emunet.vertex_uuids().fold(None, |opt, uuid| {
+            match opt {
+                None => Some(uuid),
+                Some(smallest_uuid) => {
+                    if *smallest_uuid > *uuid {
+                        Some(uuid)
+                    }
+                    else {
+                        Some(smallest_uuid)
+                    }
+                }
+            }
+        });
+        if minium_uuid_opt.is_none() {
+            // if there are no vertexes, we can make a quick return
+            return succeed!((Vec::new(), Vec::new()));
+        }
+        let minimum_uuid = minium_uuid_opt.unwrap().clone();
+
+        // build up the query and acquire the vertex map from the backend
+        let q = RangeVertexQuery::new(u32::MAX).start_id(minimum_uuid).t(Type::new(emunet.vertex_type()).unwrap());
+        let vertex_map: HashMap<uuid::Uuid, net::Vertex> = 
+            self.fe.get_vertex_properties(q).await?.into_iter().fold(HashMap::new(), |mut map, jv| {
+                let v: net::Vertex = serde_json::from_value(jv).unwrap();
+                let res = map.insert(v.uuid(), v);
+                if !res.is_none() {
+                    panic!("this should never happen!")
+                }
+                map
+            });
+        
+        // build up the list of edge_info
+        let edge_infos: Vec<net::EdgeInfo> = vertex_map.values().fold(Vec::new(), |vec, v| {
+            let edges = v.edges();
+            edges.fold(vec, |mut vec, edge| {
+                // build up the client-side edge id
+                let edge_uuid = edge.edge_uuid();
+                let edge_id = (vertex_map.get(& edge_uuid.0).unwrap().id(), vertex_map.get(& edge_uuid.1).unwrap().id());
+                // build up the rest of the fields needed to construct EdgeInfo
+                let description = edge.description();
+
+                vec.push(net::EdgeInfo::new(edge_id, description));
+                vec
+            })
+        });
+        // build up the list of vertex_info
+        let vertex_infos = vertex_map.values().fold(Vec::new(), |mut vec, v| {
+            vec.push(v.vertex_info());
+            vec
+        });
+
+        succeed!((vertex_infos, edge_infos))
     }
 
     /// Get the emunet from an uuid.

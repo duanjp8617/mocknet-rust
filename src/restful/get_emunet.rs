@@ -12,6 +12,8 @@ struct Json {
 #[derive(Serialize)]
 struct Response {
     emunet: net::EmuNet,
+    vertex_infos: Vec<net::VertexInfo>,
+    edge_infos: Vec<net::EdgeInfo>,
 }
 
 async fn get_emunet(json_msg: Json, db_client: Client) -> Result<impl warp::Reply, warp::Rejection> {
@@ -21,7 +23,13 @@ async fn get_emunet(json_msg: Json, db_client: Client) -> Result<impl warp::Repl
         "operation_fail"
     ); 
 
-    let resp = Response {emunet};
+    let (vertex_infos, edge_infos) = extract_response!(
+        db_client.get_emu_net_infos(&emunet).await,
+        "internal_server_error",
+        "operation_fail"
+    );
+
+    let resp = Response{emunet, vertex_infos, edge_infos};
 
     Ok(warp::reply::with_status(serde_json::to_string(&resp).unwrap(), http::StatusCode::OK))
 }
