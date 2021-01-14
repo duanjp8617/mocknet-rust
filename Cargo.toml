@@ -4,9 +4,29 @@ version = "0.1.0"
 edition = "2018"
 build = "build.rs"
 
+#[[bin]] 
+#name = "container_server"
+#path = "src/bins/container_server.rs"
+
+#[[bin]]
+#name = "mocknet_backend"
+#path = "src/bins/mocknet_backend.rs"
+
+#[[bin]]
+#name = "test_indradb"
+#path = "src/bins/test_indradb.rs"
+
+#[[bin]]
+#name = "test_db_conn"
+#path = "src/bins/test_db_conn.rs"
+
 [[bin]]
-name = "server_main"
-path = "src/bins/server_main.rs"
+name = "test_serde"
+path = "src/bins/test_serde.rs"
+
+[[bin]]
+name = "test_warp"
+path = "src/bins/test_warp.rs"
 
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
@@ -25,6 +45,9 @@ indradb-lib = "1.1.0"
 uuid = { version = "~0.8.1", features = ["v1", "serde"] }
 chrono = "0.4.15"
 lazy_static = "1.4.0"
+ndarray = "0.13.1"
+rand = "0.7.3"
+stopwatch = "0.0.7"
 
 # For test_wrap.rs
 pretty_env_logger = "0.4"
@@ -33,3 +56,4 @@ parking_lot = "0.11"
 [build-dependencies]
 tonic-build = "0.2"
 capnpc = "0.13.1"
+

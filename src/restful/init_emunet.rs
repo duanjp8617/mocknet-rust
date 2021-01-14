@@ -41,12 +41,13 @@ async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
 }
 
 // the actual work is done in a background task
-async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo,EdgeInfo>) {
+async fn background_task(client: Client, mut emunet: EmuNet, network_graph: InMemoryGraph<u64, VertexInfo, EdgeInfo>) {
     // record the network size
     let size = network_graph.size() as u32;
     
     // do the partition
-    let res = network_graph.partition(emunet.servers_mut());
+    let res = network_graph.partition(emunet.servers_mut(), 2, true, "near".to_string(), 5);
+    // for now, make partition with deafult paramaters that 2 partitions, RankSwap with "near" mode, 5 as threshold of clustering.
     if res.is_err() {
         // set the state of the emunet to fail
         let err = EmuNetError::PartitionFail(format!("{}", res.map(|_|{()}).unwrap_err()));

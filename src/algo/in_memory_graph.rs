@@ -1,10 +1,13 @@
 use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 use std::fmt;
+pub mod affinity_partition;
+use std::fmt::{Display, Debug};
+use affinity_partition::{Edge_py, Node};
 
 use serde::de::DeserializeOwned;
 
-use super::traits::{PartitionBin, Partition};
+use super::traits::{PartitionBin, Partition, Weighted};
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -88,11 +91,13 @@ impl<'a, Vid, Vertex, Edge, T, I> Partition<'a, T, I> for InMemoryGraph<Vid, Ver
 where
     T: 'a + PartitionBin<Size = u32>,
     I: Iterator<Item = &'a mut T>,
-    Vid: Eq + Hash + Clone
+    Vid: Eq + Hash + Clone + Copy + Debug + Display,
+    Vertex: Weighted,
+    Edge: Weighted
 {
     type ItemId = Vid;
 
-    fn partition(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::BinId>> 
+    /*fn partition(&self, mut bins: I) -> Result<HashMap<Vid, <T as PartitionBin>::BinId>> 
     {
         // acquire an iterator of vids
         let mut vids = self.vertexes.keys();
@@ -117,8 +122,62 @@ where
         }
 
         Ok(res)
-    }
+    }*/
 
+    fn partition(&self, mut bins: I, partition_number: usize, rank_swap: bool, rank_swap_mode: String, cluster_threshold: usize) -> Result::<HashMap<Vid, T::BinId>>{
+        /*
+            // cluster_threshold: usize, the threshold that stop affinity clustering, or stop at most 5 rounds.
+            // rank_swap_mode: String ("near" or "rank"). "near" mode pair two partitions nearby together, which can approximately minimize edges cut off,
+               while "rank" mode pair the largest interval with the smallest one, may raise edges cut off.
+            // rank_swap: weather to implement rank_swap algorithm.
+        */
+            let mut edges = Vec::<Edge_py<Node<Vid>>>::new();
+            
+            for ((start, end), edge) in self.edges.iter() {
+                let start_weight = self.vertexes.get(start).unwrap().get_weight();
+                let end_weight = self.vertexes.get(end).unwrap().get_weight();
+                
+                edges.push(Edge_py {
+                    start: Node {
+                        name: start.clone(),
+                        weight: start_weight
+                    },
+                    end: Node {
+                        name: end.clone(),
+                        weight: end_weight
+                    },
+                    weight: edge.get_weight()
+                });
+    
+                edges.push(Edge_py {
+                    start: Node {
+                        name: end.clone(),
+                        weight: end_weight
+                    },
+                    end: Node {
+                        name: start.clone(),
+                        weight: start_weight
+                    },
+                    weight: edge.get_weight()
+                });
+            }
+    
+            let mut res = HashMap::new();
+            let clusters = affinity_partition::partition(edges, partition_number, rank_swap, rank_swap_mode, cluster_threshold);
+            let mut curr_bin = bins.next().ok_or("not enough resource".to_string())?;
+            for i in 0..clusters.len() {
+                for j in 0..clusters[i].len() {
+                    res.insert(clusters[i][j].name, curr_bin.bin_id());
+                }
+                if let Some(new_bin) = bins.next() {
+                    curr_bin = new_bin;
+                }
+                else {
+                    return Err("not enough resource".to_string());
+                }
+            }
+            Ok(res)
+    }
 }
 
 impl<Vid, Vertex, Edge> InMemoryGraph<Vid, Vertex, Edge>

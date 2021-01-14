@@ -2,8 +2,13 @@ use std::collections::{HashMap, hash_map::ValuesMut};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use rand::{Rng};
 
 use super::server::{ContainerServer};
+use super::super::algo::traits::Weighted;
+/*pub trait Weighted {
+    fn get_weight(&self) -> usize;
+}*/
 
 #[derive(Deserialize, Serialize)]
 pub struct VertexInfo {
@@ -14,6 +19,13 @@ pub struct VertexInfo {
 impl VertexInfo {
     pub fn id(&self) -> u64 {
         return self.id;
+    }
+}
+
+impl Weighted for VertexInfo {
+    fn get_weight(&self) -> usize { //generate a random weight for vertex
+        let random_weight = rand::thread_rng().gen_range(1, 10);
+        random_weight
     }
 }
 
@@ -40,6 +52,12 @@ impl EdgeInfo {
 
     pub fn description(&self) -> String {
         self.description.clone()
+    }
+}
+
+impl Weighted for EdgeInfo {
+    fn get_weight(&self) -> usize { //generate a weight of 1 for edge
+        1
     }
 }
 
