@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use http::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::time;
 use warp::reply::with_status;
 use warp::{http, Filter};
@@ -241,11 +241,17 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     tokio::spawn(background_task(db_client, emunet, network_graph));
 
     // reply to the client
+    #[derive(Serialize)]
+    struct ResponseData {
+        status: String,
+    }
     Ok(warp::reply::with_status(
         // format!("{{ \"status\": \"working\" }}"),
-        serde_json::to_string(&Response::<String>::new(
+        serde_json::to_string(&Response::<ResponseData>::new(
             true,
-            format!("{{ \"status\": \"working\" }}"),
+            ResponseData {
+                status: "working".to_string(),
+            },
             String::new(),
         ))
         .unwrap(),
