@@ -9,17 +9,16 @@ use hello_world::HelloRequest;
 
 pub struct ContainerServerAddr(String);
 
-pub struct ContainerBackendBuilder<I> { 
+pub struct ContainerBackendBuilder<I> {
     addr_iter: I,
 }
 
 impl<I> ContainerBackendBuilder<I>
-    where I: Iterator<Item = ContainerServerAddr> 
+where
+    I: Iterator<Item = ContainerServerAddr>,
 {
     pub fn new(iter: I) -> Self {
-        Self {
-            addr_iter: iter,
-        }
+        Self { addr_iter: iter }
     }
 
     pub async fn build(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -29,15 +28,12 @@ impl<I> ContainerBackendBuilder<I>
             let request = tonic::Request::new(HelloRequest {
                 name: "Tonic".into(),
             });
-        
-            let _ = server_client.say_hello(request).await?;
-        
-            println!("Get the fucking resposne");
-        
 
+            let _ = server_client.say_hello(request).await?;
+
+            println!("Get the fucking resposne");
         }
-        
+
         Ok(())
     }
 }
-

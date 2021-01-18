@@ -1,8 +1,8 @@
-use std::net::{IpAddr, SocketAddr};
 use std::cmp::Ord;
+use std::net::{IpAddr, SocketAddr};
 
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::algo::PartitionBin;
 
@@ -19,13 +19,11 @@ impl ServerAddress {
     fn new(conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str) -> Option<Self> {
         conn_ip.parse::<IpAddr>().ok().and_then(move |conn_ip| {
             data_ip.parse::<IpAddr>().ok().and_then(move |data_ip| {
-                man_ip.parse::<IpAddr>().ok().map(move |man_ip|{
-                    Self {
-                        conn_ip,
-                        conn_port,
-                        data_ip,
-                        man_ip
-                    }
+                man_ip.parse::<IpAddr>().ok().map(move |man_ip| Self {
+                    conn_ip,
+                    conn_port,
+                    data_ip,
+                    man_ip,
                 })
             })
         })
@@ -33,8 +31,8 @@ impl ServerAddress {
 }
 
 /// Core information of a server.
-/// 
-/// `id`: the id of the server, 
+///
+/// `id`: the id of the server,
 /// `server_addr`: server addresses,
 /// `max_capacity`: the maximum number of containers that can be launched in the server
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,32 +45,40 @@ pub struct ServerInfo {
 /// A list of `ServerInfo` that can be stored in the database as JSON value.
 #[derive(Serialize, Deserialize)]
 pub struct ServerInfoList {
-    servers: Vec<ServerInfo>
+    servers: Vec<ServerInfo>,
 }
 
 impl ServerInfoList {
     fn server_addr_exist(&self, server_addr: &ServerAddress) -> bool {
-        let mut sorted: Vec<&ServerAddress> = self.servers.iter().map(|e|{&e.server_addr}).collect();
+        let mut sorted: Vec<&ServerAddress> = self.servers.iter().map(|e| &e.server_addr).collect();
         sorted.sort();
         sorted.binary_search(&server_addr).is_ok()
     }
 
     pub fn new() -> Self {
         Self {
-            servers: Vec::new()
+            servers: Vec::new(),
         }
     }
 
     /// Add a new server to the list.
-    pub fn add_server_info(&mut self, conn_ip: &str, conn_port: u16, data_ip: &str, man_ip: &str, 
-                           max_capacity: u32) -> Result<(), String>
-    {
+    pub fn add_server_info(
+        &mut self,
+        conn_ip: &str,
+        conn_port: u16,
+        data_ip: &str,
+        man_ip: &str,
+        max_capacity: u32,
+    ) -> Result<(), String> {
         let address = ServerAddress::new(conn_ip, conn_port, data_ip, man_ip).unwrap();
         // validate the address
         if self.server_addr_exist(&address) {
-            return Err(format!("Address {:?} is already stored in the list.", &address));
+            return Err(format!(
+                "Address {:?} is already stored in the list.",
+                &address
+            ));
         }
-        
+
         self.servers.push(ServerInfo {
             id: indradb::util::generate_uuid_v1(),
             server_addr: address,
@@ -87,10 +93,13 @@ impl ServerInfoList {
         let mut res = Self::new();
         for cs in i {
             if res.server_addr_exist(&cs.server_addr) {
-                return Err(format!("ServerAddr {:?} exists in the pool", &cs.server_addr));
+                return Err(format!(
+                    "ServerAddr {:?} exists in the pool",
+                    &cs.server_addr
+                ));
             }
             res.servers.push(cs);
-        };
+        }
         Ok(res)
     }
 
@@ -103,28 +112,34 @@ impl ServerInfoList {
     pub fn allocate_servers(&mut self, quantity: u32) -> Result<Vec<ContainerServer>, u32> {
         let mut target = 0;
 
-        let mut enumerate: Vec<(usize, u32)> = self.servers.iter().map(|e|{e.max_capacity}).enumerate().collect();
-        enumerate.sort_by(|a, b|{(&b.1).cmp(&a.1)});
-        
+        let mut enumerate: Vec<(usize, u32)> = self
+            .servers
+            .iter()
+            .map(|e| e.max_capacity)
+            .enumerate()
+            .collect();
+        enumerate.sort_by(|a, b| (&b.1).cmp(&a.1));
+
         let mut index = 0;
         while target < quantity && index < enumerate.len() {
-            target += enumerate[index].1;            
+            target += enumerate[index].1;
             index += 1;
-        };
-        
+        }
+
         if target >= quantity {
-            Ok(
-                enumerate.iter().take(index).map(|e|{
+            Ok(enumerate
+                .iter()
+                .take(index)
+                .map(|e| {
                     let server_info = self.servers.remove(e.0);
                     let curr_capacity = server_info.max_capacity;
                     ContainerServer {
                         server_info,
                         curr_capacity,
                     }
-                }).collect()
-            )
-        }
-        else {
+                })
+                .collect())
+        } else {
             Err(target)
         }
     }
@@ -141,7 +156,6 @@ impl ContainerServer {
         return self.server_info.id;
     }
 
-
     pub fn conn_addr(&self) -> SocketAddr {
         let server_addr = &self.server_info.server_addr;
         SocketAddr::new(server_addr.conn_ip, server_addr.conn_port)
@@ -155,14 +169,13 @@ impl PartitionBin for ContainerServer {
     fn fill(&mut self, resource_size: u32) -> bool {
         if self.curr_capacity < resource_size {
             return false;
-        }
-        else {
+        } else {
             self.curr_capacity -= resource_size;
             return true;
         }
     }
 
     fn bin_id(&self) -> Self::BinId {
-        return self.id()
+        return self.id();
     }
 }

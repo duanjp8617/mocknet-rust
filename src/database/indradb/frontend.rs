@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
+use indradb::BulkInsertItem;
+use indradb::Type;
+use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
-use indradb::BulkInsertItem;
-use indradb::{SpecificVertexQuery, VertexQueryExt, RangeVertexQuery};
-use indradb::Type;
-use uuid::Uuid;
 use serde::{de::DeserializeOwned, Serialize};
+use uuid::Uuid;
 
-use crate::database::errors::BackendError;
-use crate::emunet::{server, user};
-use crate::database::CORE_INFO_ID;
-use super::message_queue;
 use super::message::{Request, Response};
+use super::message_queue;
+use crate::database::errors::BackendError;
+use crate::database::CORE_INFO_ID;
+use crate::emunet::{server, user};
 
 pub struct Frontend {
     sender: message_queue::Sender<Request, Response, BackendError>,
@@ -20,21 +20,21 @@ pub struct Frontend {
 
 impl Frontend {
     pub fn new(sender: message_queue::Sender<Request, Response, BackendError>) -> Self {
-        Self {sender}
+        Self { sender }
     }
 }
 
 impl Clone for Frontend {
     fn clone(&self) -> Self {
         Self {
-            sender: self.sender.clone()
+            sender: self.sender.clone(),
         }
     }
 }
 
 macro_rules! request_wrapper {
     ( $method_name: ident,
-      $request_name: ident, 
+      $request_name: ident,
       $( $variable: ident : $t: ty ,)+
       => $rt: ty
     ) => {
@@ -48,9 +48,8 @@ macro_rules! request_wrapper {
     }
 }
 
-
 impl Frontend {
-    request_wrapper!(async_create_vertex, AsyncCreateVertex, v: Vertex, => bool);    
+    request_wrapper!(async_create_vertex, AsyncCreateVertex, v: Vertex, => bool);
     request_wrapper!(async_get_vertices, AsyncGetVertices, q: VertexQuery,  => Vec<Vertex>);
     request_wrapper!(async_get_vertex_properties, AsyncGetVertexProperties, q: VertexPropertyQuery, => Vec<VertexProperty>);
     request_wrapper!(async_set_vertex_properties, AsyncSetVertexProperties, q: VertexPropertyQuery, value: serde_json::Value, => ());
@@ -58,7 +57,7 @@ impl Frontend {
 
 impl Frontend {
     // create a vertex with an optional uuid
-    pub async fn create_vertex(&self, id: Option<Uuid>) -> Result<Option<Uuid>, BackendError> {        
+    pub async fn create_vertex(&self, id: Option<Uuid>) -> Result<Option<Uuid>, BackendError> {
         let t = Type::new("t").unwrap();
         let v = match id {
             Some(id) => Vertex::with_id(id, t),
@@ -68,21 +67,25 @@ impl Frontend {
         let succeed = self.async_create_vertex(v.clone()).await?;
         if succeed {
             Ok(Some(v.id))
-        }
-        else {
+        } else {
             Ok(None)
         }
     }
 
     // get json property with name `property_name` from vertex with id `vid`
-    pub async fn get_vertex_json_value(&self, vid: Uuid, property_name: &str) -> Result<Option<serde_json::Value>, BackendError> {       
+    pub async fn get_vertex_json_value(
+        &self,
+        vid: Uuid,
+        property_name: &str,
+    ) -> Result<Option<serde_json::Value>, BackendError> {
         let q: VertexQuery = SpecificVertexQuery::single(vid.clone()).into();
         let vertex_list = self.async_get_vertices(q).await?;
         if vertex_list.len() == 0 {
             return Ok(None);
         }
 
-        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v| v.id).collect())
+            .property(property_name);
         let mut property_list = self.async_get_vertex_properties(q).await?;
         if property_list.len() == 0 {
             return Ok(None);
@@ -92,14 +95,20 @@ impl Frontend {
     }
 
     // set json property with name `property_name` for vertex with id `vid`
-    pub async fn set_vertex_json_value(&self, vid: Uuid, property_name: &str, json: serde_json::Value) -> Result<bool, BackendError> {        
+    pub async fn set_vertex_json_value(
+        &self,
+        vid: Uuid,
+        property_name: &str,
+        json: serde_json::Value,
+    ) -> Result<bool, BackendError> {
         let q: VertexQuery = SpecificVertexQuery::single(vid).into();
         let vertex_list = self.async_get_vertices(q).await?;
         if vertex_list.len() == 0 {
             return Ok(false);
         }
 
-        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v|{v.id}).collect()).property(property_name);
+        let q = SpecificVertexQuery::new(vertex_list.into_iter().map(|v| v.id).collect())
+            .property(property_name);
         self.async_set_vertex_properties(q, json).await?;
         Ok(true)
     }
@@ -109,12 +118,15 @@ impl Frontend {
         let res = self.sender.send(Request::AsyncBulkInsert(qs)).await?;
         match res {
             Response::AsyncBulkInsert(()) => Ok(()),
-            _ => panic!("invalid response!")
+            _ => panic!("invalid response!"),
         }
     }
 
     // get all the vertexes
-    pub async fn get_vertex_properties(&self, q: RangeVertexQuery) -> Result<Vec<serde_json::Value>, BackendError> {
+    pub async fn get_vertex_properties(
+        &self,
+        q: RangeVertexQuery,
+    ) -> Result<Vec<serde_json::Value>, BackendError> {
         let q = q.property("default".to_string());
         self.async_get_vertex_properties(q).await.map(|vp| {
             vp.into_iter().fold(Vec::new(), |mut vec, vp| {
@@ -127,17 +139,28 @@ impl Frontend {
 
 impl Frontend {
     // helpers function:
-    async fn get_core_property<T: DeserializeOwned>(&self, property: &str) -> Result<T, BackendError> {
-        let res = self.get_vertex_json_value(CORE_INFO_ID.clone(), property).await?;
+    async fn get_core_property<T: DeserializeOwned>(
+        &self,
+        property: &str,
+    ) -> Result<T, BackendError> {
+        let res = self
+            .get_vertex_json_value(CORE_INFO_ID.clone(), property)
+            .await?;
         match res {
             Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
             None => panic!("database is not correctly initialized"),
         }
     }
 
-    async fn set_core_property<T: Serialize>(&self, property: &str, t: T) -> Result<(), BackendError> {
+    async fn set_core_property<T: Serialize>(
+        &self,
+        property: &str,
+        t: T,
+    ) -> Result<(), BackendError> {
         let jv = serde_json::to_value(t).unwrap();
-        let res = self.set_vertex_json_value(CORE_INFO_ID.clone(), property, jv).await?;
+        let res = self
+            .set_vertex_json_value(CORE_INFO_ID.clone(), property, jv)
+            .await?;
         if !res {
             panic!("database is not correctly initialized");
         }
@@ -151,15 +174,22 @@ impl Frontend {
         self.get_core_property("server_info_list").await
     }
 
-    pub async fn set_server_info_list(&self, server_info_list: Vec<server::ServerInfo>) -> Result<(), BackendError> {
-        self.set_core_property("server_info_list", server_info_list).await
+    pub async fn set_server_info_list(
+        &self,
+        server_info_list: Vec<server::ServerInfo>,
+    ) -> Result<(), BackendError> {
+        self.set_core_property("server_info_list", server_info_list)
+            .await
     }
 
     pub async fn get_user_map(&self) -> Result<HashMap<String, user::EmuNetUser>, BackendError> {
         self.get_core_property("user_map").await
     }
 
-    pub async fn set_user_map(&self, user_map: HashMap<String, user::EmuNetUser>) -> Result<(), BackendError> {
+    pub async fn set_user_map(
+        &self,
+        user_map: HashMap<String, user::EmuNetUser>,
+    ) -> Result<(), BackendError> {
         self.set_core_property("user_map", user_map).await
     }
 }

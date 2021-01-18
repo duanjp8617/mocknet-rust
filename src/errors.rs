@@ -1,4 +1,4 @@
-use std::{convert::From, fmt, error::Error as StdError};
+use std::{convert::From, error::Error as StdError, fmt};
 
 use capnp::Error as CapnpError;
 use std::io::Error as StdIoError;
@@ -13,7 +13,7 @@ pub struct Error {
 pub enum Kind {
     // Self-defined error types:
     Wtf,
-    
+
     // Error types generated from dependencies
     CapnpError,
     StdIoError,
@@ -36,13 +36,13 @@ impl Error {
         }
     }
 }
- 
+
 // Convert errors from dependencies to errors::Error
 impl From<CapnpError> for Error {
     fn from(err: CapnpError) -> Self {
         Self {
             kind: Kind::CapnpError,
-            description: format!("{}", err)
+            description: format!("{}", err),
         }
     }
 }
@@ -51,7 +51,7 @@ impl From<StdIoError> for Error {
     fn from(err: StdIoError) -> Self {
         Self {
             kind: Kind::StdIoError,
-            description: format!("{}", err)
+            description: format!("{}", err),
         }
     }
 }
@@ -60,7 +60,7 @@ impl<T> From<TokioChannelSendError<T>> for Error {
     fn from(err: TokioChannelSendError<T>) -> Self {
         Self {
             kind: Kind::TokioChannelSendError,
-            description: format!("{}", err)
+            description: format!("{}", err),
         }
     }
 }
@@ -86,4 +86,3 @@ impl StdError for Error {
         &self.description
     }
 }
-

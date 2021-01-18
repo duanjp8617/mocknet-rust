@@ -1,5 +1,5 @@
-use std::fmt;
 use std::convert::From;
+use std::fmt;
 
 use tokio::sync::mpsc::error as mpsc;
 use tokio::sync::oneshot::error as oneshot;
@@ -51,7 +51,7 @@ impl<T> From<mpsc::SendError<T>> for BackendError {
     fn from(_: mpsc::SendError<T>) -> BackendError {
         Self {
             kind: BackendErrorKind::QueueDrop,
-            description: String::new()
+            description: String::new(),
         }
     }
 }
@@ -61,7 +61,7 @@ impl From<oneshot::RecvError> for BackendError {
     fn from(_: oneshot::RecvError) -> BackendError {
         Self {
             kind: BackendErrorKind::QueueDrop,
-            description: String::new()
+            description: String::new(),
         }
     }
 }
@@ -69,7 +69,7 @@ impl From<oneshot::RecvError> for BackendError {
 // Implementing std::error::Error trait.
 impl fmt::Display for BackendError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}: {}", self.kind, self.description)         
+        write!(f, "{:?}: {}", self.kind, self.description)
     }
 }
 

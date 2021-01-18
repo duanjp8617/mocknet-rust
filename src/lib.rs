@@ -3,11 +3,11 @@
 // Then, I will use netlink and shiplift to implement an accelarated way for building the virtual network using the exact same set of APIs
 
 // mod enet;
-pub mod errors;
-pub mod container_backend;
-pub mod backend;
-pub mod autogen;
-pub mod emunet;
-pub mod restful;
 pub mod algo;
+pub mod autogen;
+pub mod backend;
+pub mod container_backend;
 pub mod database;
+pub mod emunet;
+pub mod errors;
+pub mod restful;

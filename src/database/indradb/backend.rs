@@ -1,16 +1,16 @@
 // An implementation of Indradb storage backend
 use std::future::Future;
 
+use capnp::Error as CapnpError;
 use capnp_rpc::rpc_twoparty_capnp::Side;
+use indradb::BulkInsertItem;
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
-use indradb::BulkInsertItem;
-use capnp::Error as CapnpError;
 
-use super::indradb_util::ClientTransaction;
 use super::indradb_util::converters;
-use super::message_queue::Queue;
+use super::indradb_util::ClientTransaction;
 use super::message::{Request, Response};
+use super::message_queue::Queue;
 use crate::database::errors::BackendError;
 
 pub struct Backend {
@@ -19,16 +19,19 @@ pub struct Backend {
 }
 
 impl Backend {
-    pub fn new(client: crate::autogen::service::Client, disconnector: capnp_rpc::Disconnector<Side>) -> Self {
-        Self{
-            tran_worker: client, 
-            disconnector
+    pub fn new(
+        client: crate::autogen::service::Client,
+        disconnector: capnp_rpc::Disconnector<Side>,
+    ) -> Self {
+        Self {
+            tran_worker: client,
+            disconnector,
         }
     }
 }
 
 macro_rules! transaction_wrapper {
-    ( $method_name: ident, 
+    ( $method_name: ident,
       $( $variable: ident : $t: ty ,)+
       => $rt: ty
     ) => {
@@ -57,18 +60,18 @@ impl Backend {
 
     async fn dispatch_request(&self, req: Request) -> Result<Response, BackendError> {
         match req {
-            Request::AsyncCreateVertex(v) => {
-                Ok(Response::AsyncCreateVertex(self.async_create_vertex(&v).await?))
-            },
-            Request::AsyncGetVertices(q) => {
-                Ok(Response::AsyncGetVertices(self.async_get_vertices(q).await?))
-            },
-            Request::AsyncGetVertexProperties(q) => {
-                Ok(Response::AsyncGetVertexProperties(self.async_get_vertex_properties(q).await?))
-            },
-            Request::AsyncSetVertexProperties(q, value) => {
-                Ok(Response::AsyncSetVertexProperties(self.async_set_vertex_properties(q, &value).await?))
-            },
+            Request::AsyncCreateVertex(v) => Ok(Response::AsyncCreateVertex(
+                self.async_create_vertex(&v).await?,
+            )),
+            Request::AsyncGetVertices(q) => Ok(Response::AsyncGetVertices(
+                self.async_get_vertices(q).await?,
+            )),
+            Request::AsyncGetVertexProperties(q) => Ok(Response::AsyncGetVertexProperties(
+                self.async_get_vertex_properties(q).await?,
+            )),
+            Request::AsyncSetVertexProperties(q, value) => Ok(Response::AsyncSetVertexProperties(
+                self.async_set_vertex_properties(q, &value).await?,
+            )),
             Request::AsyncBulkInsert(qs) => {
                 Ok(Response::AsyncBulkInsert(self.async_bulk_insert(qs).await?))
             }
@@ -76,27 +79,27 @@ impl Backend {
     }
 }
 
-pub fn build_backend_fut(backend: Backend, mut queue: Queue<Request, Response, BackendError>) 
-    -> impl Future<Output = Result<(), BackendError>> + 'static 
-{
+pub fn build_backend_fut(
+    backend: Backend,
+    mut queue: Queue<Request, Response, BackendError>,
+) -> impl Future<Output = Result<(), BackendError>> + 'static {
     fn drain_queue(mut queue: Queue<Request, Response, BackendError>) {
         queue.close();
         while let Ok(_) = queue.try_recv() {}
     }
-    
-    async move {        
+
+    async move {
         while let Some(mut msg) = queue.recv().await {
             if msg.is_close_msg() {
                 drain_queue(queue);
                 break;
-            }
-            else {
+            } else {
                 let req = msg.try_get_msg().unwrap();
                 let resp_result = backend.dispatch_request(req).await;
                 let _ = msg.callback(resp_result);
             }
         }
-        
-        backend.disconnector.await.map_err(|e|{e.into()})
+
+        backend.disconnector.await.map_err(|e| e.into())
     }
 }

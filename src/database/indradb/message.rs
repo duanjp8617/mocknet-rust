@@ -1,6 +1,6 @@
+use indradb::BulkInsertItem;
 use indradb::{Vertex, VertexQuery};
 use indradb::{VertexProperty, VertexPropertyQuery};
-use indradb::BulkInsertItem;
 
 #[derive(Clone)]
 pub enum Request {

@@ -1,9 +1,9 @@
+use std::future::Future;
 use std::net::IpAddr;
 use std::pin::Pin;
-use std::future::Future;
-use std::task::{Poll, Context};
+use std::task::{Context, Poll};
 
-use tonic::transport::{Channel, channel::Endpoint, Error};
+use tonic::transport::{channel::Endpoint, Channel, Error};
 use tower::Service;
 
 pub struct ServerAddr {
@@ -13,12 +13,7 @@ pub struct ServerAddr {
 
 impl ServerAddr {
     pub fn new(ip: &str, port: u16) -> Option<Self> {
-        ip.parse::<IpAddr>().ok().map(|ip| {
-            Self {
-                ip,
-                port
-            }
-        })
+        ip.parse::<IpAddr>().ok().map(|ip| Self { ip, port })
     }
 }
 
@@ -33,19 +28,19 @@ impl Service<Vec<ServerAddr>> for ConnService {
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Vec<ServerAddr>) -> Self::Future {        
+    fn call(&mut self, req: Vec<ServerAddr>) -> Self::Future {
         async fn make_conns(addrs: Vec<ServerAddr>) -> Result<Vec<Channel>, Error> {
             let mut vec = Vec::new();
             for addr in &addrs {
-                let s_addr = "http://".to_string() + &addr.ip.to_string() +  ":" + &addr.port.to_string();
+                let s_addr =
+                    "http://".to_string() + &addr.ip.to_string() + ":" + &addr.port.to_string();
                 let chan = Endpoint::new(s_addr)?.connect().await?;
                 vec.push(chan);
             }
 
             Ok(vec)
         }
-        
+
         Box::pin(make_conns(req))
     }
 }
-

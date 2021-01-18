@@ -1,7 +1,7 @@
 use std::convert::From;
 
-use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver, unbounded_channel};
-use tokio::sync::mpsc::error::{TryRecvError, SendError};
+use tokio::sync::mpsc::error::{SendError, TryRecvError};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot::{self, error::RecvError};
 
 // A message with a callback channel
@@ -19,16 +19,16 @@ impl<M, R, E> Message<M, R, E> {
         self.msg.take()
     }
 
-    pub fn callback(self, response: Result<R, E>) -> Result<(), Result<R,E>> {
+    pub fn callback(self, response: Result<R, E>) -> Result<(), Result<R, E>> {
         self.cb_tx.send(response)
     }
 }
 
 impl<M, R, E> Message<M, R, E> {
     fn new(msg: M, cb_tx: oneshot::Sender<Result<R, E>>) -> Self {
-        Self{
-            msg: Some(msg), 
-            cb_tx
+        Self {
+            msg: Some(msg),
+            cb_tx,
         }
     }
 
@@ -47,22 +47,22 @@ pub struct Sender<M, R, E> {
 impl<M, R, E> Clone for Sender<M, R, E> {
     fn clone(&self) -> Self {
         Self {
-            tx: self.tx.clone()
+            tx: self.tx.clone(),
         }
     }
 }
 
-impl<M, R, E> Sender<M, R, E> 
-    where
-        E: From<SendError<Message<M, R, E>>> + From<RecvError>
+impl<M, R, E> Sender<M, R, E>
+where
+    E: From<SendError<Message<M, R, E>>> + From<RecvError>,
 {
     pub async fn send(&self, msg: M) -> Result<R, E> {
         let (tx, rx) = oneshot::channel();
         let msg = Message::new(msg, tx);
-        
+
         self.tx.send(msg)?;
         let res = rx.await?;
-        
+
         res
     }
 }
@@ -72,7 +72,7 @@ pub struct Queue<M, R, E> {
 }
 
 impl<M, R, E> Queue<M, R, E> {
-    pub async fn recv(&mut self) -> Option<Message<M, R, E>>  {
+    pub async fn recv(&mut self) -> Option<Message<M, R, E>> {
         self.rx.recv().await
     }
 
@@ -87,8 +87,5 @@ impl<M, R, E> Queue<M, R, E> {
 
 pub fn create<M, R, E>() -> (Sender<M, R, E>, Queue<M, R, E>) {
     let (tx, rx) = unbounded_channel();
-    (Sender{tx}, Queue{rx})
+    (Sender { tx }, Queue { rx })
 }
-
-
-

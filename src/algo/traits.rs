@@ -6,7 +6,7 @@ pub trait PartitionBin {
     type BinId;
 
     /// Try to fill the bin with an item of a certain size.
-    /// 
+    ///
     /// Return true on succeed, false on failure
     fn fill(&mut self, item_size: Self::Size) -> bool;
 
@@ -18,12 +18,15 @@ pub trait PartitionBin {
 pub trait Partition<'a, T, I>
 where
     T: 'a + PartitionBin,
-    I: Iterator<Item = &'a mut T>
+    I: Iterator<Item = &'a mut T>,
 {
     type ItemId;
 
     /// Partition the stored items into bins.
-    /// 
+    ///
     /// Return the mapping from the item id to bin id.
-    fn partition(&self, bins: I) -> Result<HashMap<Self::ItemId, <T as PartitionBin>::BinId>, String>;
+    fn partition(
+        &self,
+        bins: I,
+    ) -> Result<HashMap<Self::ItemId, <T as PartitionBin>::BinId>, String>;
 }

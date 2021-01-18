@@ -98,10 +98,9 @@ macro_rules! define_config_directive {
 }
 
 define_config_directive! {
-    {command: "command1", rust_name: CommandOne, args: [arg1], optional_args: []},    
+    {command: "command1", rust_name: CommandOne, args: [arg1], optional_args: []},
     {command: "other_command", rust_name: OtherCommand, args: [arg1], optional_args: [optional_arg1]},
 }
-
 
 fn main() {
     // // print_an_address().unwrap();

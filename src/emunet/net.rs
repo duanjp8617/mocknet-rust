@@ -1,13 +1,13 @@
-use std::collections::{HashMap, hash_map::ValuesMut};
+use std::collections::{hash_map::ValuesMut, HashMap};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::server::{ContainerServer};
+use super::server::ContainerServer;
 
 #[derive(Deserialize, Serialize)]
 pub struct VertexInfo {
-    id: u64, // client side vertex id in the form of u64
+    id: u64,             // client side vertex id in the form of u64
     description: String, // a description string to hold the place
 }
 
@@ -27,7 +27,10 @@ pub struct EdgeInfo {
 
 impl EdgeInfo {
     pub fn new(edge_id: (u64, u64), description: String) -> EdgeInfo {
-        EdgeInfo{edge_id, description}
+        EdgeInfo {
+            edge_id,
+            description,
+        }
     }
 
     pub fn edge_id(&self) -> (u64, u64) {
@@ -48,14 +51,16 @@ pub struct Vertex {
     info: VertexInfo,
     uuid: uuid::Uuid,
     server_uuid: uuid::Uuid, // which server this vertex is launched on
-    edges: HashMap<uuid::Uuid, Edge>
+    edges: HashMap<uuid::Uuid, Edge>,
 }
 
 impl Vertex {
     pub fn new(info: VertexInfo, uuid: uuid::Uuid, server_uuid: uuid::Uuid) -> Self {
-        Self{
-            info, uuid, server_uuid, 
-            edges: HashMap::new()
+        Self {
+            info,
+            uuid,
+            server_uuid,
+            edges: HashMap::new(),
         }
     }
 
@@ -77,13 +82,13 @@ impl Vertex {
     }
 
     pub fn uuid(&self) -> uuid::Uuid {
-        return self.uuid.clone()
+        return self.uuid.clone();
     }
 
     pub fn vertex_info(&self) -> VertexInfo {
         VertexInfo {
             id: self.info.id,
-            description: self.info.description.clone()
+            description: self.info.description.clone(),
         }
     }
 
@@ -101,7 +106,10 @@ pub struct Edge {
 
 impl Edge {
     pub fn new(edge_uuid: (uuid::Uuid, uuid::Uuid), description: String) -> Self {
-        Self{edge_uuid, description}
+        Self {
+            edge_uuid,
+            description,
+        }
     }
 }
 
@@ -163,7 +171,7 @@ impl EmuNet {
         }
     }
 
-    pub fn servers_mut<'a>(&'a mut self) ->  ValuesMut<'a, Uuid, ContainerServer>{
+    pub fn servers_mut<'a>(&'a mut self) -> ValuesMut<'a, Uuid, ContainerServer> {
         self.server_map.values_mut()
     }
 
@@ -192,7 +200,7 @@ impl EmuNet {
         self.capacity
     }
 
-    pub fn vertex_uuids<'a>(&'a self) -> impl Iterator<Item = &'a Uuid> + 'a{
+    pub fn vertex_uuids<'a>(&'a self) -> impl Iterator<Item = &'a Uuid> + 'a {
         self.vertex_map.values()
     }
 }

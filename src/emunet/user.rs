@@ -1,7 +1,6 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-
 
 #[derive(Serialize, Deserialize)]
 pub struct EmuNetUser {
@@ -20,8 +19,7 @@ impl EmuNetUser {
     pub fn add_emu_net(&mut self, emu_net_name: String, emu_net_id: Uuid) -> bool {
         if self.emu_net_ids.get(&emu_net_name).is_some() {
             false
-        }
-        else {
+        } else {
             self.emu_net_ids.insert(emu_net_name, emu_net_id);
             true
         }
@@ -32,6 +30,6 @@ impl EmuNetUser {
     }
 
     pub fn get_all_emu_nets(&self) -> HashMap<String, Uuid> {
-        return self.emu_net_ids.clone()
+        return self.emu_net_ids.clone();
     }
 }
