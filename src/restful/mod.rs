@@ -1,29 +1,7 @@
-// a macro which is used to extract the response from nested Result types
-macro_rules! extract_response {
-    ($resp: expr,
-     $fatal: expr,
-     $err: expr) => {
-        match $resp {
-            Err(e) => {
-                return Ok(warp::reply::with_status(
-                    format!("{{ \"{}\": \"{}\" }}", $fatal, e),
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                ));
-            }
-            Ok(query_resp) => match query_resp {
-                Ok(inner) => inner,
-                Err(err_msg) => {
-                    return Ok(warp::reply::with_status(
-                        format!("{{ \"{}\": \"{}\" }}", $err, err_msg),
-                        http::StatusCode::BAD_REQUEST,
-                    ));
-                }
-            },
-        }
-    };
-}
+#[macro_use]
+mod macros;
 
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use warp::Filter;
 
 // parse the input JSON message
@@ -32,6 +10,23 @@ use warp::Filter;
 fn parse_json_body<T: DeserializeOwned + Send>(
 ) -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone {
     warp::body::content_length_limit(1024 * 16).and(warp::body::json())
+}
+
+#[derive(Serialize)]
+struct Response<T: Serialize> {
+    success: bool,
+    data: T,
+    message: String,
+}
+
+impl<T: Serialize> Response<T> {
+    fn new(success: bool, data: T, message: String) -> Self {
+        Self {
+            success,
+            data,
+            message,
+        }
+    }
 }
 
 pub mod create_emunet;
