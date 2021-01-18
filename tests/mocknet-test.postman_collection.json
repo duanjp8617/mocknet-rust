@@ -62,13 +62,13 @@
 			"response": []
 		},
 		{
-			"name": "localhost:3030/v1/get_emunet",
+			"name": "localhost:3030/v1/get_emunet_info",
 			"request": {
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"9e77ff04-4a45-11eb-8004-000000000000\"\n}",
+					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -76,14 +76,14 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/get_emunet",
+					"raw": "localhost:3030/v1/get_emunet_info",
 					"host": [
 						"localhost"
 					],
 					"port": "3030",
 					"path": [
 						"v1",
-						"get_emunet"
+						"get_emunet_info"
 					]
 				}
 			},
@@ -124,7 +124,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"9e77ff04-4a45-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 1, \"description\": \"fuck\"}, {\"id\": 2, \"description\": \"fuck\"}, {\"id\": 3, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [1, 2], \"description\": \"fuck\"}, {\"edge_id\": [1, 3], \"description\": \"fuck\"}]\n}",
+					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 1, \"description\": \"fuck\"}, {\"id\": 2, \"description\": \"fuck\"}, {\"id\": 3, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [1, 2], \"description\": \"fuck\"}, {\"edge_id\": [1, 3], \"description\": \"fuck\"}]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -140,6 +140,34 @@
 					"path": [
 						"v1",
 						"init_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/get_emunet_topo",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/get_emunet_topo",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"get_emunet_topo"
 					]
 				}
 			},
