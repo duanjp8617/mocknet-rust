@@ -10,6 +10,7 @@ use crate::algo::in_memory_graph::InMemoryGraph;
 use crate::algo::Partition;
 use crate::database::Client;
 use crate::emunet::net::*;
+use crate::restful::Response;
 
 // format of the incoming json message
 #[derive(Deserialize)]
@@ -182,7 +183,12 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     if !emunet.is_uninit() {
         // emunet can only be initialized once
         return Ok(with_status(
-            "{ \"operation_fail\": \"EmuNet can only be initialized once\"}".to_string(),
+            serde_json::to_string(&Response::<()>::new(
+                false,
+                (),
+                "operation_fail: EmuNet can only be initialized once".to_string(),
+            ))
+            .unwrap(),
             StatusCode::BAD_REQUEST,
         ));
     };
@@ -196,10 +202,15 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
         // InMemoryGraph<u64, VertexInfo,EdgeInfo> does not implement fmt::Debug,
         // map it to () and then extract the error message
         return Ok(with_status(
-            format!(
-                "\"invalid_input_graph\": \"{}\"",
-                res.map(|_| { () }).unwrap_err()
-            ),
+            serde_json::to_string(&Response::<()>::new(
+                false,
+                (),
+                format!(
+                    "\"invalid_input_graph\": \"{}\"",
+                    res.map(|_| { () }).unwrap_err()
+                ),
+            ))
+            .unwrap(),
             StatusCode::BAD_REQUEST,
         ));
     }
@@ -208,7 +219,12 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
         // report error if the input network topology exceeds the capacity
         // of the emunet
         return Ok(with_status(
-            format!("\"invalid_input_graph\": \"input graph exceeds capacity limitation\""),
+            serde_json::to_string(&Response::<()>::new(
+                false,
+                (),
+                "invalid_input_graph: input graph exceeds capacity limitation".to_string(),
+            ))
+            .unwrap(),
             StatusCode::BAD_REQUEST,
         ));
     }
@@ -226,7 +242,13 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
 
     // reply to the client
     Ok(warp::reply::with_status(
-        format!("{{ \"status\": \"working\" }}"),
+        // format!("{{ \"status\": \"working\" }}"),
+        serde_json::to_string(&Response::<String>::new(
+            true,
+            format!("{{ \"status\": \"working\" }}"),
+            String::new(),
+        ))
+        .unwrap(),
         http::StatusCode::CREATED,
     ))
 }
