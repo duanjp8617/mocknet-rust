@@ -1,18 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use warp::{http, Filter};
 
 use crate::database::Client;
+use crate::restful::Response;
 
 #[derive(Deserialize)]
 struct Json {
     user: String,
     emunet: String,
     capacity: u32,
-}
-
-#[derive(Serialize)]
-struct Response {
-    emunet_uuid: uuid::Uuid,
 }
 
 async fn create_emunet(
@@ -27,7 +23,7 @@ async fn create_emunet(
         "operation_fail"
     );
 
-    let resp = Response { emunet_uuid };
+    let resp = Response::new(true, emunet_uuid, String::new());
 
     Ok(warp::reply::with_status(
         serde_json::to_string(&resp).unwrap(),

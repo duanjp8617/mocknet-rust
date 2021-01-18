@@ -3,6 +3,7 @@ use warp::{http, Filter};
 
 use crate::database::Client;
 use crate::emunet::net;
+use crate::restful::Response;
 
 #[derive(Deserialize)]
 struct Json {
@@ -10,7 +11,7 @@ struct Json {
 }
 
 #[derive(Serialize)]
-struct Response {
+struct ResponseData {
     emunet: net::EmuNet,
     vertex_infos: Vec<net::VertexInfo>,
     edge_infos: Vec<net::EdgeInfo>,
@@ -32,11 +33,12 @@ async fn get_emunet(
         "operation_fail"
     );
 
-    let resp = Response {
+    let resp_data = ResponseData {
         emunet,
         vertex_infos,
         edge_infos,
     };
+    let resp = Response::new(true, resp_data, String::new());
 
     Ok(warp::reply::with_status(
         serde_json::to_string(&resp).unwrap(),

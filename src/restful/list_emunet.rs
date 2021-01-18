@@ -1,19 +1,12 @@
-use std::collections::HashMap;
-
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use serde::Deserialize;
 use warp::{http, Filter};
 
 use crate::database::Client;
+use crate::restful::Response;
 
 #[derive(Deserialize)]
 struct Json {
     user: String,
-}
-
-#[derive(Serialize)]
-struct Response {
-    emunets: HashMap<String, Uuid>,
 }
 
 async fn list_all_emunets(
@@ -26,7 +19,7 @@ async fn list_all_emunets(
         "operation_fail"
     );
 
-    let resp = Response { emunets };
+    let resp = Response::new(true, emunets, String::new());
     Ok(warp::reply::with_status(
         serde_json::to_string(&resp).unwrap(),
         http::StatusCode::OK,
