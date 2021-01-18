@@ -30,7 +30,8 @@ impl<T: Serialize> Response<T> {
 }
 
 pub mod create_emunet;
-pub mod get_emunet;
+pub mod get_emunet_info;
+pub mod get_emunet_topo;
 pub mod init_emunet;
 pub mod list_emunet;
 pub mod register_user;

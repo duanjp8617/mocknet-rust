@@ -27,18 +27,7 @@ async fn get_emunet(
         "operation_fail"
     );
 
-    let (vertex_infos, edge_infos) = extract_response!(
-        db_client.get_emu_net_infos(&emunet).await,
-        "internal_server_error",
-        "operation_fail"
-    );
-
-    let resp_data = ResponseData {
-        emunet,
-        vertex_infos,
-        edge_infos,
-    };
-    let resp = Response::new(true, resp_data, String::new());
+    let resp = Response::new(true, emunet, String::new());
 
     Ok(warp::reply::with_status(
         serde_json::to_string(&resp).unwrap(),
@@ -60,7 +49,7 @@ pub fn build_filter(
     });
     warp::post()
         .and(warp::path("v1"))
-        .and(warp::path("get_emunet"))
+        .and(warp::path("get_emunet_info"))
         .and(warp::path::end())
         .and(super::parse_json_body())
         .and(db_filter)
