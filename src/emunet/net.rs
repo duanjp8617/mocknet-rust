@@ -2,8 +2,10 @@ use std::collections::{hash_map::ValuesMut, HashMap};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use rand::{Rng};
 
 use super::server::ContainerServer;
+use super::super::algo::traits::Weighted;
 
 #[derive(Deserialize, Serialize)]
 pub struct VertexInfo {
@@ -17,12 +19,25 @@ impl VertexInfo {
     }
 }
 
+impl Weighted for VertexInfo {
+    fn get_weight(&self) -> usize { //generate a random weight for vertex
+        let random_weight = rand::thread_rng().gen_range(1, 10);
+        random_weight
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 // The edge connecting two devices.
 // Note: this represents an undirected edge
 pub struct EdgeInfo {
     edge_id: (u64, u64), // client side edge id in the form of (u64, u64)
     description: String, // a description string to hold the place
+}
+
+impl Weighted for EdgeInfo {
+    fn get_weight(&self) -> usize { //generate a weight of 1 for edge
+        1
+    }
 }
 
 impl EdgeInfo {
