@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use warp::{http, Filter};
+use warp::Filter;
 
 use crate::database::Client;
 use crate::restful::Response;

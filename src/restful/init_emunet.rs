@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio::time;
-use warp::reply::with_status;
-use warp::{http, Filter};
+use warp::Filter;
 
 use crate::algo::in_memory_graph::InMemoryGraph;
 use crate::algo::Partition;
