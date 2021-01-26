@@ -29,15 +29,6 @@ pub struct EdgeInfo {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
-    println!(
-        "{}",
-        serde_json::to_string(&EdgeInfo {
-            description: "wtf".to_string(),
-            edge_id: (1, 2)
-        })
-        .unwrap()
-    );
-
     // build up the database address
     let db_addr_str = DB_ADDR
         .iter()
