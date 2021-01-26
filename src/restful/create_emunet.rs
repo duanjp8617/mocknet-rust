@@ -25,10 +25,7 @@ async fn create_emunet(
 
     let resp = Response::new(true, emunet_uuid, String::new());
 
-    Ok(warp::reply::with_status(
-        serde_json::to_string(&resp).unwrap(),
-        http::StatusCode::OK,
-    ))
+    Ok(warp::reply::json(&resp))
 }
 
 /// This filter imiplements the functionality to create a new emunet.

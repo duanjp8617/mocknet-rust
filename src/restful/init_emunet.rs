@@ -182,15 +182,11 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     );
     if !emunet.is_uninit() {
         // emunet can only be initialized once
-        return Ok(with_status(
-            serde_json::to_string(&Response::<()>::new(
-                false,
-                (),
-                "operation_fail: EmuNet can only be initialized once".to_string(),
-            ))
-            .unwrap(),
-            StatusCode::BAD_REQUEST,
-        ));
+        return Ok(warp::reply::json(&Response::<()>::new(
+            false,
+            (),
+            "operation_fail: EmuNet can only be initialized once".to_string(),
+        )));
     };
 
     // build up the in memory graph
@@ -201,32 +197,24 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     if res.is_err() {
         // InMemoryGraph<u64, VertexInfo,EdgeInfo> does not implement fmt::Debug,
         // map it to () and then extract the error message
-        return Ok(with_status(
-            serde_json::to_string(&Response::<()>::new(
-                false,
-                (),
-                format!(
-                    "\"invalid_input_graph\": \"{}\"",
-                    res.map(|_| { () }).unwrap_err()
-                ),
-            ))
-            .unwrap(),
-            StatusCode::BAD_REQUEST,
-        ));
+        return Ok(warp::reply::json(&Response::<()>::new(
+            false,
+            (),
+            format!(
+                "\"invalid_input_graph\": \"{}\"",
+                res.map(|_| { () }).unwrap_err()
+            ),
+        )));
     }
     let network_graph: InMemoryGraph<u64, VertexInfo, EdgeInfo> = res.unwrap();
     if network_graph.size() > emunet.capacity() as usize {
         // report error if the input network topology exceeds the capacity
         // of the emunet
-        return Ok(with_status(
-            serde_json::to_string(&Response::<()>::new(
-                false,
-                (),
-                "invalid_input_graph: input graph exceeds capacity limitation".to_string(),
-            ))
-            .unwrap(),
-            StatusCode::BAD_REQUEST,
-        ));
+        return Ok(warp::reply::json(&Response::<()>::new(
+            false,
+            (),
+            "invalid_input_graph: input graph exceeds capacity limitation".to_string(),
+        )));
     }
 
     // update the state of the emunet object into working
@@ -245,18 +233,13 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     struct ResponseData {
         status: String,
     }
-    Ok(warp::reply::with_status(
-        // format!("{{ \"status\": \"working\" }}"),
-        serde_json::to_string(&Response::<ResponseData>::new(
-            true,
-            ResponseData {
-                status: "working".to_string(),
-            },
-            String::new(),
-        ))
-        .unwrap(),
-        http::StatusCode::CREATED,
-    ))
+    Ok(warp::reply::json(&Response::<ResponseData>::new(
+        true,
+        ResponseData {
+            status: "working".to_string(),
+        },
+        String::new(),
+    )))
 }
 
 /// This filter initializes the emunet by creating the vertexes and edges of the emulation network.

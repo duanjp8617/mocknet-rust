@@ -20,10 +20,7 @@ async fn list_all_emunets(
     );
 
     let resp = Response::new(true, emunets, String::new());
-    Ok(warp::reply::with_status(
-        serde_json::to_string(&resp).unwrap(),
-        http::StatusCode::OK,
-    ))
+    Ok(warp::reply::json(&resp))
 }
 
 /// This filter accepts an HTTP request containing the name of an existing user.

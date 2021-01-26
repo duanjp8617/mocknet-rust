@@ -31,10 +31,7 @@ async fn register_user(
     };
     let resp = Response::new(true, resp_data, String::new());
 
-    Ok(warp::reply::with_status(
-        serde_json::to_string(&resp).unwrap(),
-        http::StatusCode::OK,
-    ))
+    Ok(warp::reply::json(&resp))
 }
 
 /// This filter handles an HTTP request containing a new user name.
