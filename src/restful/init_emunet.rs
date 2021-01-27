@@ -96,7 +96,11 @@ async fn background_task(
                     panic!("fatal");
                 }
                 // save the client-side vertex id to server uuid mapping to the emunet
-                if emunet.get_vertex_assignment_mut().insert(client_id, server_uuid).is_some() {
+                if emunet
+                    .get_vertex_assignment_mut()
+                    .insert(client_id, server_uuid)
+                    .is_some()
+                {
                     panic!("fatal");
                 }
                 map
