@@ -146,6 +146,7 @@ pub struct EmuNet {
     state: EmuNetState,
     server_map: HashMap<Uuid, ContainerServer>,
     vertex_map: HashMap<u64, Uuid>,
+    vertex_assignment: HashMap<u64, Uuid>,
 }
 
 impl EmuNet {
@@ -158,6 +159,7 @@ impl EmuNet {
             state: EmuNetState::Uninit,
             server_map: HashMap::new(),
             vertex_map: HashMap::new(),
+            vertex_assignment: HashMap::new(),
         }
     }
 
@@ -185,6 +187,10 @@ impl EmuNet {
         }
         self.capacity -= reserved_capacity;
     }
+
+    pub fn get_vertex_assignment_mut(&mut self) -> &mut HashMap<u64, Uuid> {
+        &mut self.vertex_assignment
+    }
 }
 
 impl EmuNet {
@@ -202,6 +208,10 @@ impl EmuNet {
 
     pub fn vertex_uuids<'a>(&'a self) -> impl Iterator<Item = &'a Uuid> + 'a {
         self.vertex_map.values()
+    }
+
+    pub fn get_vertex_assignment(&self) -> &HashMap<u64, Uuid> {
+        &self.vertex_assignment
     }
 }
 

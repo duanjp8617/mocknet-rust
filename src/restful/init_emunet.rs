@@ -86,13 +86,18 @@ async fn background_task(
             .into_iter()
             .fold(HashMap::new(), |mut map, vi| {
                 let client_id = vi.id();
+                let server_uuid = assignment.get(&client_id).unwrap().clone();
                 let v = Vertex::new(
                     vi,
                     id_map.get(&client_id).unwrap().clone(),
-                    assignment.get(&client_id).unwrap().clone(),
+                    server_uuid.clone(),
                 );
                 if map.insert(client_id, v).is_some() {
-                    panic!("fatal".to_string());
+                    panic!("fatal");
+                }
+                // save the client-side vertex id to server uuid mapping to the emunet
+                if emunet.get_vertex_assignment_mut().insert(client_id, server_uuid).is_some() {
+                    panic!("fatal");
                 }
                 map
             });
