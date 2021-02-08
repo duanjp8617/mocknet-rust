@@ -46,6 +46,7 @@ macro_rules! transaction_wrapper {
 impl Backend {
     transaction_wrapper!(async_create_vertex, v: &Vertex, => bool);
     transaction_wrapper!(async_get_vertices, q: VertexQuery,  => Vec<Vertex>);
+    transaction_wrapper!(async_delete_vertices, q: VertexQuery, => ());
     transaction_wrapper!(async_get_vertex_properties, q: VertexPropertyQuery, => Vec<VertexProperty>);
     transaction_wrapper!(async_set_vertex_properties, q: VertexPropertyQuery, value: &serde_json::Value, => ());
 
@@ -65,6 +66,9 @@ impl Backend {
             )),
             Request::AsyncGetVertices(q) => Ok(Response::AsyncGetVertices(
                 self.async_get_vertices(q).await?,
+            )),
+            Request::AsyncDeleteVertices(q) => Ok(Response::AsyncDeleteVertices(
+                self.async_delete_vertices(q).await?,
             )),
             Request::AsyncGetVertexProperties(q) => Ok(Response::AsyncGetVertexProperties(
                 self.async_get_vertex_properties(q).await?,
