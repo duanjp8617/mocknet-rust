@@ -1,4 +1,7 @@
 // An implementation of Indradb storage backend
+// This client is compatible with the following indradb commit:
+// commit 69631385c2580938866c8f3f74dfa3a40a1042e7
+// Merge pull request #92 from indradb/update-deps 
 use std::collections::HashMap;
 use std::future::Future;
 use std::iter::Iterator;
