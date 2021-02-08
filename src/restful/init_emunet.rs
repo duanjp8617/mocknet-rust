@@ -10,6 +10,8 @@ use crate::database::Client;
 use crate::emunet::net::*;
 use crate::restful::Response;
 
+use super::emunet_error;
+
 // format of the incoming json message
 #[derive(Deserialize)]
 struct Json {
@@ -32,19 +34,6 @@ fn insert_edge_helper<'a>(
     );
     let vertex_mut = vertex_map.get_mut(&e_id.0).unwrap();
     (e_uuid, vertex_mut)
-}
-
-// helper function to update error state on the emunet object
-async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
-    emunet.error(err);
-    // store the error state in the database, panic the server program on failure
-    let res = client
-        .set_emu_net(emunet)
-        .await
-        .expect("this should not happen");
-    if res.is_err() {
-        panic!("this should never happen");
-    }
 }
 
 // the actual work is done in a background task

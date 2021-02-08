@@ -51,6 +51,7 @@ macro_rules! request_wrapper {
 impl Frontend {
     request_wrapper!(async_create_vertex, AsyncCreateVertex, v: Vertex, => bool);
     request_wrapper!(async_get_vertices, AsyncGetVertices, q: VertexQuery,  => Vec<Vertex>);
+    request_wrapper!(async_delete_vertices, AsyncDeleteVertices, q: VertexQuery, => ());
     request_wrapper!(async_get_vertex_properties, AsyncGetVertexProperties, q: VertexPropertyQuery, => Vec<VertexProperty>);
     request_wrapper!(async_set_vertex_properties, AsyncSetVertexProperties, q: VertexPropertyQuery, value: serde_json::Value, => ());
 }
@@ -134,6 +135,11 @@ impl Frontend {
                 vec
             })
         })
+    }
+
+    pub async fn delete_vertex(&self, vid: Uuid) -> Result<(), BackendError> {
+        let q: VertexQuery = SpecificVertexQuery::single(vid).into();
+        self.async_delete_vertices(q).await
     }
 }
 

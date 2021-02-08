@@ -10,6 +10,7 @@ use capnp_rpc::rpc_twoparty_capnp::Side;
 use capnp_rpc::{twoparty, RpcSystem};
 use futures::AsyncReadExt;
 use indradb::{BulkInsertItem, RangeVertexQuery, Type, Vertex};
+use net::EmuNet;
 use uuid::Uuid;
 
 use super::indradb::build_backend_fut;
@@ -320,6 +321,13 @@ impl Client {
             });
 
         self.fe.bulk_insert(qs).await?;
+        succeed!(())
+    }
+
+    pub async fn delete_emunet_vertexes(&self, emunet: &EmuNet) -> Result<QueryResult<()>, ClientError> {
+        for vid in emunet.vertex_uuids() {
+            self.fe.delete_vertex(vid.clone()).await?;
+        }
         succeed!(())
     }
 }

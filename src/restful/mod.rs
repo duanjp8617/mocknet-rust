@@ -29,9 +29,25 @@ impl<T: Serialize> Response<T> {
     }
 }
 
+use crate::database::Client;
+use crate::emunet::net::{EmuNet, EmuNetError};
+// helper function to update error state on the emunet object
+async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
+    emunet.error(err);
+    // store the error state in the database, panic the server program on failure
+    let res = client
+        .set_emu_net(emunet)
+        .await
+        .expect("this should not happen");
+    if res.is_err() {
+        panic!("this should never happen");
+    }
+}
+
 pub mod create_emunet;
 pub mod get_emunet_info;
 pub mod get_emunet_topo;
 pub mod init_emunet;
 pub mod list_emunet;
 pub mod register_user;
+pub mod destruct_emunet;

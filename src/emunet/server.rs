@@ -160,6 +160,15 @@ impl ContainerServer {
         let server_addr = &self.server_info.server_addr;
         SocketAddr::new(server_addr.conn_ip, server_addr.conn_port)
     }
+
+    pub fn release_resource(&mut self, quantity: u32) -> Result<(), ()> {
+        if self.curr_capacity + quantity <= self.server_info.max_capacity {
+            self.curr_capacity += quantity;
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
 }
 
 impl PartitionBin for ContainerServer {

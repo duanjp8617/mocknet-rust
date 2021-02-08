@@ -191,6 +191,25 @@ impl EmuNet {
     pub fn get_vertex_assignment_mut(&mut self) -> &mut HashMap<u64, Uuid> {
         &mut self.vertex_assignment
     }
+
+    // before calling this method, please ensure that
+    // all the vertexes created in the server are removed.
+    // otherwise we may get an inconsistent storage state.
+    pub fn delete_vertexes(&mut self) {
+        // remove the vertexes stored in the vertex map
+        self.vertex_map.clear();
+
+        for server_uuid in self.vertex_assignment.values() {            
+            let cs = self.server_map.get_mut(server_uuid).expect("Fatal: container server does not exist");
+            // for each vertex, release it back to the container server
+            cs.release_resource(1).expect("Fatal: capacity exceeds limit");
+            // increase the overall capacity of the emunet
+            self.capacity += 1;
+        }
+        
+        // clear vertex_assignment
+        self.vertex_assignment.clear();
+    }
 }
 
 impl EmuNet {
@@ -220,6 +239,13 @@ impl EmuNet {
     pub fn is_uninit(&self) -> bool {
         match self.state {
             EmuNetState::Uninit => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_normal(&self) -> bool {
+        match self.state {
+            EmuNetState::Normal => true,
             _ => false,
         }
     }
