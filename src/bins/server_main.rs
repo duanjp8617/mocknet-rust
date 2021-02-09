@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind};
 use std::net::ToSocketAddrs;
 
-use tokio::time::{timeout, Duration};
+use tokio::time::{timeout, Duration, delay_for};
 use warp::Filter;
 
 use mocknet::database;
@@ -29,15 +29,6 @@ pub struct EdgeInfo {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
-    println!(
-        "{:?}",
-        serde_json::to_vec(&EdgeInfo {
-            description: "wtf".to_string(),
-            edge_id: (1, 2)
-        })
-        .unwrap()
-    );
-
     // build up the database address
     let db_addr_str = DB_ADDR
         .iter()
@@ -58,19 +49,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
         .expect("could not parse address");
 
     // create the database launcher
-    let res = timeout(
-        Duration::from_secs(2),
-        database::ClientLauncher::connect(&db_addr),
-    )
-    .await
-    .map_err(|_| {
-        let err_msg: &str = &format!("connection to {} timeout", &db_addr_str);
-        Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>
-    })?;
-    let launcher = res.map_err(|e| {
-        let err_msg: &str = &format!("connection to {} fails: {}", &db_addr_str, e);
-        Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>
-    })?;
+    let mut loop_counter: u32 = 15;
+    let launcher = loop {
+        if loop_counter == 0 {
+            let err_msg: &str = &format!("connection to {} exceeds maximum retry limits", &db_addr_str);
+            return Err(Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>);
+        }
+        let res = timeout(
+            Duration::from_secs(2),
+            database::ClientLauncher::connect(&db_addr),
+        ).await;
+        match res {
+            Ok(conn_res) => {
+                match conn_res {
+                    Ok(conn) => {
+                        break conn;
+                    },
+                    Err(err) => {
+                        println!("connection to {} fails: {}, retrying", &db_addr_str, err);
+                    },
+                }
+            },
+            Err(_) => {
+                println!("connection timeout, retrying");
+            },
+        };
+        loop_counter -= 1;
+        delay_for(Duration::from_secs(2)).await;
+    };
 
     launcher
         .with_db_client(|client| {

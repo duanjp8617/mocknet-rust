@@ -35,7 +35,7 @@ async fn background_task(client: Client, mut emunet: EmuNet) {
 
     // delete the vertexes and set state to normal
     emunet.delete_vertexes();
-    emunet.normal();
+    emunet.uninit();
 
     // store the state in the database, panic the server program on failure
     let res = client.set_emu_net(emunet).await.unwrap();

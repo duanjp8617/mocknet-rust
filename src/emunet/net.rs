@@ -261,4 +261,8 @@ impl EmuNet {
     pub fn normal(&mut self) {
         self.state = EmuNetState::Normal;
     }
+
+    pub fn uninit(&mut self) {
+        self.state = EmuNetState::Uninit;
+    }
 }
