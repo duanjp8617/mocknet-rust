@@ -103,8 +103,14 @@ impl Client {
     pub async fn delete_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
         let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
 
+        // make sure that we are not deleting an none-existing user
+        let res = user_map.get(user_name);
+        if res.is_none() {
+            return fail!("can't delete an non-existing user".to_string());
+        }
+
         // make sure that the user has no existing emunets
-        let user = user_map.get(user_name).unwrap();
+        let user = res.unwrap();
         if user.get_all_emu_nets().len() != 0 {
             return fail!("can't delete an user with existing emunets".to_string());
         }
