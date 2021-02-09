@@ -1,6 +1,4 @@
 // Remove all the existing vertexes from a emunet, and turn the emunet into uninit state.
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use warp::Filter;
