@@ -172,6 +172,85 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/destruct_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"9a945ec4-6aa1-11eb-8004-000000000000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/destruct_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"destruct_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/delete_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"f027f5ba-6abc-11eb-8004-000000000000\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/delete_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"delete_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/delete_user",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"fuck\"\n}"
+				},
+				"url": {
+					"raw": "localhost:3030/v1/delete_user",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"delete_user"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
