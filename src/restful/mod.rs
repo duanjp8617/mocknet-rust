@@ -45,9 +45,10 @@ async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
 }
 
 pub mod create_emunet;
+pub mod delete_emunet;
+pub mod destruct_emunet;
 pub mod get_emunet_info;
 pub mod get_emunet_topo;
 pub mod init_emunet;
 pub mod list_emunet;
 pub mod register_user;
-pub mod destruct_emunet;

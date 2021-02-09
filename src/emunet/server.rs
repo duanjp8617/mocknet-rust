@@ -152,6 +152,12 @@ pub struct ContainerServer {
 }
 
 impl ContainerServer {
+    pub fn get_server_info(self) -> ServerInfo {
+        return self.server_info
+    }
+}
+
+impl ContainerServer {
     pub fn id(&self) -> Uuid {
         return self.server_info.id;
     }

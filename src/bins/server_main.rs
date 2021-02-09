@@ -113,8 +113,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
                 let ge_info = get_emunet_info::build_filter(client.clone());
                 let ge_topo = get_emunet_topo::build_filter(client.clone());
                 let ie = init_emunet::build_filter(client.clone());
-                let de = destruct_emunet::build_filter(client.clone());
-                let routes = ru.or(ce).or(le).or(ge_info).or(ge_topo).or(ie).or(de);
+                let destruct_e = destruct_emunet::build_filter(client.clone());
+                let delete_e = delete_emunet::build_filter(client.clone());
+                let routes = ru.or(ce).or(le).or(ge_info).or(ge_topo).or(ie).or(destruct_e).or(delete_e);
 
                 // launch the warp server
                 warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;

@@ -3,7 +3,7 @@ use std::collections::{hash_map::ValuesMut, HashMap};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::server::ContainerServer;
+use super::server::{ContainerServer, ServerInfo};
 
 #[derive(Deserialize, Serialize)]
 pub struct VertexInfo {
@@ -214,6 +214,12 @@ impl EmuNet {
         // clear vertex_assignment
         self.vertex_assignment.clear();
     }
+
+    pub fn release_servers(&mut self, server_pool: &mut Vec<ServerInfo>) {
+        for kv in std::mem::replace(&mut self.server_map, HashMap::new()).into_iter() {
+            server_pool.push(kv.1.get_server_info())
+        }
+    }
 }
 
 impl EmuNet {
@@ -235,6 +241,14 @@ impl EmuNet {
 
     pub fn get_vertex_assignment(&self) -> &HashMap<u64, Uuid> {
         &self.vertex_assignment
+    }
+
+    pub fn user_name(&self) -> &str {
+        return &self.user
+    }
+
+    pub fn name(&self) -> &str {
+        return &self.name
     }
 }
 

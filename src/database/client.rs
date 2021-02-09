@@ -1,7 +1,7 @@
 // An implementation of Indradb storage backend
 // This client is compatible with the following indradb commit:
 // commit 69631385c2580938866c8f3f74dfa3a40a1042e7
-// Merge pull request #92 from indradb/update-deps 
+// Merge pull request #92 from indradb/update-deps
 use std::collections::HashMap;
 use std::future::Future;
 use std::iter::Iterator;
@@ -158,6 +158,31 @@ impl Client {
         self.fe.set_user_map(user_map).await?;
 
         succeed!(emu_net_id)
+    }
+
+    /// Delete the emunet from the database.
+    pub async fn delete_emunet(&self, mut emunet: EmuNet) -> Result<QueryResult<()>, ClientError> {
+        // make sure that the emunet is in uninit state
+        if !emunet.is_uninit() {
+            return fail!("can't delete an initialized emunet".to_string());
+        }
+
+        // release the server resource back to the global server pool.
+        let mut server_info_list: Vec<server::ServerInfo> = self.fe.get_server_info_list().await?;
+        emunet.release_servers(&mut server_info_list);
+        self.fe.set_server_info_list(server_info_list).await?;
+
+        // remove the emunet from the user
+        let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
+        let user_mut = user_map.get_mut(&emunet.user_name().to_string()).unwrap();
+        if !user_mut.delete_emu_net_by_name(&emunet.name().to_string()) {
+            panic!("this should never happen");
+        }
+
+        // delete the vertex that store the emunet struct
+        self.fe.delete_vertex(emunet.uuid().clone()).await?;
+
+        succeed!(())
     }
 
     /// List all the emunet of a user.
@@ -324,7 +349,11 @@ impl Client {
         succeed!(())
     }
 
-    pub async fn delete_emunet_vertexes(&self, emunet: &EmuNet) -> Result<QueryResult<()>, ClientError> {
+    /// Delete all the stored vertexes of an emunet from the database.
+    pub async fn delete_emunet_vertexes(
+        &self,
+        emunet: &EmuNet,
+    ) -> Result<QueryResult<()>, ClientError> {
         for vid in emunet.vertex_uuids() {
             self.fe.delete_vertex(vid.clone()).await?;
         }
