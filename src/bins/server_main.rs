@@ -1,7 +1,7 @@
 use std::io::{Error, ErrorKind};
 use std::net::ToSocketAddrs;
 
-use tokio::time::{timeout, Duration, delay_for};
+use tokio::time::{delay_for, timeout, Duration};
 use warp::Filter;
 
 use mocknet::database;
@@ -52,27 +52,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
     let mut loop_counter: u32 = 15;
     let launcher = loop {
         if loop_counter == 0 {
-            let err_msg: &str = &format!("connection to {} exceeds maximum retry limits", &db_addr_str);
-            return Err(Box::new(Error::new(ErrorKind::Other, err_msg)) as Box<dyn std::error::Error + Send>);
+            let err_msg: &str = &format!(
+                "connection to {} exceeds maximum retry limits",
+                &db_addr_str
+            );
+            return Err(Box::new(Error::new(ErrorKind::Other, err_msg))
+                as Box<dyn std::error::Error + Send>);
         }
         let res = timeout(
             Duration::from_secs(2),
             database::ClientLauncher::connect(&db_addr),
-        ).await;
+        )
+        .await;
         match res {
-            Ok(conn_res) => {
-                match conn_res {
-                    Ok(conn) => {
-                        break conn;
-                    },
-                    Err(err) => {
-                        println!("connection to {} fails: {}, retrying", &db_addr_str, err);
-                    },
+            Ok(conn_res) => match conn_res {
+                Ok(conn) => {
+                    break conn;
+                }
+                Err(err) => {
+                    println!("connection to {} fails: {}, retrying", &db_addr_str, err);
                 }
             },
             Err(_) => {
                 println!("connection timeout, retrying");
-            },
+            }
         };
         loop_counter -= 1;
         delay_for(Duration::from_secs(2)).await;

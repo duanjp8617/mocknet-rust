@@ -199,14 +199,18 @@ impl EmuNet {
         // remove the vertexes stored in the vertex map
         self.vertex_map.clear();
 
-        for server_uuid in self.vertex_assignment.values() {            
-            let cs = self.server_map.get_mut(server_uuid).expect("Fatal: container server does not exist");
+        for server_uuid in self.vertex_assignment.values() {
+            let cs = self
+                .server_map
+                .get_mut(server_uuid)
+                .expect("Fatal: container server does not exist");
             // for each vertex, release it back to the container server
-            cs.release_resource(1).expect("Fatal: capacity exceeds limit");
+            cs.release_resource(1)
+                .expect("Fatal: capacity exceeds limit");
             // increase the overall capacity of the emunet
             self.capacity += 1;
         }
-        
+
         // clear vertex_assignment
         self.vertex_assignment.clear();
     }
