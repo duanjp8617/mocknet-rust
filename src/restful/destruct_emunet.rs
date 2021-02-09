@@ -100,7 +100,7 @@ pub fn build_filter(
     });
     warp::post()
         .and(warp::path("v1"))
-        .and(warp::path("init_emunet"))
+        .and(warp::path("destruct_emunet"))
         .and(warp::path::end())
         .and(super::parse_json_body())
         .and(db_filter)
