@@ -102,7 +102,7 @@ impl Client {
     /// Store an existing user from the database.
     pub async fn delete_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
         let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
-        
+
         // make sure that the user has no existing emunets
         let user = user_map.get(user_name).unwrap();
         if user.get_all_emu_nets().len() != 0 {
@@ -193,10 +193,11 @@ impl Client {
 
         // remove the emunet from the user
         let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
-        let user_mut = user_map.get_mut(&emunet.user_name().to_string()).unwrap();
-        if !user_mut.delete_emu_net_by_name(&emunet.name().to_string()) {
+        let user_mut = user_map.get_mut(emunet.user_name()).unwrap();
+        if !user_mut.delete_emu_net_by_name(emunet.name()) {
             panic!("this should never happen");
         }
+        self.fe.set_user_map(user_map).await?;
 
         // delete the vertex that store the emunet struct
         self.fe.delete_vertex(emunet.uuid().clone()).await?;

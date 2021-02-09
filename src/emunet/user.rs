@@ -25,12 +25,11 @@ impl EmuNetUser {
         }
     }
 
-    pub fn delete_emu_net_by_name(&mut self, emu_net_name: &String) -> bool {
+    pub fn delete_emu_net_by_name(&mut self, emu_net_name: &str) -> bool {
         if self.emu_net_ids.remove(emu_net_name).is_none() {
-            return false
-        }
-        else {
-            return true
+            return false;
+        } else {
+            return true;
         }
     }
 
