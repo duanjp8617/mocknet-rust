@@ -99,6 +99,25 @@ impl Client {
         succeed!(())
     }
 
+    /// Store an existing user from the database.
+    pub async fn delete_user(&self, user_name: &str) -> Result<QueryResult<()>, ClientError> {
+        let mut user_map: HashMap<String, user::EmuNetUser> = self.fe.get_user_map().await?;
+        
+        // make sure that the user has no existing emunets
+        let user = user_map.get(user_name).unwrap();
+        if user.get_all_emu_nets().len() != 0 {
+            return fail!("can't delete an user with existing emunets".to_string());
+        }
+
+        // remove the user from the user_map
+        user_map.remove(user_name);
+
+        // sync with the database
+        self.fe.set_user_map(user_map).await?;
+
+        succeed!(())
+    }
+
     /// Create a new emulation net for `user` with `name` and `capacity`.
     ///
     /// Return value has similar meaning as `Client::init`.

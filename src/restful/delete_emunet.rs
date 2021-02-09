@@ -17,7 +17,7 @@ async fn delete_emunet(
     db_client: Client,
 ) -> Result<impl warp::Reply, warp::Rejection> {
     let emunet = extract_response!(
-        db_client.get_emu_net(json_msg.emunet_uuid).await,
+        db_client.get_emu_net(json_msg.emunet_uuid.clone()).await,
         "internal_server_error",
         "operation_fail"
     );
@@ -28,7 +28,7 @@ async fn delete_emunet(
         "operation_fail"
     );
 
-    let resp = Response::new(true, (), String::new());
+    let resp = Response::new(true, json_msg.emunet_uuid, String::new());
     Ok(warp::reply::json(&resp))
 }
 

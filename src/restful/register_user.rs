@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use warp::Filter;
 
 use crate::database::Client;
@@ -7,12 +7,6 @@ use crate::restful::Response;
 #[derive(Deserialize)]
 struct Json {
     name: String,
-}
-
-#[derive(Serialize)]
-struct ResponseData {
-    status: String,
-    user_name: String,
 }
 
 async fn register_user(
@@ -25,11 +19,7 @@ async fn register_user(
         "operation_fail"
     );
 
-    let resp_data = ResponseData {
-        status: "OK".to_string(),
-        user_name: json_msg.name,
-    };
-    let resp = Response::new(true, resp_data, String::new());
+    let resp = Response::new(true, json_msg.name, String::new());
 
     Ok(warp::reply::json(&resp))
 }

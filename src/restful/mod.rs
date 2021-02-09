@@ -52,3 +52,4 @@ pub mod get_emunet_topo;
 pub mod init_emunet;
 pub mod list_emunet;
 pub mod register_user;
+pub mod delete_user;
