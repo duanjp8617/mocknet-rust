@@ -41,10 +41,7 @@ async fn get_emunet(
     Ok(warp::reply::json(&resp))
 }
 
-/// This filter imiplements the functionality to create a new emunet.
-/// Note: this filter only allocate a new slot in the database to store the basic
-/// information about the emunet, the actual work of creating new network nodes
-/// is handled by init_emunet.rs.
+/// This filter retrieves the topology of the emunet from the database.
 pub fn build_filter(
     db_client: Client,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static

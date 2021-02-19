@@ -32,10 +32,10 @@ async fn delete_emunet(
     Ok(warp::reply::json(&resp))
 }
 
-/// This filter imiplements the functionality to create a new emunet.
-/// Note: this filter only allocate a new slot in the database to store the basic
-/// information about the emunet, the actual work of creating new network nodes
-/// is handled by init_emunet.rs.
+/// This filter imiplements the functionality to delete an existing emunet.
+/// 
+/// Note: An emunet can only be deleted if it is in uninitialized state, which also
+/// indicates that there are no active devices associated with this emunet.
 pub fn build_filter(
     db_client: Client,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static

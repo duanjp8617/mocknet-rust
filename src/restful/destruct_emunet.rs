@@ -87,7 +87,8 @@ async fn destruct_emunet(
     )))
 }
 
-/// This filter initializes the emunet by creating the vertexes and edges of the emulation network.
+/// This filter is the counterpart of init_emunet, which deletes all the existing container devices and 
+/// virtual connections.
 pub fn build_filter(
     db_client: Client,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static

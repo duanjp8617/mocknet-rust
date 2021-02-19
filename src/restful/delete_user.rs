@@ -25,9 +25,9 @@ async fn delete_user(
     Ok(warp::reply::json(&resp))
 }
 
-/// This filter handles an HTTP request containing a new user name.
-/// It will register the user in the database and report to the sending-side
-/// whether the registration succeeds.
+/// This filter deletes the user from the database.
+/// 
+/// Note: only an user with no emunet can be deleted.
 pub fn build_filter(
     db_client: Client,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
