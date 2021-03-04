@@ -16,7 +16,7 @@ struct Json {
 }
 
 // the actual work is done in a background task
-async fn background_task(client: Client, mut emunet: EmuNet) {
+pub async fn destruct_background_task(client: Client, mut emunet: EmuNet, update_emunet_state: bool) {
     // emulate the background task of destructing containers and connections
     time::delay_for(time::Duration::new(5, 0)).await;
     // potentially perform an update on the vertexes
@@ -33,8 +33,10 @@ async fn background_task(client: Client, mut emunet: EmuNet) {
 
     // delete the vertexes and set state to normal
     emunet.delete_vertexes();
-    emunet.uninit();
-
+    if update_emunet_state {
+        emunet.uninit();
+    }
+    
     // store the state in the database, panic the server program on failure
     let res = client.set_emu_net(emunet).await.unwrap();
     if res.is_err() {
@@ -71,7 +73,7 @@ async fn destruct_emunet(
     );
 
     // do the actual destruction in the background
-    tokio::spawn(background_task(db_client, emunet));
+    tokio::spawn(destruct_background_task(db_client, emunet, true));
 
     // reply to the client
     #[derive(Serialize)]

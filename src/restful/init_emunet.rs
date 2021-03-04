@@ -37,7 +37,7 @@ fn insert_edge_helper<'a>(
 }
 
 // the actual work is done in a background task
-async fn background_task(
+pub async fn init_background_task(
     client: Client,
     mut emunet: EmuNet,
     network_graph: InMemoryGraph<u64, VertexInfo, EdgeInfo>,
@@ -222,7 +222,7 @@ async fn init_emunet(json: Json, db_client: Client) -> Result<impl warp::Reply, 
     );
 
     // do the actual initialization work in the background
-    tokio::spawn(background_task(db_client, emunet, network_graph));
+    tokio::spawn(init_background_task(db_client, emunet, network_graph));
 
     // reply to the client
     #[derive(Serialize)]

@@ -143,6 +143,7 @@ pub struct EmuNet {
     name: String,
     uuid: Uuid,
     capacity: u32,
+    max_capacity: u32,
     state: EmuNetState,
     server_map: HashMap<Uuid, ContainerServer>,
     vertex_map: HashMap<u64, Uuid>,
@@ -156,6 +157,7 @@ impl EmuNet {
             name,
             uuid,
             capacity,
+            max_capacity: capacity,
             state: EmuNetState::Uninit,
             server_map: HashMap::new(),
             vertex_map: HashMap::new(),
@@ -233,6 +235,10 @@ impl EmuNet {
 
     pub fn capacity(&self) -> u32 {
         self.capacity
+    }
+
+    pub fn max_capacity(&self) -> u32 {
+        self.max_capacity
     }
 
     pub fn vertex_uuids<'a>(&'a self) -> impl Iterator<Item = &'a Uuid> + 'a {
