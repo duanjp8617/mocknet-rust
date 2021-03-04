@@ -251,6 +251,34 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "localhost:3030/v1/update_emunet",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"emunet_uuid\": \"b7acf6de-7cc0-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 4, \"description\": \"fuck\"}, {\"id\": 5, \"description\": \"fuck\"}, {\"id\": 6, \"description\": \"fuck\"}, {\"id\":7, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [4, 5], \"description\": \"fuck\"}, {\"edge_id\": [4, 6], \"description\": \"fuck\"}, {\"edge_id\": [4, 7], \"description\": \"fuck\"}]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3030/v1/update_emunet",
+					"host": [
+						"localhost"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"update_emunet"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
