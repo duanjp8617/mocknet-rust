@@ -279,6 +279,34 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "localhost:3031/v1/server_check",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"server_ip\": \"172.18.19.23\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:3031/v1/server_ping",
+					"host": [
+						"localhost"
+					],
+					"port": "3031",
+					"path": [
+						"v1",
+						"server_ping"
+					]
+				}
+			},
+			"response": []
 		}
 	]
 }
