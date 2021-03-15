@@ -8,6 +8,10 @@ build = "build.rs"
 name = "server_main"
 path = "src/bins/server_main.rs"
 
+[[bin]]
+name = "server_check"
+path = "src/bins/server_check.rs"
+
 [dependencies]
 tokio = { version = "0.2", features = ["full"] }
 tokio-util = { version = "0.3.0", features = ["compat"] }

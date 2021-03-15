@@ -54,3 +54,4 @@ pub mod list_emunet;
 pub mod register_user;
 pub mod delete_user;
 pub mod update_emunet;
+pub mod server_ping;
