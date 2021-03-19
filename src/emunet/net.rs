@@ -91,6 +91,10 @@ impl Vertex {
             description: self.info.description.clone(),
         }
     }
+    
+    pub fn server_uuid(&self) -> Uuid {
+        self.server_uuid.clone()
+    }
 
     pub fn edges<'a>(&'a self) -> impl Iterator<Item = &'a Edge> + 'a {
         self.edges.values()
@@ -255,6 +259,10 @@ impl EmuNet {
 
     pub fn name(&self) -> &str {
         return &self.name
+    }
+
+    pub fn get_server_acess_info(&self, server_uuid: Uuid) -> (String, String, String) {
+        self.server_map.get(&server_uuid).unwrap().access_info()
     }
 }
 

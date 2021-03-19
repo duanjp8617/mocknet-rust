@@ -40,6 +40,8 @@ pub struct ServerInfo {
     id: Uuid,
     server_addr: ServerAddress,
     max_capacity: u32,
+    username: String,
+    password: String,
 }
 
 /// A list of `ServerInfo` that can be stored in the database as JSON value.
@@ -69,6 +71,8 @@ impl ServerInfoList {
         data_ip: &str,
         man_ip: &str,
         max_capacity: u32,
+        username: &str,
+        password: &str,
     ) -> Result<(), String> {
         let address = ServerAddress::new(conn_ip, conn_port, data_ip, man_ip).unwrap();
         // validate the address
@@ -83,6 +87,8 @@ impl ServerInfoList {
             id: indradb::util::generate_uuid_v1(),
             server_addr: address,
             max_capacity,
+            username: username.to_string(),
+            password: password.to_string(),
         });
 
         Ok(())
@@ -160,6 +166,10 @@ impl ContainerServer {
 impl ContainerServer {
     pub fn id(&self) -> Uuid {
         return self.server_info.id;
+    }
+
+    pub fn access_info(&self) -> (String, String, String) {
+        (self.server_info.server_addr.man_ip.to_string(), self.server_info.username.clone(), self.server_info.password.clone())
     }
 
     pub fn conn_addr(&self) -> SocketAddr {

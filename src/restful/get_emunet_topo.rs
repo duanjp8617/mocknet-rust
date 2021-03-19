@@ -11,8 +11,16 @@ struct Json {
 }
 
 #[derive(Serialize)]
+struct VertexAccessInfo {
+    vertex_info: net::VertexInfo,
+    conn_ip: String,
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
 struct ResponseData {
-    vertex_infos: Vec<net::VertexInfo>,
+    vertex_infos: Vec<VertexAccessInfo>,
     edge_infos: Vec<net::EdgeInfo>,
 }
 
@@ -33,7 +41,16 @@ async fn get_emunet(
     );
 
     let resp_data = ResponseData {
-        vertex_infos,
+        vertex_infos: vertex_infos.into_iter().fold(Vec::new(), |mut res, v| {
+            let (conn_ip, username, password) = emunet.get_server_acess_info(v.1.clone());
+            res.push(VertexAccessInfo {
+                vertex_info: v.0,
+                conn_ip,
+                username,
+                password
+            });
+            res
+        }),
         edge_infos,
     };
     let resp = Response::new(true, resp_data, String::new());

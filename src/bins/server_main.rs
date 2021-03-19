@@ -87,13 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send>> {
                 // an initial server pool for testing purpose, the server pool should
                 // be initialized from program inputs
                 let mut sp = server::ServerInfoList::new();
-                sp.add_server_info("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5)
+                sp.add_server_info("127.0.0.1", 128, "128.0.0.2", "129.0.0.5", 5, "fuck", "fuck")
                     .unwrap();
-                sp.add_server_info("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7)
+                sp.add_server_info("127.0.0.2", 128, "128.0.0.3", "129.0.0.4", 7, "fuck", "fuck")
                     .unwrap();
-                sp.add_server_info("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9)
+                sp.add_server_info("137.0.0.1", 128, "138.0.0.2", "139.0.0.5", 9, "fuck", "fuck")
                     .unwrap();
-                sp.add_server_info("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10)
+                sp.add_server_info("137.0.0.2", 128, "138.0.0.3", "139.0.0.4", 10, "fuck", "fuck")
                     .unwrap();
 
                 // try to initialize the database

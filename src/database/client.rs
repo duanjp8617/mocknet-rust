@@ -245,7 +245,7 @@ impl Client {
     pub async fn get_emu_net_infos(
         &self,
         emunet: &net::EmuNet,
-    ) -> Result<QueryResult<(Vec<net::VertexInfo>, Vec<net::EdgeInfo>)>, ClientError> {
+    ) -> Result<QueryResult<(Vec<(net::VertexInfo, Uuid)>, Vec<net::EdgeInfo>)>, ClientError> {
         // acquire the minimum uuid of the vertex
         let minium_uuid_opt = emunet.vertex_uuids().fold(None, |opt, uuid| match opt {
             None => Some(uuid),
@@ -307,7 +307,7 @@ impl Client {
             });
         // build up the list of vertex_info
         let vertex_infos = vertex_map.values().fold(Vec::new(), |mut vec, v| {
-            vec.push(v.vertex_info());
+            vec.push((v.vertex_info(), v.server_uuid()));
             vec
         });
 
