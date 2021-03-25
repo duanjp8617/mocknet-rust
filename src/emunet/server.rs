@@ -159,7 +159,7 @@ pub struct ContainerServer {
 
 impl ContainerServer {
     pub fn get_server_info(self) -> ServerInfo {
-        return self.server_info
+        return self.server_info;
     }
 }
 
@@ -169,7 +169,11 @@ impl ContainerServer {
     }
 
     pub fn access_info(&self) -> (String, String, String) {
-        (self.server_info.server_addr.man_ip.to_string(), self.server_info.username.clone(), self.server_info.password.clone())
+        (
+            self.server_info.server_addr.man_ip.to_string(),
+            self.server_info.username.clone(),
+            self.server_info.password.clone(),
+        )
     }
 
     pub fn conn_addr(&self) -> SocketAddr {
