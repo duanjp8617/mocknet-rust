@@ -10,3 +10,5 @@ pub mod database;
 pub mod emunet;
 pub mod errors;
 pub mod restful;
+
+pub(crate) mod emunet_new;

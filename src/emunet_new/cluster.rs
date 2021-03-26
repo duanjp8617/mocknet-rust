@@ -1,15 +1,13 @@
 use std::cmp::Ord;
-use std::net::{IpAddr, SocketAddr};
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::algo::PartitionBin;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerInfo {
-    id: Uuid,
-    conn_addr: IpAddr,
+    id: uuid::Uuid,
+    conn_addr: std::net::IpAddr,
     max_capacity: usize,
     username: String,
     password: String,
@@ -27,8 +25,9 @@ impl ClusterInfo {
         }
     }
 
-    fn addr_exist(&self, server_addr: &IpAddr) -> Result<usize, usize> {
-        let mut sorted: Vec<&IpAddr> = self.servers.iter().map(|e| &e.conn_addr).collect();
+    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> Result<usize, usize> {
+        let mut sorted: Vec<&std::net::IpAddr> =
+            self.servers.iter().map(|e| &e.conn_addr).collect();
         sorted.sort();
         sorted.binary_search(&server_addr)
     }
@@ -42,7 +41,7 @@ impl ClusterInfo {
     ) -> Result<(), String> {
         let conn_addr = conn_ip
             .into()
-            .parse::<IpAddr>()
+            .parse::<std::net::IpAddr>()
             .map_err(|e| format!("{:?}", e))?;
 
         self.addr_exist(&conn_addr)
@@ -122,7 +121,7 @@ pub struct ContainerServer {
 // }
 
 impl ContainerServer {
-    pub fn id(&self) -> Uuid {
+    pub fn id(&self) -> uuid::Uuid {
         return self.server_info.id;
     }
 
@@ -138,7 +137,7 @@ impl ContainerServer {
 
 impl PartitionBin for ContainerServer {
     type Size = usize;
-    type BinId = Uuid;
+    type BinId = uuid::Uuid;
 
     fn fill(&mut self, resource_size: Self::Size) -> bool {
         if self.curr_capacity < resource_size {
