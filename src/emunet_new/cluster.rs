@@ -1,4 +1,4 @@
-use std::cmp::Ord;
+use std::{cell::Cell, cmp::Ord};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,7 +8,7 @@ use crate::algo::PartitionBin;
 pub struct ServerInfo {
     id: uuid::Uuid,
     conn_addr: std::net::IpAddr,
-    max_capacity: usize,
+    max_capacity: u64,
     username: String,
     password: String,
 }
@@ -25,17 +25,20 @@ impl ClusterInfo {
         }
     }
 
-    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> Result<usize, usize> {
+    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> Result<(), ()> {
         let mut sorted: Vec<&std::net::IpAddr> =
             self.servers.iter().map(|e| &e.conn_addr).collect();
         sorted.sort();
-        sorted.binary_search(&server_addr)
+        sorted
+            .binary_search(&server_addr)
+            .map(|_| {})
+            .map_err(|_| {})
     }
 
     pub fn add_server_info<S: std::convert::Into<String>>(
         &mut self,
         conn_ip: S,
-        max_capacity: usize,
+        max_capacity: u64,
         username: S,
         password: S,
     ) -> Result<(), String> {
@@ -72,10 +75,10 @@ impl ClusterInfo {
         self.servers
     }
 
-    pub fn allocate_servers(&mut self, quantity: usize) -> Result<Vec<ContainerServer>, usize> {
+    pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;
 
-        let mut enumerate: Vec<(usize, usize)> = self
+        let mut enumerate: Vec<(usize, u64)> = self
             .servers
             .iter()
             .map(|e| e.max_capacity)
@@ -98,7 +101,7 @@ impl ClusterInfo {
                     let curr_capacity = server_info.max_capacity;
                     ContainerServer {
                         server_info,
-                        curr_capacity,
+                        dev_count: Cell::new(0),
                     }
                 })
                 .collect())
@@ -111,7 +114,7 @@ impl ClusterInfo {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContainerServer {
     server_info: ServerInfo,
-    curr_capacity: usize,
+    dev_count: Cell<u64>,
 }
 
 // impl ContainerServer {
@@ -136,14 +139,23 @@ impl ContainerServer {
 }
 
 impl PartitionBin for ContainerServer {
-    type Size = usize;
+    type Size = u64;
     type BinId = uuid::Uuid;
 
-    fn fill(&mut self, resource_size: Self::Size) -> bool {
-        if self.curr_capacity < resource_size {
+    fn fill(&mut self, dev_num: Self::Size) -> bool {
+        if self.dev_count.get() + dev_num > self.server_info.max_capacity {
             return false;
         } else {
-            self.curr_capacity -= resource_size;
+            self.dev_count.set(self.dev_count.get() + dev_num);
+            return true;
+        }
+    }
+
+    fn release(&mut self, dev_num: Self::Size) -> bool {
+        if self.dev_count.get() < dev_num {
+            return false;
+        } else {
+            self.dev_count.set(self.dev_count.get() - dev_num);
             return true;
         }
     }

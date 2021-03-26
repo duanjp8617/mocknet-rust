@@ -204,6 +204,10 @@ impl PartitionBin for ContainerServer {
         }
     }
 
+    fn release(&mut self, resource_size: u32) -> bool {
+        return true;
+    }
+
     fn bin_id(&self) -> Self::BinId {
         return self.id();
     }

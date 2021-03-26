@@ -1,2 +1,4 @@
 pub(crate) mod cluster;
-pub(crate) mod new_user;
+pub(crate) mod device;
+pub(crate) mod user;
+// pub(crate) mod emunet;

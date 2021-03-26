@@ -10,6 +10,12 @@ pub trait PartitionBin {
     /// Return true on succeed, false on failure
     fn fill(&mut self, item_size: Self::Size) -> bool;
 
+
+    /// Try to release an item of a certain size from the bin
+    ///
+    /// Return true on succeed, false on failure
+    fn release(&mut self, item_size: Self::Size) -> bool;
+
     /// Get the id of this bin.
     fn bin_id(&self) -> Self::BinId;
 }
