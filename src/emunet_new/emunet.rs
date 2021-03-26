@@ -1,8 +1,9 @@
-use std::collections::{hash_map::ValuesMut, HashMap};
+use std::{cell::{Cell, RefCell}, collections::{hash_map::ValuesMut, HashMap}};
 
 use serde::{Deserialize, Serialize};
 
 use super::device::*;
+use super::cluster::ContainerServer;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub enum EmuNetError {
@@ -18,18 +19,13 @@ pub enum EmuNetState {
     Error(EmuNetError),
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize)]
 pub struct EmuNet {
     emunet_name: String,
     emunet_uuid: uuid::Uuid,
-
+    max_capacity: u64,
     user_name: String,
-    name: String,
-    uuid: Uuid,
-    capacity: u32,
-    max_capacity: u32,
-    state: EmuNetState,
-    server_map: HashMap<Uuid, ContainerServer>,
-    vertex_map: HashMap<u64, Uuid>,
-    vertex_assignment: HashMap<u64, Uuid>,
+    dev_count: Cell<u64>,
+    servers: RefCell<HashMap<uuid::Uuid, ContainerServer>>,
+    devices: RefCell<HashMap<u64, Device<String>>>,
 }

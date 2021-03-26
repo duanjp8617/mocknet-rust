@@ -25,14 +25,11 @@ impl ClusterInfo {
         }
     }
 
-    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> Result<(), ()> {
+    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> bool {
         let mut sorted: Vec<&std::net::IpAddr> =
             self.servers.iter().map(|e| &e.conn_addr).collect();
         sorted.sort();
-        sorted
-            .binary_search(&server_addr)
-            .map(|_| {})
-            .map_err(|_| {})
+        sorted.binary_search(&server_addr).is_ok()
     }
 
     pub fn add_server_info<S: std::convert::Into<String>>(
@@ -47,8 +44,12 @@ impl ClusterInfo {
             .parse::<std::net::IpAddr>()
             .map_err(|e| format!("{:?}", e))?;
 
-        self.addr_exist(&conn_addr)
-            .map_err(|_| format!("Address {:?} is already stored in the list.", &conn_addr))?;
+        if self.addr_exist(&conn_addr) {
+            return Err(format!(
+                "Address {:?} is already stored in the list.",
+                &conn_addr
+            ));
+        }
 
         self.servers.push(ServerInfo {
             id: indradb::util::generate_uuid_v1(),
@@ -64,8 +65,9 @@ impl ClusterInfo {
     pub fn from_iterator<I: std::iter::Iterator<Item = ServerInfo>>(i: I) -> Result<Self, String> {
         let mut res = Self::new();
         for cs in i {
-            res.addr_exist(&cs.conn_addr)
-                .map_err(|_| format!("ServerAddr {:?} exists in the pool", &cs.conn_addr))?;
+            if res.addr_exist(&cs.conn_addr) {
+                return Err(format!("ServerAddr {:?} exists in the pool", &cs.conn_addr));
+            }
             res.servers.push(cs);
         }
         Ok(res)

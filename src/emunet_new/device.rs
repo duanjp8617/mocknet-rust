@@ -62,18 +62,19 @@ impl<T> DeviceInfo<T> {
 #[derive(Deserialize, Serialize)]
 pub struct Device<T> {
     info: DeviceInfo<T>,
-    uuid: uuid::Uuid,
     server_uuid: uuid::Uuid,
     links: RefCell<HashMap<uuid::Uuid, Link<T>>>,
+    // uuid is only reserved for compatibility reason
+    uuid: uuid::Uuid,
 }
 
 impl<T> Device<T> {
-    pub fn new(info: DeviceInfo<T>, uuid: uuid::Uuid, server_uuid: uuid::Uuid) -> Self {
+    pub fn new(info: DeviceInfo<T>, server_uuid: uuid::Uuid) -> Self {
         Self {
             info,
-            uuid,
             server_uuid,
             links: RefCell::new(HashMap::new()),
+            uuid: indradb::util::generate_uuid_v1()
         }
     }
 

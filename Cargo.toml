@@ -1,39 +1,27 @@
 [package]
 name = "mocknet"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
-build = "build.rs"
+authors = ["duanjp8617 <duanjp8617@gmail.com>"]
+description = "MockNet backend implementation"
+
+#[[bin]]
+#name = "server_main"
+#path = "src/bins/server_main.rs"
+
+#[[bin]]
+#name = "server_check"
+#path = "src/bins/server_check.rs"
 
 [[bin]]
-name = "server_main"
-path = "src/bins/server_main.rs"
-
-[[bin]]
-name = "server_check"
-path = "src/bins/server_check.rs"
+name = "emunet_server"
+path = "src/bins/emunet_server.rs"
 
 [dependencies]
-tokio = { version = "0.2", features = ["full"] }
-tokio-util = { version = "0.3.0", features = ["compat"] }
-warp = "0.2"
+tonic = "0.4.0"
+tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tonic = "0.2"
-prost = "0.6"
-tower = { version = "0.3" }
-futures = "0.3.0"
-dummy_cli_parser = { git = "https://github.com/duanjp8617/dummy_cli_parser.git", branch = "master" }
-capnp = "0.13.3"
-capnp-rpc = "0.13.1"
-indradb-lib = "1.1.0"
-uuid = { version = "~0.8.1", features = ["v1", "serde"] }
-chrono = "0.4.15"
-lazy_static = "1.4.0"
-
-# For test_wrap.rs
-pretty_env_logger = "0.4"
-parking_lot = "0.11"
-
-[build-dependencies]
-tonic-build = "0.2"
-capnpc = "0.13.1"
+uuid = { version = "0.8.1", features = ["serde"] }
+indradb-lib = { version = "2.1.0", features = ["rocksdb-datastore", "sled-datastore"] }
+indradb-proto = { version = "2.1.0", features = ["client"] }
