@@ -26,3 +26,4 @@ serde_json = "1.0"
 uuid = { version = "0.8.1", features = ["serde"] }
 indradb-lib = { version = "2.1.0", features = ["rocksdb-datastore", "sled-datastore"] }
 indradb-proto = { version = "2.1.0", features = ["client"] }
+lazy_static = "1.4.0"

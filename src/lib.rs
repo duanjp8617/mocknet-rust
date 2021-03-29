@@ -2,8 +2,7 @@
 // First, I will use the lagacy command-based approach to build up the virtual network and expose required APIs
 // Then, I will use netlink and shiplift to implement an accelarated way for building the virtual network using the exact same set of APIs
 
-// mod enet;
-// pub mod algo;
+pub mod algo;
 // pub mod autogen;
 // pub mod container_backend;
 // pub mod database;
@@ -11,5 +10,5 @@
 // pub mod errors;
 // pub mod restful;
 
-// pub mod emunet_new;
+pub mod emunet_new;
 pub mod database_new;

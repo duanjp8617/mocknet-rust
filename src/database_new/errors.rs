@@ -3,68 +3,63 @@ use std::fmt;
 
 use http::uri::InvalidUri;
 use indradb_proto::ClientError;
+use tokio::time::error::Elapsed;
 
 use super::message_queue::errors::QueueDrop;
 
-/// Error kind of database backend.
 #[derive(Debug)]
-pub enum ConnError {
-    IndradbClientError { inner: ClientError },
-    AddressError { inner: InvalidUri },
+pub enum ConnectorError {
+    ConnectionError { reason: String },
     QueueDrop,
 }
 
-// Convert mpsc::SendError<T> into BackendError.
-impl From<QueueDrop> for ConnError {
-    fn from(_: QueueDrop) -> ConnError {
+impl From<QueueDrop> for ConnectorError {
+    fn from(_: QueueDrop) -> ConnectorError {
         Self::QueueDrop
     }
 }
 
-// Convert oneshot::RecvError into BackendError.
-impl From<ClientError> for ConnError {
-    fn from(e: ClientError) -> ConnError {
-        Self::IndradbClientError { inner: e }
+impl From<ClientError> for ConnectorError {
+    fn from(e: ClientError) -> ConnectorError {
+        Self::ConnectionError {
+            reason: format!("connection error: {}", e),
+        }
     }
 }
 
-impl From<InvalidUri> for ConnError {
-    fn from(e: InvalidUri) -> ConnError {
-        Self::AddressError { inner: e }
+impl From<InvalidUri> for ConnectorError {
+    fn from(e: InvalidUri) -> ConnectorError {
+        Self::ConnectionError {
+            reason: format!("connection error: {}", e),
+        }
     }
 }
 
-// Implementing std::error::Error trait.
-impl fmt::Display for ConnError {
+impl From<Elapsed> for ConnectorError {
+    fn from(e: Elapsed) -> ConnectorError {
+        Self::ConnectionError {
+            reason: format!("connection error: connection timeout {}", e),
+        }
+    }
+}
+
+impl fmt::Display for ConnectorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConnError::IndradbClientError { ref inner } => {
-                write!(f, "Indradb client error: {}", inner)
+            ConnectorError::ConnectionError { ref reason } => {
+                write!(f, "{}", reason)
             }
-            ConnError::AddressError { ref inner } => {
-                write!(f, "address error: {}", inner)
-            }
-            ConnError::QueueDrop => {
+            ConnectorError::QueueDrop => {
                 write!(f, "queue drop error")
             }
         }
     }
 }
 
-// Implementing std::error::Error trait.
-impl std::error::Error for ConnError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match *self {
-            ConnError::IndradbClientError { ref inner } => Some(inner),
-            ConnError::AddressError { ref inner } => Some(inner),
-            _ => None,
-        }
-    }
-}
+impl std::error::Error for ConnectorError {}
 
-// Necessary for converting into Box<dyn std::error::Error>.
-impl From<ConnError> for Box<dyn std::error::Error + Send + 'static> {
-    fn from(err: ConnError) -> Self {
+impl From<ConnectorError> for Box<dyn std::error::Error + Send + 'static> {
+    fn from(err: ConnectorError) -> Self {
         Box::new(err)
     }
 }

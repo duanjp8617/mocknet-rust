@@ -62,20 +62,20 @@ impl ClusterInfo {
         Ok(())
     }
 
-    pub fn from_iterator<I: std::iter::Iterator<Item = ServerInfo>>(i: I) -> Result<Self, String> {
-        let mut res = Self::new();
-        for cs in i {
-            if res.addr_exist(&cs.conn_addr) {
-                return Err(format!("ServerAddr {:?} exists in the pool", &cs.conn_addr));
-            }
-            res.servers.push(cs);
-        }
-        Ok(res)
-    }
+    // pub fn from_iterator<I: std::iter::Iterator<Item = ServerInfo>>(i: I) -> Result<Self, String> {
+    //     let mut res = Self::new();
+    //     for cs in i {
+    //         if res.addr_exist(&cs.conn_addr) {
+    //             return Err(format!("ServerAddr {:?} exists in the pool", &cs.conn_addr));
+    //         }
+    //         res.servers.push(cs);
+    //     }
+    //     Ok(res)
+    // }
 
-    pub fn into_vec(self) -> Vec<ServerInfo> {
-        self.servers
-    }
+    // pub fn into_vec(self) -> Vec<ServerInfo> {
+    //     self.servers
+    // }
 
     pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;

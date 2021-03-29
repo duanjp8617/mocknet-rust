@@ -648,6 +648,7 @@ dependencies = [
  "http",
  "indradb-lib",
  "indradb-proto",
+ "lazy_static",
  "serde",
  "serde_json",
  "tokio",
