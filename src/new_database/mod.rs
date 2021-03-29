@@ -7,7 +7,7 @@ lazy_static! {
 
 mod client;
 pub mod errors;
-mod helpers;
+pub(crate) mod helpers;
 mod message_queue;
 
 pub use client::{new_connector, Client, Connector, QueryResult};

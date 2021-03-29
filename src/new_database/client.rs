@@ -4,16 +4,17 @@ use super::errors::ConnectorError;
 use super::helpers;
 use super::message_queue;
 use super::message_queue::{Queue, Sender};
-use crate::emunet_new::cluster::ClusterInfo;
-use crate::emunet_new::user::User;
+use crate::new_emunet::cluster::ClusterInfo;
+use crate::new_emunet::user::User;
 
-use indradb::BulkInsertItem;
-use indradb::Type;
-use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
-use indradb::{Vertex, VertexQuery};
-use indradb::{VertexProperty, VertexPropertyQuery};
+// use indradb::Type;
+// use indradb::{BulkInsertItem, Transaction};
+// use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
+// use indradb::{Vertex, VertexQuery};
+// use indradb::{VertexProperty, VertexPropertyQuery};
 use indradb_proto as proto;
-use uuid::Uuid;
+// use proto::ClientError;
+// use uuid::Uuid;
 
 type ConnectorResponse = Result<(proto::Client, u64), ConnectorError>;
 pub type QueryResult<T> = Result<T, String>;
@@ -126,7 +127,7 @@ impl Connector {
             .await?;
 
         resp.map(move |(client, client_id)| Client {
-            client: Some(client),
+            client: client,
             client_id: client_id,
             sender: self.sender.clone(),
         })
@@ -136,24 +137,24 @@ impl Connector {
 // this is actually a wrapper for indradb-proto::proto::Client, it can be used to deliver
 // a connection signal when it is dropped
 pub struct Client {
-    client: Option<proto::Client>,
+    client: proto::Client,
     client_id: u64,
     sender: Sender<ConnectorMessage, ConnectorResponse>,
 }
 
-impl Drop for Client {
-    fn drop(&mut self) {
-        match self.client {
-            None => {
-                // notify the backend that the client fails
-                let _ = self
-                    .sender
-                    .send(ConnectorMessage::ClientFail(self.client_id));
-            }
-            Some(_) => {}
-        }
-    }
-}
+// impl Drop for Client {
+//     fn drop(&mut self) {
+//         match self.client {
+//             None => {
+//                 // notify the backend that the client fails
+//                 let _ = self
+//                     .sender
+//                     .send(ConnectorMessage::ClientFail(self.client_id));
+//             }
+//             Some(_) => {}
+//         }
+//     }
+// }
 
 // public interfaces
 impl Client {
@@ -161,12 +162,7 @@ impl Client {
         &mut self,
         cluster_info: ClusterInfo,
     ) -> Result<QueryResult<()>, proto::ClientError> {
-        let mut tran = self
-            .client
-            .as_mut()
-            .ok_or(proto::ClientError::ChannelClosed)?
-            .transaction()
-            .await?;
+        let mut tran = self.tran().await?;
 
         let res = helpers::create_vertex(&mut tran, Some(super::CORE_INFO_ID.clone())).await?;
         match res {
@@ -179,5 +175,14 @@ impl Client {
             None => fail!("database has already been initialized".to_string()),
         }
     }
+
+    pub async fn tran(&mut self) -> Result<proto::Transaction, proto::ClientError> {
+        self.client.transaction().await
+    }
+
+    pub fn notify_failure(self) {
+        let _ = self
+            .sender
+            .send(ConnectorMessage::ClientFail(self.client_id));
+    }
 }
- 

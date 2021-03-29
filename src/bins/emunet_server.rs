@@ -5,8 +5,8 @@ use indradb::{
     EdgeKey, EdgePropertyQuery, EdgeQuery, SpecificEdgeQuery, SpecificVertexQuery, VertexPropertyQuery, VertexQuery,
 };
 use indradb_proto as proto;
-use mocknet::database_new::*;
-use mocknet::emunet_new::*;
+use mocknet::new_database::*;
+use mocknet::new_emunet::*;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {

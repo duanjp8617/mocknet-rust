@@ -10,5 +10,6 @@ pub mod algo;
 // pub mod errors;
 // pub mod restful;
 
-pub mod emunet_new;
-pub mod database_new;
+pub mod new_emunet;
+pub mod new_database;
+pub mod new_restful;
