@@ -10,4 +10,4 @@ pub mod errors;
 mod helpers;
 mod message_queue;
 
-pub use client::{new_connector, Client, Connector};
+pub use client::{new_connector, Client, Connector, QueryResult};

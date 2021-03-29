@@ -1,9 +1,11 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use super::errors::ConnectorError;
+use super::helpers;
 use super::message_queue;
 use super::message_queue::{Queue, Sender};
-use crate::emunet_new::cluster::ServerInfo;
+use crate::emunet_new::cluster::ClusterInfo;
+use crate::emunet_new::user::User;
 
 use indradb::BulkInsertItem;
 use indradb::Type;
@@ -14,8 +16,7 @@ use indradb_proto as proto;
 use uuid::Uuid;
 
 type ConnectorResponse = Result<(proto::Client, u64), ConnectorError>;
-
-type QueryResult<T> = Result<T, String>;
+pub type QueryResult<T> = Result<T, String>;
 
 macro_rules! succeed {
     ($arg: expr) => {
@@ -118,7 +119,7 @@ pub struct Connector {
 }
 
 impl Connector {
-    pub async fn connect(self) -> Result<Client, ConnectorError> {
+    pub async fn connect(&self) -> Result<Client, ConnectorError> {
         let resp = self
             .sender
             .send_for_response(ConnectorMessage::GetClient)
@@ -127,7 +128,7 @@ impl Connector {
         resp.map(move |(client, client_id)| Client {
             client: Some(client),
             client_id: client_id,
-            sender: self.sender,
+            sender: self.sender.clone(),
         })
     }
 }
@@ -153,3 +154,30 @@ impl Drop for Client {
         }
     }
 }
+
+// public interfaces
+impl Client {
+    pub async fn init(
+        &mut self,
+        cluster_info: ClusterInfo,
+    ) -> Result<QueryResult<()>, proto::ClientError> {
+        let mut tran = self
+            .client
+            .as_mut()
+            .ok_or(proto::ClientError::ChannelClosed)?
+            .transaction()
+            .await?;
+
+        let res = helpers::create_vertex(&mut tran, Some(super::CORE_INFO_ID.clone())).await?;
+        match res {
+            Some(_) => {
+                helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
+                helpers::set_cluster_info(&mut tran, cluster_info).await?;
+
+                succeed!(())
+            }
+            None => fail!("database has already been initialized".to_string()),
+        }
+    }
+}
+ 
