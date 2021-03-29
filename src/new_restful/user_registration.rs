@@ -5,7 +5,6 @@ use serde::Deserialize;
 use warp::Filter;
 
 use super::Response;
-use super::RestfulError;
 use crate::new_database::{helpers, Client, Connector};
 use crate::new_emunet::user::User;
 
@@ -17,7 +16,7 @@ struct Request {
 async fn user_registration(
     req: Request,
     client: &mut Client,
-) -> Result<Response<String>, RestfulError> {
+) -> Result<Response<String>, ClientError> {
     let mut tran = client.tran().await?;
 
     let mut user_map: HashMap<String, User> = helpers::get_user_map(&mut tran).await?;
@@ -35,29 +34,20 @@ async fn user_registration(
     Ok(Response::success(req.name))
 }
 
-async fn wrapper(req: Request, connector: Connector) -> Result<impl warp::Reply, warp::Rejection> {
-    let mut client = connector.connect().await.unwrap();
+async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
     let res = user_registration(req, &mut client).await;
     match res {
-        Ok(resp) => Ok(warp::reply::Json::from(resp)),
-        Err(e) => Ok(warp::reply::Json::from(e)),
+        Ok(resp) => Ok(resp.into()),
+        Err(e) => {
+            client.notify_failure();
+            let resp: Response<_> = e.into();
+            Ok(resp.into())
+        }
     }
 }
 
 pub fn build_filter(
     connector: Connector,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send + Sync + 'static
-{
-    let connector_filter = warp::any().map(move || {
-        let clone = connector.clone();
-        clone
-    });
-    let res = warp::post()
-        .and(warp::path("v1"))
-        .and(warp::path("register_user"))
-        .and(warp::path::end())
-        .and(super::parse_json_body())
-        .and(connector_filter);
-        
-    res.and_then(wrapper)
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
+    super::filter_template("register_user".to_string(), connector, guard)
 }

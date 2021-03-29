@@ -5,7 +5,6 @@ use indradb_proto::ClientError;
 use serde::{de::DeserializeOwned, Serialize};
 use warp::Filter;
 
-use crate::new_database::errors::ConnectorError;
 use crate::new_database::{Client, Connector};
 
 fn parse_json_body<T: DeserializeOwned + Send>(
@@ -37,22 +36,6 @@ impl<T: Serialize + Default> Response<T> {
         }
     }
 }
-pub enum RestfulError {
-    ClientError { inner: ClientError },
-    ConnectorError { inner: ConnectorError },
-}
-
-impl From<ClientError> for RestfulError {
-    fn from(e: ClientError) -> RestfulError {
-        Self::ClientError { inner: e }
-    }
-}
-
-impl From<ConnectorError> for RestfulError {
-    fn from(e: ConnectorError) -> RestfulError {
-        Self::ConnectorError { inner: e }
-    }
-}
 
 impl<T: Serialize + Default> From<Response<T>> for warp::reply::Json {
     fn from(resp: Response<T>) -> Self {
@@ -60,53 +43,40 @@ impl<T: Serialize + Default> From<Response<T>> for warp::reply::Json {
     }
 }
 
-impl From<RestfulError> for warp::reply::Json {
-    fn from(e: RestfulError) -> Self {
-        match e {
-            RestfulError::ClientError { inner } => {
-                Response::<()>::fail(format!("fatal: {}", inner)).into()
-            }
-            RestfulError::ConnectorError { inner } => {
-                Response::<()>::fail(format!("fatal: {}", inner)).into()
-            }
-        }
+impl From<ClientError> for Response<()> {
+    fn from(e: ClientError) -> Self {
+        Response::<()>::fail(format!("fatal: {}", e))
     }
 }
 
-async fn handle_req<Req, T, F, R>(
-    req: Req,
+async fn get_client(connector: Connector) -> Result<Client, warp::Rejection> {
+    connector.connect().await.map_err(|_| warp::reject())
+}
+
+fn filter_template<Req, F, R>(
+    api_prefix: String,
     connector: Connector,
     handle: F,
-) -> Result<impl warp::Reply, warp::Rejection>
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Send + Clone
 where
-    T: Serialize + Default,
-    F: Fn(Req, Client) -> R + Send + Sync,
-    R: Future<Output = Result<Response<T>, RestfulError>>,
+    Req: DeserializeOwned + Send,
+    F: Fn(Req, Client) -> R + Send + Clone,
+    R: Future<Output = Result<warp::reply::Json, warp::Rejection>> + Send,
 {
-    let client = connector.connect().await.unwrap();
-    let res = handle(req, client).await;
-    match res {
-        Ok(resp) => Ok(warp::reply::Json::from(resp)),
-        Err(e) => Ok(warp::reply::Json::from(e)),
-    }
+    let connector_filter = warp::any()
+        .map(move || {
+            let clone = connector.clone();
+            clone
+        })
+        .and_then(get_client);
+    warp::post()
+        .and(warp::path("v1"))
+        .and(warp::path(api_prefix))
+        .and(warp::path::end())
+        .and(parse_json_body())
+        .and(connector_filter)
+        .and_then(handle)
 }
 
-// pub fn build_pre_filters (
-//     connector: Connector,
-// )  -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static 
-// {
-//     let connector_filter = warp::any().map(move || {
-//         let clone = connector.clone();
-//         clone
-//     });
-//     let res = warp::post()
-//         .and(warp::path("v1"))
-//         .and(warp::path("register_user"))
-//         .and(warp::path::end())
-//         .and(parse_json_body())
-//         .and(connector_filter)
-//         .and(handle_filter);
-// }
-
 mod user_registration;
-mod new_user_registration;
+pub use user_registration::build_filter;
