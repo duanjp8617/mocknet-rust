@@ -17,9 +17,9 @@ async fn user_registration(
     req: Request,
     client: &mut Client,
 ) -> Result<Response<String>, ClientError> {
-    let mut tran = client.tran().await?;
+    let mut guarded_tran = client.guarded_tran().await?;
 
-    let mut user_map: HashMap<String, User> = helpers::get_user_map(&mut tran).await?;
+    let mut user_map: HashMap<String, User> = helpers::get_user_map(&mut guarded_tran).await?;
     if user_map.get(&req.name).is_some() {
         return Ok(Response::fail(format!(
             "user {} has already registered",
@@ -29,7 +29,7 @@ async fn user_registration(
 
     let user = User::new(&req.name);
     user_map.insert(req.name.clone(), user);
-    helpers::set_user_map(&mut tran, user_map).await?;
+    helpers::set_user_map(&mut guarded_tran, user_map).await?;
 
     Ok(Response::success(req.name))
 }

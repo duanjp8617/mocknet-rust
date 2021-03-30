@@ -4,7 +4,7 @@ use mocknet::new_database::*;
 use mocknet::new_emunet::*;
 use mocknet::new_restful::*;
 
-const LOCAL_ADDR: [u8; 4] = [ 172,23,66,208];
+const LOCAL_ADDR: [u8; 4] = [172, 23, 66, 208];
 const LOCAL_PORT: u16 = 3030;
 
 #[tokio::main]
@@ -24,8 +24,8 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
         .add_server_info("192.168.0.4", 15, "djp", "djp")
         .unwrap();
 
-    let mut client = connector.connect().await?;
-    let res = client.init(cluster).await?;
+
+    let res = init(&connector, cluster).await?;
     match res {
         Ok(_) => {
             println!("successfully initialize the database");
@@ -34,6 +34,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
             println!("{}", e);
         }
     }
+
     let user_registration_filter = user_registration::build_filter(connector.clone());
     let routes = user_registration_filter;
     warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;

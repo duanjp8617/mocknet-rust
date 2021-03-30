@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, ops::Deref, ops::DerefMut, str::FromStr, sync::Arc};
 
 use super::errors::ConnectorError;
 use super::helpers;
@@ -7,52 +7,25 @@ use super::message_queue::{Queue, Sender};
 use crate::new_emunet::cluster::ClusterInfo;
 use crate::new_emunet::user::User;
 
-// use indradb::Type;
-// use indradb::{BulkInsertItem, Transaction};
-// use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
-// use indradb::{Vertex, VertexQuery};
-// use indradb::{VertexProperty, VertexPropertyQuery};
 use indradb_proto as proto;
-// use proto::ClientError;
-// use uuid::Uuid;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-type ConnectorResponse = Result<(proto::Client, u64), ConnectorError>;
-pub type QueryResult<T> = Result<T, String>;
-
-macro_rules! succeed {
-    ($arg: expr) => {
-        Ok(Ok($arg))
-    };
-}
-
-macro_rules! fail {
-    ($s: expr) => {
-        Ok(Err($s))
-    };
-}
+type ConnectorResponse = Result<(proto::Client, u64, Arc<Semaphore>), ConnectorError>;
 
 enum ConnectorMessage {
     GetClient,
     ClientFail(u64),
 }
 
-pub async fn new_connector(db_addr: &str) -> Result<Connector, ConnectorError> {
-    let (sender, queue) = message_queue::create();
-    let connector_backend = ConnectorBackend::new(db_addr, queue).await?;
-    let _ = tokio::spawn(connector_backend.backend_task());
-    Ok(Connector { sender })
-}
-
 async fn do_connect(db_addr: &str) -> Result<proto::Client, ConnectorError> {
     let endpoint = tonic::transport::Endpoint::from_str(db_addr)?;
     Ok(proto::Client::new(endpoint).await?)
 }
-
-// runs inside a task to do the lazy connection
 struct ConnectorBackend {
     db_addr: String,
     client_id: u64,
     client_opt: Option<proto::Client>,
+    semaphore: Arc<Semaphore>,
     queue: Queue<ConnectorMessage, ConnectorResponse>,
 }
 
@@ -66,6 +39,7 @@ impl ConnectorBackend {
             db_addr: db_addr.to_string(),
             client_id: 1,
             client_opt: Some(client),
+            semaphore: Arc::new(Semaphore::new(1)),
             queue,
         })
     }
@@ -78,7 +52,11 @@ impl ConnectorBackend {
                 Some((msg, responder)) => match msg {
                     ConnectorMessage::GetClient => match self.client_opt {
                         Some(ref client) => {
-                            let _ = responder.send(Ok((client.clone(), self.client_id)));
+                            let _ = responder.send(Ok((
+                                client.clone(),
+                                self.client_id,
+                                self.semaphore.clone(),
+                            )));
                         }
                         None => {
                             let res = tokio::time::timeout(
@@ -96,7 +74,11 @@ impl ConnectorBackend {
                                 Ok(Ok(client)) => {
                                     self.client_opt = Some(client.clone());
                                     self.client_id += 1;
-                                    let _ = responder.send(Ok((client, self.client_id)));
+                                    let _ = responder.send(Ok((
+                                        client,
+                                        self.client_id,
+                                        self.semaphore.clone(),
+                                    )));
                                 }
                             }
                         }
@@ -112,77 +94,96 @@ impl ConnectorBackend {
     }
 }
 
-// this is actually a sender that sends the request to the Connector Backend
-// and listens for the returned message. The message is the connected client
+pub(crate) struct Client {
+    client: proto::Client,
+    client_id: u64,
+    semaphore: Arc<Semaphore>,
+    sender: Sender<ConnectorMessage, ConnectorResponse>,
+}
+
+impl Client {
+    pub(crate) fn notify_failure(self) {
+        let _ = self
+            .sender
+            .send(ConnectorMessage::ClientFail(self.client_id));
+    }
+
+    pub(crate) async fn guarded_tran(&mut self) -> Result<GuardedTransaction, proto::ClientError> {
+        let tran = self.client.transaction().await?;
+        let singleton_guard = self.semaphore.clone().acquire_owned().await.unwrap();
+        Ok(GuardedTransaction {
+            tran,
+            _singleton_guard: singleton_guard,
+        })
+    }
+}
+
+pub(crate) struct GuardedTransaction {
+    tran: proto::Transaction,
+    _singleton_guard: OwnedSemaphorePermit,
+}
+
+impl Deref for GuardedTransaction {
+    type Target = proto::Transaction;
+
+    fn deref(&self) -> &Self::Target {
+        &self.tran
+    }
+}
+
+impl DerefMut for GuardedTransaction {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tran
+    }
+}
+
 #[derive(Clone)]
 pub struct Connector {
     sender: Sender<ConnectorMessage, ConnectorResponse>,
 }
 
 impl Connector {
-    pub async fn connect(&self) -> Result<Client, ConnectorError> {
+    // internal interface for acquring a Client
+    pub(crate) async fn connect(&self) -> Result<Client, ConnectorError> {
         let resp = self
             .sender
             .send_for_response(ConnectorMessage::GetClient)
             .await?;
 
-        resp.map(move |(client, client_id)| Client {
+        resp.map(move |(client, client_id, semaphore)| Client {
             client: client,
             client_id: client_id,
+            semaphore,
             sender: self.sender.clone(),
         })
     }
 }
 
-// this is actually a wrapper for indradb-proto::proto::Client, it can be used to deliver
-// a connection signal when it is dropped
-pub struct Client {
-    client: proto::Client,
-    client_id: u64,
-    sender: Sender<ConnectorMessage, ConnectorResponse>,
+pub async fn new_connector(db_addr: &str) -> Result<Connector, ConnectorError> {
+    let (sender, queue) = message_queue::create();
+    let connector_backend = ConnectorBackend::new(db_addr, queue).await?;
+    let _ = tokio::spawn(connector_backend.backend_task());
+    Ok(Connector { sender })
 }
 
-// impl Drop for Client {
-//     fn drop(&mut self) {
-//         match self.client {
-//             None => {
-//                 // notify the backend that the client fails
-//                 let _ = self
-//                     .sender
-//                     .send(ConnectorMessage::ClientFail(self.client_id));
-//             }
-//             Some(_) => {}
-//         }
-//     }
-// }
+pub async fn init(
+    connector: &Connector,
+    cluster_info: ClusterInfo,
+) -> Result<Result<(), String>, proto::ClientError> {
+    let mut client = connector
+        .connect()
+        .await
+        .map_err(|_| proto::ClientError::ChannelClosed)?;
+    let mut tran = client.guarded_tran().await?;
 
-// public interfaces
-impl Client {
-    pub async fn init(
-        &mut self,
-        cluster_info: ClusterInfo,
-    ) -> Result<QueryResult<()>, proto::ClientError> {
-        let mut tran = self.tran().await?;
+    let res = helpers::create_vertex(&mut tran, Some(super::CORE_INFO_ID.clone())).await?;
+    match res {
+        Some(_) => {
+            helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
+            helpers::set_cluster_info(&mut tran, cluster_info).await?;
 
-        let res = helpers::create_vertex(&mut tran, Some(super::CORE_INFO_ID.clone())).await?;
-        match res {
-            Some(_) => {
-                helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
-                helpers::set_cluster_info(&mut tran, cluster_info).await?;
-
-                succeed!(())
-            }
-            None => fail!("database has already been initialized".to_string()),
+            Ok(Ok(()))
         }
-    }
-
-    pub async fn tran(&mut self) -> Result<proto::Transaction, proto::ClientError> {
-        self.client.transaction().await
-    }
-
-    pub fn notify_failure(self) {
-        let _ = self
-            .sender
-            .send(ConnectorMessage::ClientFail(self.client_id));
+        None => Ok(Err("database has already been initialized".to_string())),
     }
 }
