@@ -3,12 +3,64 @@ use std::collections::HashMap;
 use indradb_proto::ClientError;
 use uuid::Uuid;
 use warp::Filter;
+use serde::Serialize;
 
 use super::Response;
 use crate::new_database::{helpers, Client, Connector};
 use crate::new_emunet::user::User;
 
 type RespType = HashMap<String, HashMap<String, Uuid>>;
+#[derive(Serialize)]
+struct Inner {
+    /*
+    user: {
+        user_name1: {
+            emunet_uuid1: {
+                emunet_name: String,
+                emunet_uuid: uuid::Uuid,
+                max_capacity: u64,
+                user_name: String,
+                dev_count: Cell<u64>,
+                servers: {
+                    server_uuid1: {
+
+                    },
+                    server_uuid2: {
+
+                    }
+                }
+                devices: {
+                    device_id1: {
+
+                    },
+                    device_id2: {
+
+                    }
+                }
+            },
+            emunet_uuid2: {
+
+            }
+        },
+        user_name2: {
+
+        }
+    },
+    cluster: {
+        {
+            server1
+        },
+        {
+            server2
+        }
+    }
+    
+    
+    
+    
+    
+    */
+}
 
 async fn list_all_users_temp(client: &mut Client) -> Result<Response<RespType>, ClientError> {
     let mut guarded_tran = client.guarded_tran().await?;
@@ -20,6 +72,8 @@ async fn list_all_users_temp(client: &mut Client) -> Result<Response<RespType>, 
             hm.insert(user_name, user.into_uuid_map());
             hm
         });
+
+    
 
     Ok(Response::success(res))
 }
