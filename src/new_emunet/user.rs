@@ -36,10 +36,6 @@ impl User {
 }
 
 impl User {
-    pub fn emunet_exist(&self, emunet_name: &str) -> bool {
-        self.emunet_name_to_uuid.borrow().get(emunet_name).is_some()
-    }
-
     pub fn get_emunet_uuid_map(&self) -> HashMap<String, uuid::Uuid> {
         return self.emunet_name_to_uuid.borrow().clone();
     }

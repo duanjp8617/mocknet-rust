@@ -7,7 +7,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::cluster::ClusterInfo;
+use crate::new_emunet::emunet::{self, EmuNet};
 use crate::new_emunet::user::User;
 
 #[derive(Deserialize)]
@@ -18,17 +18,23 @@ struct Request {
 }
 
 async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uuid>, ClientError> {
-    let mut tran = client.tran().await?;
+    let mut tran = client.guarded_tran().await?;
 
     let mut user_map: HashMap<String, User> = helpers::get_user_map(&mut tran).await?;
     if user_map.get(&req.user).is_none() {
         return Ok(Response::fail("invalid user name".to_string()));
     }
-    let user_mut = user_map.get_mut(&req.user).unwrap();
 
-    if user_mut.emunet_exist(&req.emunet) {
-        return Ok(Response::fail("invalid emunet name".to_string()));
-    }
+    let user_mut = user_map.get_mut(&req.user).unwrap();
+    let emunet_uuid = match user_mut.register_emunet(&req.emunet) {
+        Some(uuid) => uuid,
+        None => {
+            return Ok(Response::fail(format!(
+                "invalid emunet name {}",
+                req.emunet
+            )));
+        }
+    };
 
     let mut cluster_info = helpers::get_cluster_info(&mut tran).await?;
     let allocation = match cluster_info.allocate_servers(req.capacity) {
@@ -40,36 +46,37 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
             )));
         }
     };
-    self.fe.set_server_info_list(sp.into_vec()).await?;
 
-    // create a new emu net node
-    let emu_net_id = self
-        .fe
-        .create_vertex(None)
-        .await?
-        .expect("vertex ID already exists");
-    // create a new emu net
-    let mut emu_net = net::EmuNet::new(user, net.clone(), emu_net_id.clone(), capacity);
-    emu_net.add_servers(allocation);
-    // initialize the EmuNet in the database
-    let jv = serde_json::to_value(emu_net).unwrap();
-    let res = self
-        .fe
-        .set_vertex_json_value(emu_net_id, "default", jv)
-        .await?;
+    let emunet = EmuNet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
+    let jv = serde_json::to_value(emunet).unwrap();
+
+    if !(helpers::create_vertex(&mut tran, emunet_uuid.clone()).await?) {
+        panic!(format!("invalid emunet uuid {}", emunet_uuid));
+    }
+
+    let res = helpers::set_vertex_json_value(
+        &mut tran,
+        emunet_uuid.clone(),
+        emunet::EMUNET_NODE_PROPERTY,
+        &jv,
+    )
+    .await?;
     if !res {
         panic!("vertex not exist");
     }
 
-    // add the new emunet to user map
-    user_mut.add_emu_net(net, emu_net_id.clone());
-    self.fe.set_user_map(user_map).await?;
+    helpers::set_user_map(&mut tran, user_map)
+        .await
+        .expect("can't fail");
+    helpers::set_cluster_info(&mut tran, cluster_info)
+        .await
+        .expect("can't fail");
 
-    succeed!(emu_net_id)
+    Ok(Response::success(emunet_uuid))
 }
 
 async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
-    let res = user_registration(req, &mut client).await;
+    let res = create_emunet(req, &mut client).await;
     match res {
         Ok(resp) => Ok(resp.into()),
         Err(e) => {

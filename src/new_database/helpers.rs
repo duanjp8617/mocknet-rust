@@ -12,20 +12,12 @@ use crate::new_emunet::user::User;
 
 pub(crate) async fn create_vertex(
     tran: &mut Transaction,
-    id: Option<Uuid>,
-) -> Result<Option<Uuid>, ClientError> {
+    id: Uuid,
+) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();
-    let v = match id {
-        Some(id) => Vertex::with_id(id, t),
-        None => Vertex::with_id(indradb::util::generate_uuid_v1(), t),
-    };
-
-    let succeed = tran.create_vertex(&v).await?;
-    if succeed {
-        Ok(Some(v.id))
-    } else {
-        Ok(None)
-    }
+    let v = Vertex::with_id(id, t);
+    
+    tran.create_vertex(&v).await
 }
 
 pub(crate) async fn get_vertex_json_value(

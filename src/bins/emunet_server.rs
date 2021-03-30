@@ -1,5 +1,7 @@
 use std::error::Error as StdError;
 
+use warp::Filter;
+
 use mocknet::new_database::*;
 use mocknet::new_emunet::*;
 use mocknet::new_restful::*;
@@ -24,7 +26,6 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
         .add_server_info("192.168.0.4", 15, "djp", "djp")
         .unwrap();
 
-
     let res = init(&connector, cluster).await?;
     match res {
         Ok(_) => {
@@ -35,8 +36,8 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
         }
     }
 
-    let user_registration_filter = user_registration::build_filter(connector.clone());
-    let routes = user_registration_filter;
+    let routes = user_registration::build_filter(connector.clone());
+    let routes = routes.or(emunet_creation::build_filter(connector.clone()));
     warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;
     Ok(())
 }

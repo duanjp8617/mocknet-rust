@@ -6,11 +6,11 @@ use crate::algo::PartitionBin;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerInfo {
-    id: uuid::Uuid,
-    conn_addr: std::net::IpAddr,
-    max_capacity: u64,
-    username: String,
-    password: String,
+    pub uuid: uuid::Uuid,
+    pub conn_addr: std::net::IpAddr,
+    pub max_capacity: u64,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -52,7 +52,7 @@ impl ClusterInfo {
         }
 
         self.servers.push(ServerInfo {
-            id: indradb::util::generate_uuid_v1(),
+            uuid: indradb::util::generate_uuid_v1(),
             conn_addr,
             max_capacity,
             username: username.into(),
@@ -126,8 +126,8 @@ pub struct ContainerServer {
 // }
 
 impl ContainerServer {
-    pub fn id(&self) -> uuid::Uuid {
-        return self.server_info.id;
+    pub fn server_info(&self) -> &ServerInfo {
+        return &self.server_info;
     }
 
     // pub fn release_resource(&mut self, quantity: usize) -> Result<(), ()> {
@@ -163,6 +163,6 @@ impl PartitionBin for ContainerServer {
     }
 
     fn bin_id(&self) -> Self::BinId {
-        return self.id();
+        return self.server_info().uuid.clone();
     }
 }

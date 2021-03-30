@@ -176,14 +176,14 @@ pub async fn init(
         .map_err(|_| proto::ClientError::ChannelClosed)?;
     let mut tran = client.guarded_tran().await?;
 
-    let res = helpers::create_vertex(&mut tran, Some(super::CORE_INFO_ID.clone())).await?;
+    let res = helpers::create_vertex(&mut tran, super::CORE_INFO_ID.clone()).await?;
     match res {
-        Some(_) => {
+        true => {
             helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
             helpers::set_cluster_info(&mut tran, cluster_info).await?;
 
             Ok(Ok(()))
         }
-        None => Ok(Err("database has already been initialized".to_string())),
+        false => Ok(Err("database has already been initialized".to_string())),
     }
 }

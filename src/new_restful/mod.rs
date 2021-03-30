@@ -79,4 +79,4 @@ where
 }
 
 pub mod user_registration;
-// pub mod emunet_creation;
+pub mod emunet_creation;
