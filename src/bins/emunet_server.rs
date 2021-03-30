@@ -6,7 +6,7 @@ use mocknet::new_database::*;
 use mocknet::new_emunet::*;
 use mocknet::new_restful::*;
 
-const LOCAL_ADDR: [u8; 4] = [172, 23, 66, 208];
+const LOCAL_ADDR: [u8; 4] = [172, 27, 206, 200];
 const LOCAL_PORT: u16 = 3030;
 
 #[tokio::main]
@@ -38,7 +38,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     let routes = user_registration::build_filter(connector.clone());
     let routes = routes.or(emunet_creation::build_filter(connector.clone()));
-    let routes = routes.or(list_all_users::build_filter(connector.clone()));
+    let routes = routes.or(list_all::build_filter(connector.clone()));
     warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;
     Ok(())
 }

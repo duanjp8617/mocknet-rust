@@ -73,9 +73,9 @@ impl ClusterInfo {
     //     Ok(res)
     // }
 
-    // pub fn into_vec(self) -> Vec<ServerInfo> {
-    //     self.servers
-    // }
+    pub fn into_vec(self) -> Vec<ServerInfo> {
+        self.servers
+    }
 
     pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;

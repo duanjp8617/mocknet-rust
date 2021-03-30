@@ -13,17 +13,17 @@ fn parse_json_body<T: DeserializeOwned + Send>(
 }
 
 #[derive(Serialize)]
-struct Response<T: Serialize + Default> {
+struct Response<T: Serialize> {
     success: bool,
-    data: T,
+    data: Option<T>,
     message: String,
 }
 
-impl<T: Serialize + Default> Response<T> {
+impl<T: Serialize> Response<T> {
     fn success(data: T) -> Self {
         Self {
             success: true,
-            data,
+            data: Some(data),
             message: String::new(),
         }
     }
@@ -31,13 +31,13 @@ impl<T: Serialize + Default> Response<T> {
     fn fail(err_msg: String) -> Self {
         Self {
             success: false,
-            data: T::default(),
+            data: None,
             message: err_msg,
         }
     }
 }
 
-impl<T: Serialize + Default> From<Response<T>> for warp::reply::Json {
+impl<T: Serialize> From<Response<T>> for warp::reply::Json {
     fn from(resp: Response<T>) -> Self {
         warp::reply::json(&resp)
     }
@@ -80,4 +80,4 @@ where
 
 pub mod user_registration;
 pub mod emunet_creation;
-pub mod list_all_users;
+pub mod list_all;
