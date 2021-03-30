@@ -78,6 +78,7 @@ where
         .and_then(handle)
 }
 
-pub mod user_registration;
 pub mod emunet_creation;
 pub mod list_all;
+pub mod list_emunet;
+pub mod user_registration;

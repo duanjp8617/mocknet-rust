@@ -39,6 +39,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let routes = user_registration::build_filter(connector.clone());
     let routes = routes.or(emunet_creation::build_filter(connector.clone()));
     let routes = routes.or(list_all::build_filter(connector.clone()));
+    let routes = routes.or(list_emunet::build_filter(connector.clone()));
     warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;
     Ok(())
 }
