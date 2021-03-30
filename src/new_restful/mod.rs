@@ -78,5 +78,4 @@ where
         .and_then(handle)
 }
 
-mod user_registration;
-pub use user_registration::build_filter;
+pub mod user_registration;
