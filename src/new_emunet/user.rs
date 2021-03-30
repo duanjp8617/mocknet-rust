@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
+use std::{borrow::BorrowMut, cell::RefCell};
 use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize)]
@@ -38,5 +38,10 @@ impl User {
 impl User {
     pub fn get_emunet_uuid_map(&self) -> HashMap<String, uuid::Uuid> {
         return self.emunet_name_to_uuid.borrow().clone();
+    }
+
+    pub fn into_uuid_map(self) -> HashMap<String, uuid::Uuid> {
+        let hm = std::mem::replace(&mut (*self.emunet_name_to_uuid.borrow_mut()), HashMap::new());
+        hm
     }
 }

@@ -80,33 +80,22 @@ impl ClusterInfo {
     pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;
 
-        let mut enumerate: Vec<(usize, u64)> = self
-            .servers
-            .iter()
-            .map(|e| e.max_capacity)
-            .enumerate()
-            .collect();
-        enumerate.sort_by(|a, b| (&b.1).cmp(&a.1));
+        self.servers.sort_by(|a, b| (&b.max_capacity).cmp(&a.max_capacity));
 
         let mut index = 0;
-        while target < quantity && index < enumerate.len() {
-            target += enumerate[index].1;
+        while target < quantity && index < self.servers.len() {
+            target += self.servers[index].max_capacity;
             index += 1;
         }
 
         if target >= quantity {
-            Ok(enumerate
-                .iter()
-                .take(index)
-                .map(|e| {
-                    let server_info = self.servers.remove(e.0);
-                    let curr_capacity = server_info.max_capacity;
-                    ContainerServer {
-                        server_info,
-                        dev_count: Cell::new(0),
-                    }
-                })
-                .collect())
+            let res: Vec<_> = self.servers.drain(0..index).map(|server_info| {
+                ContainerServer {
+                    server_info,
+                    dev_count: Cell::new(0),
+                }
+            }).collect();
+            Ok(res)
         } else {
             Err(target)
         }
