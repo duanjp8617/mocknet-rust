@@ -6,7 +6,7 @@ use mocknet::new_database::*;
 use mocknet::new_emunet::*;
 use mocknet::new_restful::*;
 
-const LOCAL_ADDR: [u8; 4] = [172,23,66,208];
+const LOCAL_ADDR: [u8; 4] = [172,27,206,200];
 const LOCAL_PORT: u16 = 3030;
 
 #[tokio::main]
@@ -14,16 +14,16 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let connector = new_connector("grpc://127.0.0.1:27615").await?;
     let mut cluster = cluster::ClusterInfo::new();
     cluster
-        .add_server_info("192.168.0.1", 15, "djp", "djp")
+        .add_server_info("192.168.0.1", 1, "djp", "djp")
         .unwrap();
     cluster
-        .add_server_info("192.168.0.2", 15, "djp", "djp")
+        .add_server_info("192.168.0.2", 2, "djp", "djp")
         .unwrap();
     cluster
-        .add_server_info("192.168.0.3", 15, "djp", "djp")
+        .add_server_info("192.168.0.3", 1, "djp", "djp")
         .unwrap();
     cluster
-        .add_server_info("192.168.0.4", 15, "djp", "djp")
+        .add_server_info("192.168.0.4", 2, "djp", "djp")
         .unwrap();
 
     let res = init(&connector, cluster).await?;

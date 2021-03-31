@@ -117,7 +117,8 @@ impl PartitionBin for ContainerServer {
         if self.devs.borrow().len() + 1 > self.server_info.max_capacity as usize {
             false
         } else {
-            self.devs.borrow_mut().insert(dev_id)
+            assert_eq!(self.devs.borrow_mut().insert(dev_id), true);
+            true
         }
     }
 
@@ -152,22 +153,21 @@ where
     fn partition(
         &self,
         mut bins: I,
-    ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {
+    ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {  
         let mut dev_ids = self.nodes().map(|(nid, _)| *nid);
 
         let mut curr_server = bins.next()?;
         let mut res = HashMap::new();
 
         while let Some(dev_id) = dev_ids.next() {
-            if curr_server.fill(dev_id) {
-                res.insert(dev_id, curr_server.bin_id());
-            } else {
+            while !curr_server.fill(dev_id) {
                 if let Some(new_server) = bins.next() {
                     curr_server = new_server;
                 } else {
                     return None;
                 }
             }
+            res.insert(dev_id, curr_server.bin_id());
         }
 
         Some(res)

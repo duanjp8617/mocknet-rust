@@ -1,17 +1,12 @@
-use std::collections::HashMap;
-
 use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
 use crate::algo::*;
 use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::cluster::*;
 use crate::new_emunet::device::*;
 use crate::new_emunet::emunet::{self, EmuNet, EmunetState};
-use crate::new_emunet::user::User;
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -25,22 +20,23 @@ struct ResponseData {
     status: String,
 }
 
-async fn init_background_task(
+async fn background_task(
     emunet: EmuNet,
     graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     client: &mut Client,
 ) -> Result<(), ClientError> {
     let mut guarded_tran = client.guarded_tran().await?;
-
     emunet.build_emunet_graph(&graph);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     if fut.await? == false {
         panic!("vertex not exist");
     }
+    drop(guarded_tran);
 
     // emulate creation work
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
+    let mut guarded_tran = client.guarded_tran().await?;
     emunet.set_state(EmunetState::Normal);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     if fut.await? == false {
@@ -48,6 +44,20 @@ async fn init_background_task(
     }
 
     Ok(())
+}
+
+async fn background_task_guard(
+    emunet: EmuNet,
+    graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    mut client: Client,
+) {
+    let res = background_task(emunet, graph, &mut client).await;
+    match res {
+        Ok(_) => {}
+        Err(_) => {
+            client.notify_failure();
+        }
+    }
 }
 
 async fn emunet_init(
@@ -113,7 +123,11 @@ async fn guard(
     let res = emunet_init(req, &mut client).await;
     match res {
         Ok(res) => match res {
-            Ok((emunet, graph)) => Ok(Response::success("working".to_string()).into()),
+            Ok((emunet, graph)) => {
+                tokio::spawn(background_task_guard(emunet, graph, client));
+
+                Ok(Response::success("working".to_string()).into())
+            }
             Err(s) => {
                 let resp: Response<String> = Response::fail(s);
                 Ok(resp.into())

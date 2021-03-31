@@ -7,7 +7,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::emunet::{self, EmuNet};
+use crate::new_emunet::emunet::EmuNet;
 use crate::new_emunet::user::User;
 
 #[derive(Deserialize)]
