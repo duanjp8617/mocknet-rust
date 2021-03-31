@@ -25,19 +25,20 @@ async fn background_task(
     graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     client: &mut Client,
 ) -> Result<(), ClientError> {
-    let mut guarded_tran = client.guarded_tran().await?;
     emunet.build_emunet_graph(&graph);
-    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    if fut.await? == false {
-        panic!("vertex not exist");
-    }
-    drop(guarded_tran);
+    {
+        let mut guarded_tran = client.guarded_tran().await?;
+        let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+        if fut.await? == false {
+            panic!("vertex not exist");
+        }
+    }   
 
     // emulate creation work
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    let mut guarded_tran = client.guarded_tran().await?;
     emunet.set_state(EmunetState::Normal);
+    let mut guarded_tran = client.guarded_tran().await?;
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     if fut.await? == false {
         panic!("vertex not exist");
@@ -75,15 +76,9 @@ async fn emunet_init(
 > {
     let mut guarded_tran = client.guarded_tran().await?;
 
-    let res = helpers::get_vertex_json_value(
-        &mut guarded_tran,
-        req.emunet_uuid.clone(),
-        emunet::EMUNET_NODE_PROPERTY,
-    )
-    .await?;
-    let emunet: EmuNet = match res {
+    let emunet: EmuNet = match helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await? {
         None => return Ok(Err(format!("emunet {} does not exist", req.emunet_uuid))),
-        Some(jv) => serde_json::from_value(jv).expect("FATAL: invalid JSON format"),
+        Some(emunet) => emunet,
     };
 
     match emunet.state() {

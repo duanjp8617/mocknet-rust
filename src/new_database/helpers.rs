@@ -127,6 +127,19 @@ pub(crate) async fn set_user_map(
     Ok(())
 }
 
+pub(crate) async fn get_emunet(
+    tran: &mut Transaction,
+    emunet_uuid: Uuid,
+) -> Result<Option<EmuNet>, ClientError> {
+    let jv = match get_vertex_json_value(tran, emunet_uuid, emunet::EMUNET_NODE_PROPERTY).await? {
+        None => return Ok(None),
+        Some(jv) => jv
+    };
+
+    let emunet: EmuNet = serde_json::from_value(jv).expect("FATAL: this should not happen");
+    Ok(Some(emunet))
+}
+
 pub(crate) fn set_emunet<'a>(
     tran: &'a mut Transaction,
     emunet: &EmuNet,

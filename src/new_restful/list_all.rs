@@ -32,20 +32,11 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
     for (user_name, emunet_map) in user_map.into_iter() {
         let mut emunets = HashMap::new();
         for (emunet_name, emunet_uuid) in emunet_map.into_iter() {
-            let res = helpers::get_vertex_json_value(
-                &mut guarded_tran,
-                emunet_uuid,
-                emunet::EMUNET_NODE_PROPERTY,
-            )
-            .await?;
-            match res {
-                None => return Ok(Response::fail("FATAL: emunet does not exist".to_string())),
-                Some(jv) => {
-                    let emunet: EmuNet =
-                        serde_json::from_value(jv).expect("FATAL: invalid JSON format");
-                    emunets.insert(emunet_name, emunet);
-                }
-            }
+            let emunet = helpers::get_emunet(&mut guarded_tran, emunet_uuid.clone())
+                .await?
+                .expect("FATAL: this hould not happen");
+
+            emunets.insert(emunet_name, emunet);
         }
         users.insert(user_name, emunets);
     }
