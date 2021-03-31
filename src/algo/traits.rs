@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 /// Implementor is used as a bin for storing items.
-pub trait PartitionBin {
+pub(crate) trait PartitionBin {
     type Size;
     type BinId;
 
@@ -20,7 +20,7 @@ pub trait PartitionBin {
 }
 
 /// Implementor stores multiple items for partition.
-pub trait Partition<'a, T, I>
+pub(crate) trait Partition<'a, T, I>
 where
     T: 'a + PartitionBin,
     I: Iterator<Item = &'a mut T>,
@@ -33,22 +33,10 @@ where
     fn partition(&self, bins: I) -> Option<HashMap<Self::ItemId, <T as PartitionBin>::BinId>>;
 }
 
-pub trait Min {
+pub(crate) trait Min {
     fn minimum() -> Self;
 }
 
-pub trait Max {
+pub(crate) trait Max {
     fn maximum() -> Self;
-}
-
-impl Min for u64 {
-    fn minimum() -> Self {
-        u64::MIN
-    }
-}
-
-impl Max for u64 {
-    fn maximum() -> Self {
-        u64::MAX
-    }
 }

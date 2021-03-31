@@ -1,8 +1,10 @@
+use std::collections::HashMap;
 use std::{cell::Cell, cmp::Ord};
 
 use serde::{Deserialize, Serialize};
 
-use crate::algo::PartitionBin;
+use super::device::{DeviceInfo, LinkInfo};
+use crate::algo::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ServerInfo {
@@ -80,7 +82,8 @@ impl ClusterInfo {
     pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;
 
-        self.servers.sort_by(|a, b| (&b.max_capacity).cmp(&a.max_capacity));
+        self.servers
+            .sort_by(|a, b| (&b.max_capacity).cmp(&a.max_capacity));
 
         let mut index = 0;
         while target < quantity && index < self.servers.len() {
@@ -89,12 +92,14 @@ impl ClusterInfo {
         }
 
         if target >= quantity {
-            let res: Vec<_> = self.servers.drain(0..index).map(|server_info| {
-                ContainerServer {
+            let res: Vec<_> = self
+                .servers
+                .drain(0..index)
+                .map(|server_info| ContainerServer {
                     server_info,
                     dev_count: Cell::new(0),
-                }
-            }).collect();
+                })
+                .collect();
             Ok(res)
         } else {
             Err(target)
@@ -153,5 +158,51 @@ impl PartitionBin for ContainerServer {
 
     fn bin_id(&self) -> Self::BinId {
         return self.server_info().uuid.clone();
+    }
+}
+
+impl Max for u64 {
+    fn maximum() -> Self {
+        u64::MAX
+    }
+}
+
+impl Min for u64 {
+    fn minimum() -> Self {
+        u64::MIN
+    }
+}
+
+impl<'a, T, I> Partition<'a, ContainerServer, I>
+    for UndirectedGraph<u64, DeviceInfo<T>, LinkInfo<T>>
+where
+    I: Iterator<Item = &'a mut ContainerServer>,
+{
+    type ItemId = u64;
+
+    fn partition(
+        &self,
+        mut bins: I,
+    ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {
+        let mut dev_ids = self.nodes().map(|(nid, _)| {
+            *nid
+        });
+
+        let mut curr_server = bins.next()?;
+        let mut res = HashMap::new();
+
+        while let Some(dev_id) = dev_ids.next() {
+            if curr_server.fill(1) {
+                res.insert(dev_id, curr_server.bin_id());
+            } else {
+                if let Some(new_server) = bins.next() {
+                    curr_server = new_server;
+                } else {
+                    return None;
+                }
+            }
+        }
+        
+        Some(res)
     }
 }

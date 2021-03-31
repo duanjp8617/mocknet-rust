@@ -1,7 +1,7 @@
 // pub mod in_memory_graph;
 
 mod traits;
-pub use traits::Partition;
-pub use traits::PartitionBin;
+pub(crate) use traits::*;
 
-pub mod graph;
+mod graph;
+pub(crate) use graph::*;

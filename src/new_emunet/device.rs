@@ -18,10 +18,6 @@ impl<T> LinkInfo<T> {
     pub fn link_id(&self) -> (u64, u64) {
         self.link_id
     }
-
-    pub fn reverse_link_id(&self) -> (u64, u64) {
-        (self.link_id.1, self.link_id.0)
-    }
 }
 
 // This represents a directed Link!!
