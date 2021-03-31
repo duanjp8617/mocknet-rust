@@ -25,6 +25,45 @@ struct ResponseData {
     status: String,
 }
 
+async fn init_background_task(
+    emunet: EmuNet,
+    graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    client: &mut Client,
+) -> Result<(), ClientError> {
+    let mut guarded_tran = client.guarded_tran().await?;
+
+    emunet.build_emunet_graph(&graph);
+    let jv = serde_json::to_value(&emunet).unwrap();
+    let res = helpers::set_vertex_json_value(
+        &mut guarded_tran,
+        emunet.emunet_uuid(),
+        emunet::EMUNET_NODE_PROPERTY,
+        &jv,
+    )
+    .await?;
+    if !res {
+        panic!("vertex not exist");
+    }
+
+    // emulate creation work
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+    emunet.set_state(EmunetState::Normal);
+    let jv = serde_json::to_value(&emunet).unwrap();
+    let res = helpers::set_vertex_json_value(
+        &mut guarded_tran,
+        emunet.emunet_uuid(),
+        emunet::EMUNET_NODE_PROPERTY,
+        &jv,
+    )
+    .await?;
+    if !res {
+        panic!("vertex not exist");
+    }
+
+    Ok(())
+}
+
 async fn emunet_init(
     req: Request<String>,
     client: &mut Client,
@@ -94,15 +133,11 @@ async fn guard(
 ) -> Result<warp::reply::Json, warp::Rejection> {
     let res = emunet_init(req, &mut client).await;
     match res {
-        Ok(res) => {
-            match res {
-                Ok((emunet, graph)) => {
-                    Ok(Response::success("working".to_string()).into())
-                },
-                Err(s ) => {
-                    let resp: Response<String> = Response::fail(s);
-                    Ok(resp.into())
-                }
+        Ok(res) => match res {
+            Ok((emunet, graph)) => Ok(Response::success("working".to_string()).into()),
+            Err(s) => {
+                let resp: Response<String> = Response::fail(s);
+                Ok(resp.into())
             }
         },
         Err(e) => {

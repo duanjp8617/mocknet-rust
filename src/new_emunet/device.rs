@@ -1,18 +1,42 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::cmp::{Eq, PartialEq};
+use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-#[derive(Deserialize, Serialize)]
+// LinkInfo represents an undirected edge connecting one node to another
+// LinkInfo is deserialized from the incoming HTTP message
+#[derive(Deserialize)]
 pub struct LinkInfo<T> {
-    link_id: (u64, u64), // client side edge id in the form of (u64, u64)
-    meta: T,             // a description string to hold the place
+    link_id: (u64, u64),
+    meta: T,
 }
 
 impl<T> LinkInfo<T> {
-    pub fn new(link_id: (u64, u64), meta: T) -> Self {
-        Self { link_id, meta }
+    pub fn link_id(&self) -> (u64, u64) {
+        self.link_id
+    }
+
+    pub fn meta(&self) -> &T {
+        &self.meta
+    }
+}
+
+// Link represents an directed edge from link_id.0 to link_id.1
+#[derive(Deserialize, Serialize)]
+pub struct Link<L> {
+    link_id: (u64, u64),
+    meta: L,
+}
+
+impl<L> Link<L> {
+    pub fn new(source: u64, destination: u64, meta: L) -> Self {
+        Self {
+            link_id: (source, destination),
+            meta,
+        }
     }
 
     pub fn link_id(&self) -> (u64, u64) {
@@ -20,89 +44,77 @@ impl<T> LinkInfo<T> {
     }
 }
 
-// This represents a directed Link!!
-#[derive(Deserialize, Serialize)]
-pub struct Link<T> {
-    link_uuid: (uuid::Uuid, uuid::Uuid), // out-going device -> incoming device
-    meta: T,
-}
-
-impl<T> Link<T> {
-    pub fn new(link_uuid: (uuid::Uuid, uuid::Uuid), meta: T) -> Self {
-        Self { link_uuid, meta }
+// necessary trait implemenation to make Link HashSet compatible
+impl<L> Borrow<(u64, u64)> for Link<L> {
+    fn borrow(&self) -> &(u64, u64) {
+        &self.link_id
     }
 }
 
-impl<T> Link<T> {
-    pub fn link_uuid(&self) -> &(uuid::Uuid, uuid::Uuid) {
-        &self.link_uuid
+impl<L> PartialEq for Link<L> {
+    fn eq(&self, other: &Link<L>) -> bool {
+        self.link_id.eq(&other.link_id)
     }
 }
 
-#[derive(Deserialize, Serialize)]
+impl<L> Eq for Link<L> {}
+
+impl<L> Hash for Link<L> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.link_id.hash(state);
+    }
+}
+
+// DeviceInfo is deserialized from the incoming HTTP message
+#[derive(Deserialize)]
 pub struct DeviceInfo<T> {
     id: u64,
     meta: T,
 }
 
 impl<T> DeviceInfo<T> {
-    pub fn new(id: u64, meta: T) -> Self {
-        Self { id, meta }
-    }
-
     pub fn id(&self) -> u64 {
         return self.id;
+    }
+
+    pub fn meta(&self) -> &T {
+        &self.meta
     }
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct Device<T> {
-    info: DeviceInfo<T>,
+pub struct Device<D, L> {
+    id: u64,
     server_uuid: uuid::Uuid,
-    links: RefCell<HashMap<uuid::Uuid, Link<T>>>,
-    // uuid is only reserved for compatibility reason
-    uuid: uuid::Uuid,
+    links: RefCell<HashSet<Link<L>>>,
+    meta: D,
 }
 
-impl<T> Device<T> {
-    pub fn new(info: DeviceInfo<T>, server_uuid: uuid::Uuid) -> Self {
+impl<D, L> Device<D, L> {
+    pub fn new(id: u64, server_uuid: uuid::Uuid, meta: D) -> Self {
         Self {
-            info,
+            id,
             server_uuid,
-            links: RefCell::new(HashMap::new()),
-            uuid: indradb::util::generate_uuid_v1()
+            links: RefCell::new(HashSet::new()),
+            meta,
         }
     }
 
-    pub fn add_link(&self, link: Link<T>) -> Result<(), String> {
-        if self.uuid() != link.link_uuid.0 || self.links.borrow().contains_key(&link.link_uuid.1) {
-            return Err("invalid link id".to_string());
-        }
-        if self.links.borrow_mut().insert(link.link_uuid.1.clone(), link).is_some() {
-            panic!("fatal!".to_string());
-        }
-        Ok(())
+    pub fn add_link(&self, link: Link<L>) -> bool {
+        self.links.borrow_mut().insert(link)
     }
 }
 
-impl<T> Device<T> {
+impl<D, L> Device<D, L> {
     pub fn id(&self) -> u64 {
-        return self.info.id;
-    }
-
-    pub fn uuid(&self) -> uuid::Uuid {
-        return self.uuid.clone();
-    }
-
-    pub fn device_info(&self) -> &DeviceInfo<T> {
-        &self.info
+        return self.id;
     }
 
     pub fn server_uuid(&self) -> Uuid {
         self.server_uuid.clone()
     }
 
-    pub fn links(&self) -> std::cell::Ref<HashMap<uuid::Uuid, Link<T>>>{
+    pub fn links(&self) -> std::cell::Ref<HashSet<Link<L>>> {
         self.links.borrow()
     }
 }

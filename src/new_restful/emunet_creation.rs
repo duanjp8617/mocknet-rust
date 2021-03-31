@@ -47,13 +47,12 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
         }
     };
 
-    let emunet = EmuNet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
-    let jv = serde_json::to_value(emunet).unwrap();
-
     if !(helpers::create_vertex(&mut tran, emunet_uuid.clone()).await?) {
         panic!(format!("invalid emunet uuid {}", emunet_uuid));
     }
 
+    let emunet = EmuNet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
+    let jv = serde_json::to_value(emunet).unwrap();
     let res = helpers::set_vertex_json_value(
         &mut tran,
         emunet_uuid.clone(),

@@ -63,6 +63,14 @@ where
     pub(crate) fn nodes_num(&self) -> usize {
         self.inner.nodes.len()
     }
+
+    pub(crate) fn get_node(&self, nid: Nid) -> Option<&Node> {
+        self.inner.nodes.get(&nid)
+    }
+
+    pub(crate) fn get_edge(&self, eid: (Nid, Nid)) -> Option<&Edge> {
+        self.inner.edges.get(&eid)
+    }
 }
 
 impl<Nid, Node, Edge> UndirectedGraph<Nid, Node, Edge>

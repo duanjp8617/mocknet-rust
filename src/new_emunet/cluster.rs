@@ -1,5 +1,6 @@
-use std::collections::HashMap;
-use std::{cell::Cell, cmp::Ord};
+use std::cmp::Ord;
+use std::collections::HashSet;
+use std::{cell::RefCell, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
@@ -64,17 +65,6 @@ impl ClusterInfo {
         Ok(())
     }
 
-    // pub fn from_iterator<I: std::iter::Iterator<Item = ServerInfo>>(i: I) -> Result<Self, String> {
-    //     let mut res = Self::new();
-    //     for cs in i {
-    //         if res.addr_exist(&cs.conn_addr) {
-    //             return Err(format!("ServerAddr {:?} exists in the pool", &cs.conn_addr));
-    //         }
-    //         res.servers.push(cs);
-    //     }
-    //     Ok(res)
-    // }
-
     pub fn into_vec(self) -> Vec<ServerInfo> {
         self.servers
     }
@@ -97,7 +87,7 @@ impl ClusterInfo {
                 .drain(0..index)
                 .map(|server_info| ContainerServer {
                     server_info,
-                    dev_count: Cell::new(0),
+                    devs: RefCell::new(HashSet::new()),
                 })
                 .collect();
             Ok(res)
@@ -110,50 +100,29 @@ impl ClusterInfo {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContainerServer {
     server_info: ServerInfo,
-    dev_count: Cell<u64>,
+    devs: RefCell<HashSet<u64>>,
 }
-
-// impl ContainerServer {
-//     pub fn get_server_info(self) -> ServerInfo {
-//         return self.server_info;
-//     }
-// }
 
 impl ContainerServer {
     pub fn server_info(&self) -> &ServerInfo {
         return &self.server_info;
     }
-
-    // pub fn release_resource(&mut self, quantity: usize) -> Result<(), ()> {
-    //     if self.curr_capacity + quantity <= self.server_info.max_capacity {
-    //         self.curr_capacity += quantity;
-    //         Ok(())
-    //     } else {
-    //         Err(())
-    //     }
-    // }
 }
 
 impl PartitionBin for ContainerServer {
-    type Size = u64;
+    type Item = u64;
     type BinId = uuid::Uuid;
 
-    fn fill(&mut self, dev_num: Self::Size) -> bool {
-        if self.dev_count.get() + dev_num > self.server_info.max_capacity {
-            return false;
+    fn fill(&mut self, dev_id: Self::Item) -> bool {
+        if self.devs.borrow().len() + 1 > self.server_info.max_capacity as usize {
+            false
         } else {
-            self.dev_count.set(self.dev_count.get() + dev_num);
-            return true;
+            self.devs.borrow_mut().insert(dev_id)
         }
     }
 
-    fn release(&mut self, dev_num: Self::Size) -> bool {
-        if self.dev_count.get() < dev_num {
-            return false;
-        } else {
-            self.dev_count.set(self.dev_count.get() - dev_num);
-            return true;
-        }
+    fn release(&mut self, dev_id: &Self::Item) -> bool {
+        self.devs.borrow_mut().remove(dev_id)
     }
 
     fn bin_id(&self) -> Self::BinId {
@@ -190,7 +159,7 @@ where
         let mut res = HashMap::new();
 
         while let Some(dev_id) = dev_ids.next() {
-            if curr_server.fill(1) {
+            if curr_server.fill(dev_id) {
                 res.insert(dev_id, curr_server.bin_id());
             } else {
                 if let Some(new_server) = bins.next() {

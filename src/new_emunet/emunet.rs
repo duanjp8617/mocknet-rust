@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use super::cluster::ContainerServer;
 use super::device::*;
+use crate::algo::*;
 
 pub static EMUNET_NODE_PROPERTY: &'static str = "default";
 
@@ -34,7 +35,7 @@ pub struct EmuNet {
     state: RefCell<EmunetState>,
     dev_count: Cell<u64>,
     servers: RefCell<HashMap<uuid::Uuid, ContainerServer>>,
-    devices: RefCell<HashMap<u64, Device<String>>>,
+    devices: RefCell<HashMap<u64, Device<String, String>>>,
 }
 
 impl EmuNet {
@@ -71,6 +72,10 @@ impl EmuNet {
     pub fn max_capacity(&self) -> u64 {
         self.max_capacity
     }
+
+    pub fn emunet_uuid(&self) -> Uuid {
+        self.emunet_uuid.clone()
+    }
 }
 
 impl EmuNet {
@@ -81,5 +86,48 @@ impl EmuNet {
 
     pub fn set_state(&self, state: EmunetState) {
         *self.state.borrow_mut() = state;
+    }
+}
+
+impl EmuNet {
+    pub(crate) fn build_emunet_graph(
+        &self,
+        graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    ) {
+        assert_eq!(self.dev_count.get(), 0);
+        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
+        assert_eq!(self.devices.borrow().len(), 0);
+
+        let mut servers_ref = self.servers.borrow_mut();
+        let bins = servers_ref.values_mut();
+        let assignment = graph
+            .partition(bins)
+            .expect("FATAL: this should always succeed");
+
+        let total_devs = assignment.len();
+
+        for (dev_id, server_uuid) in assignment.into_iter() {
+            let dev_info = graph.get_node(dev_id).unwrap();
+            let device = Device::new(dev_id, server_uuid, dev_info.meta().clone());
+
+            let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
+            for (_, other) in out_edge_iter {
+                let link_info = graph.get_edge((dev_id, other)).unwrap();
+                let link = Link::new(dev_id, other, link_info.meta().clone());
+                assert_eq!(device.add_link(link), true);
+            }
+            for (other, _) in in_edge_iter {
+                let link_info = graph.get_edge((other, dev_id)).unwrap();
+                let link = Link::new(dev_id, other, link_info.meta().clone());
+                assert_eq!(device.add_link(link), true);
+            }
+
+            assert_eq!(
+                self.devices.borrow_mut().insert(dev_id, device).is_none(),
+                true
+            );
+        }
+
+        self.dev_count.set(total_devs as u64);
     }
 }

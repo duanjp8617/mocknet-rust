@@ -2,18 +2,18 @@ use std::collections::HashMap;
 
 /// Implementor is used as a bin for storing items.
 pub(crate) trait PartitionBin {
-    type Size;
+    type Item;
     type BinId;
 
-    /// Try to fill the bin with an item of a certain size.
+    /// Try to fill the bin with an item.
     ///
     /// Return true on succeed, false on failure
-    fn fill(&mut self, item_size: Self::Size) -> bool;
+    fn fill(&mut self, item: Self::Item) -> bool;
 
-    /// Try to release an item of a certain size from the bin
+    /// Try to release the contained item from the bin
     ///
     /// Return true on succeed, false on failure
-    fn release(&mut self, item_size: Self::Size) -> bool;
+    fn release(&mut self, item: &Self::Item) -> bool;
 
     /// Get the id of this bin.
     fn bin_id(&self) -> Self::BinId;
