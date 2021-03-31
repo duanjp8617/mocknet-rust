@@ -136,3 +136,17 @@ where
         println!("{:?}", self.reverse_edges);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fuck() {
+        let t1 = (2, 2);
+        let t2 = (1, 3);
+
+        assert_eq!(t1.cmp(&t2), std::cmp::Ordering::Greater);
+        assert_eq!(t2.cmp(&t1), std::cmp::Ordering::Less);
+    }
+}
