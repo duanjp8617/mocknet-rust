@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::future::Future;
 
 use indradb::BulkInsertItem;
 use indradb::Type;
@@ -8,15 +9,13 @@ use indradb_proto::{Client, ClientError, Transaction};
 use uuid::Uuid;
 
 use crate::new_emunet::cluster::ClusterInfo;
+use crate::new_emunet::emunet::{self, EmuNet};
 use crate::new_emunet::user::User;
 
-pub(crate) async fn create_vertex(
-    tran: &mut Transaction,
-    id: Uuid,
-) -> Result<bool, ClientError> {
+pub(crate) async fn create_vertex(tran: &mut Transaction, id: Uuid) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();
     let v = Vertex::with_id(id, t);
-    
+
     tran.create_vertex(&v).await
 }
 
@@ -126,4 +125,24 @@ pub(crate) async fn set_user_map(
         panic!("database is not correctly initialized");
     }
     Ok(())
+}
+
+pub(crate) fn set_emunet<'a>(
+    tran: &'a mut Transaction,
+    emunet: &EmuNet,
+) -> impl Future<Output = Result<bool, ClientError>> + Send + 'a {
+    let jv = serde_json::to_value(emunet).unwrap();
+    let emunet_uuid = emunet.emunet_uuid();
+
+    async move {
+        let res = set_vertex_json_value(
+            tran,
+            emunet_uuid,
+            emunet::EMUNET_NODE_PROPERTY,
+            &jv,
+        )
+        .await?;
+    
+        Ok(res)
+    }
 }

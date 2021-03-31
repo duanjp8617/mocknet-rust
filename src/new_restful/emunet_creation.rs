@@ -52,15 +52,8 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
     }
 
     let emunet = EmuNet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
-    let jv = serde_json::to_value(emunet).unwrap();
-    let res = helpers::set_vertex_json_value(
-        &mut tran,
-        emunet_uuid.clone(),
-        emunet::EMUNET_NODE_PROPERTY,
-        &jv,
-    )
-    .await?;
-    if !res {
+    let fut = helpers::set_emunet(&mut tran, &emunet);
+    if fut.await? == false {
         panic!("vertex not exist");
     }
 

@@ -33,15 +33,8 @@ async fn init_background_task(
     let mut guarded_tran = client.guarded_tran().await?;
 
     emunet.build_emunet_graph(&graph);
-    let jv = serde_json::to_value(&emunet).unwrap();
-    let res = helpers::set_vertex_json_value(
-        &mut guarded_tran,
-        emunet.emunet_uuid(),
-        emunet::EMUNET_NODE_PROPERTY,
-        &jv,
-    )
-    .await?;
-    if !res {
+    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+    if fut.await? == false {
         panic!("vertex not exist");
     }
 
@@ -49,15 +42,8 @@ async fn init_background_task(
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
     emunet.set_state(EmunetState::Normal);
-    let jv = serde_json::to_value(&emunet).unwrap();
-    let res = helpers::set_vertex_json_value(
-        &mut guarded_tran,
-        emunet.emunet_uuid(),
-        emunet::EMUNET_NODE_PROPERTY,
-        &jv,
-    )
-    .await?;
-    if !res {
+    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+    if fut.await? == false {
         panic!("vertex not exist");
     }
 
@@ -112,15 +98,8 @@ async fn emunet_init(
     }
 
     emunet.set_state(EmunetState::Working);
-    let jv = serde_json::to_value(&emunet).unwrap();
-    let res = helpers::set_vertex_json_value(
-        &mut guarded_tran,
-        req.emunet_uuid.clone(),
-        emunet::EMUNET_NODE_PROPERTY,
-        &jv,
-    )
-    .await?;
-    if !res {
+    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+    if fut.await? == false {
         panic!("vertex not exist");
     }
 
