@@ -184,9 +184,7 @@ where
         &self,
         mut bins: I,
     ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {
-        let mut dev_ids = self.nodes().map(|(nid, _)| {
-            *nid
-        });
+        let mut dev_ids = self.nodes().map(|(nid, _)| *nid);
 
         let mut curr_server = bins.next()?;
         let mut res = HashMap::new();
@@ -202,7 +200,7 @@ where
                 }
             }
         }
-        
+
         Some(res)
     }
 }

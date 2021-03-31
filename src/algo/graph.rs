@@ -59,6 +59,10 @@ where
     pub(crate) fn nodes(&self) -> impl Iterator<Item = (&Nid, &Node)> {
         self.inner.nodes.iter()
     }
+
+    pub(crate) fn nodes_num(&self) -> usize {
+        self.inner.nodes.len()
+    }
 }
 
 impl<Nid, Node, Edge> UndirectedGraph<Nid, Node, Edge>
