@@ -65,6 +65,18 @@ impl ClusterInfo {
         Ok(())
     }
 
+    pub fn rellocate_servers(&mut self, servers: Vec<ContainerServer>) -> Option<Vec<ContainerServer>> {
+        for server in servers.iter() {
+            if self.addr_exist(&server.server_info.conn_addr) {
+                return Some(servers);
+            }
+        }
+        for server in servers.into_iter() {
+            self.servers.push(server.server_info)
+        }
+        None
+    }
+
     pub fn into_vec(self) -> Vec<ServerInfo> {
         self.servers
     }

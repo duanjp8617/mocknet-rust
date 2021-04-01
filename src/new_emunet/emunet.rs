@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::cluster::ContainerServer;
+use super::cluster::{ContainerServer, ServerInfo};
 use super::device::*;
 use crate::algo::*;
 
@@ -76,6 +76,14 @@ impl EmuNet {
     pub fn emunet_uuid(&self) -> Uuid {
         self.emunet_uuid.clone()
     }
+
+    pub fn emunet_user(&self) -> String {
+        self.user_name.clone()
+    }
+
+    pub fn emunet_name(&self) -> String {
+        self.emunet_name.clone()
+    }
 }
 
 impl EmuNet {
@@ -129,5 +137,21 @@ impl EmuNet {
         }
 
         self.dev_count.set(total_devs as u64);
+    }
+
+    pub(crate) fn release_emunet_resource(&self) -> Vec<ContainerServer> {
+        let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
+        for (dev_id, dev) in device_map.into_iter() {
+            self.servers
+                .borrow_mut()
+                .get_mut(&dev.server_uuid())
+                .map(|cs| {
+                    assert!(cs.release(&dev_id) == true);
+                })
+                .unwrap();
+        }
+        self.dev_count.set(0);
+        let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
+        server_map.into_iter().map(|(_, cs)| cs).collect()
     }
 }

@@ -79,6 +79,7 @@ where
 }
 
 pub mod emunet_creation;
+pub mod emunet_deletion;
 pub mod emunet_init;
 pub mod list_all;
 pub mod list_emunet;
