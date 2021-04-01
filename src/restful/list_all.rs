@@ -6,10 +6,10 @@ use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
-use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::cluster::ServerInfo;
-use crate::new_emunet::emunet::EmuNet;
-use crate::new_emunet::user::User;
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::cluster::ServerInfo;
+use crate::emunet::emunet::EmuNet;
+use crate::emunet::user::User;
 
 #[derive(Serialize)]
 struct Inner {

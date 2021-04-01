@@ -5,8 +5,8 @@ use serde::Deserialize;
 use warp::Filter;
 
 use super::Response;
-use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::user::User;
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::user::User;
 
 #[derive(Deserialize)]
 struct Request {

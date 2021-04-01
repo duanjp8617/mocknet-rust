@@ -3,8 +3,8 @@ use serde::Deserialize;
 use warp::Filter;
 
 use super::Response;
-use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::emunet::EmunetState;
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::emunet::EmunetState;
 
 #[derive(Deserialize)]
 struct Request {

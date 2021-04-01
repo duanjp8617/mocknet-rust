@@ -1,43 +1,47 @@
 use serde::{Deserialize, Serialize};
+use std::{borrow::BorrowMut, cell::RefCell};
 use std::collections::HashMap;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
-pub struct EmuNetUser {
+pub struct User {
     name: String,
-    emu_net_ids: HashMap<String, Uuid>,
+    emunet_name_to_uuid: RefCell<HashMap<String, uuid::Uuid>>,
 }
 
-impl EmuNetUser {
-    pub fn new(name: &str) -> Self {
+impl User {
+    pub fn new<S: std::convert::Into<String>>(name: S) -> Self {
         Self {
-            name: name.to_string(),
-            emu_net_ids: HashMap::new(),
+            name: name.into(),
+            emunet_name_to_uuid: RefCell::new(HashMap::new()),
         }
     }
 
-    pub fn add_emu_net(&mut self, emu_net_name: String, emu_net_id: Uuid) -> bool {
-        if self.emu_net_ids.get(&emu_net_name).is_some() {
-            false
+    pub fn register_emunet<S: std::convert::Into<String>>(
+        &self,
+        emunet_name: S,
+    ) -> Option<uuid::Uuid> {
+        let emunet_name = emunet_name.into();
+        if self.emunet_name_to_uuid.borrow().get(&emunet_name).is_some() {
+            None
         } else {
-            self.emu_net_ids.insert(emu_net_name, emu_net_id);
-            true
+            let uuid = indradb::util::generate_uuid_v1();
+            self.emunet_name_to_uuid.borrow_mut().insert(emunet_name, uuid.clone());
+            Some(uuid)
         }
     }
 
-    pub fn delete_emu_net_by_name(&mut self, emu_net_name: &str) -> bool {
-        if self.emu_net_ids.remove(emu_net_name).is_none() {
-            return false;
-        } else {
-            return true;
-        }
+    pub fn delete_emunet(&self, emunet_name: &str) -> Option<uuid::Uuid> {
+        self.emunet_name_to_uuid.borrow_mut().remove(emunet_name)
+    }
+}
+
+impl User {
+    pub fn get_emunet_uuid_map(&self) -> HashMap<String, uuid::Uuid> {
+        return self.emunet_name_to_uuid.borrow().clone();
     }
 
-    pub fn emu_net_exist(&self, emu_net_name: &str) -> bool {
-        self.emu_net_ids.get(emu_net_name).is_some()
-    }
-
-    pub fn get_all_emu_nets(&self) -> HashMap<String, Uuid> {
-        return self.emu_net_ids.clone();
+    pub fn into_uuid_map(self) -> HashMap<String, uuid::Uuid> {
+        let hm = std::mem::replace(&mut (*self.emunet_name_to_uuid.borrow_mut()), HashMap::new());
+        hm
     }
 }

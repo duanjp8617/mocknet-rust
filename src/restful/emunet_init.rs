@@ -4,9 +4,9 @@ use warp::Filter;
 
 use super::Response;
 use crate::algo::*;
-use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::device::*;
-use crate::new_emunet::emunet::{EmuNet, EmunetState};
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::device::*;
+use crate::emunet::emunet::{EmuNet, EmunetState};
 
 #[derive(Deserialize)]
 struct Request<String> {

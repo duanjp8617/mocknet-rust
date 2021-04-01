@@ -1,44 +1,46 @@
+use std::collections::HashMap;
+
+use indradb_proto::ClientError;
 use serde::Deserialize;
+use uuid::Uuid;
 use warp::Filter;
 
-use crate::database::Client;
-use crate::restful::Response;
+use super::Response;
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::user::User;
+
+type RespType = HashMap<String, Uuid>;
 
 #[derive(Deserialize)]
-struct Json {
+struct Request {
     user: String,
 }
 
-async fn list_all_emunets(
-    json_msg: Json,
-    db_client: Client,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let emunets = extract_response!(
-        db_client.list_emu_net_uuid(json_msg.user).await,
-        "internal_server_error",
-        "operation_fail"
-    );
+async fn list_emunet(req: Request, client: &mut Client) -> Result<Response<RespType>, ClientError> {
+    let mut guarded_tran = client.guarded_tran().await?;
 
-    let resp = Response::new(true, emunets, String::new());
-    Ok(warp::reply::json(&resp))
+    let mut user_map: HashMap<String, User> = helpers::get_user_map(&mut guarded_tran).await?;
+    let res = user_map.remove(&req.user);
+    match res {
+        None => Ok(Response::fail(format!("invalid user name {}", req.user))),
+        Some(user) => Ok(Response::success(user.into_uuid_map())),
+    }
 }
 
-/// This filter accepts an HTTP request containing the name of an existing user.
-/// It will retrieve all the emunet that the user currently has, place the emunet name
-/// and uuid inside a JSON map, and return the result back to the client side
+async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
+    let res = list_emunet(req, &mut client).await;
+    match res {
+        Ok(resp) => Ok(resp.into()),
+        Err(e) => {
+            client.notify_failure();
+            let resp: Response<_> = e.into();
+            Ok(resp.into())
+        }
+    }
+}
+
 pub fn build_filter(
-    db_client: Client,
-) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
-{
-    let db_filter = warp::any().map(move || {
-        let clone = db_client.clone();
-        clone
-    });
-    warp::post()
-        .and(warp::path("v1"))
-        .and(warp::path("list_emunet"))
-        .and(warp::path::end())
-        .and(super::parse_json_body())
-        .and(db_filter)
-        .and_then(list_all_emunets)
+    connector: Connector,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
+    super::filter_template("list_emunet".to_string(), connector, guard)
 }

@@ -8,9 +8,9 @@ use indradb::{Vertex, VertexQuery};
 use indradb_proto::{Client, ClientError, Transaction};
 use uuid::Uuid;
 
-use crate::new_emunet::cluster::ClusterInfo;
-use crate::new_emunet::emunet::{self, EmuNet};
-use crate::new_emunet::user::User;
+use crate::emunet::cluster::ClusterInfo;
+use crate::emunet::emunet::{self, EmuNet};
+use crate::emunet::user::User;
 
 pub(crate) async fn create_vertex(tran: &mut Transaction, id: Uuid) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();

@@ -1,51 +1,115 @@
+use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use warp::Filter;
 
-use crate::database::Client;
-use crate::emunet::net;
-use crate::restful::Response;
+use super::Response;
+use crate::database::{helpers, Client, Connector};
+use crate::emunet::cluster;
 
-#[derive(Deserialize)]
-struct Json {
-    emunet_uuid: uuid::Uuid,
+#[derive(Serialize)] 
+struct DeviceInfo {
+    id: u64,
+    meta: String,
+}
+
+#[derive(Serialize)]
+struct ServerInfo {
+    dev_infos: Vec<DeviceInfo>,
+    server_info: cluster::ServerInfo,
+}
+
+#[derive(Serialize)]
+struct LinkInfo {
+    link_id: (u64, u64),
+    meta: String
+}
+
+#[derive(Serialize)]
+struct EmunetInfo {
+    emunet_name: String,
+    emunet_uuid: Uuid,
+    max_capacity: u64,
+    user_name: String,
+    state: String,
+    dev_count: u64,
 }
 
 #[derive(Serialize)]
 struct ResponseData {
-    emunet: net::EmuNet,
-    vertex_infos: Vec<net::VertexInfo>,
-    edge_infos: Vec<net::EdgeInfo>,
+    emunet_info: EmunetInfo,
+    server_infos: Vec<ServerInfo>,
+    link_infos: Vec<LinkInfo>
 }
 
-async fn get_emunet(
-    json_msg: Json,
-    db_client: Client,
-) -> Result<impl warp::Reply, warp::Rejection> {
-    let emunet = extract_response!(
-        db_client.get_emu_net(json_msg.emunet_uuid).await,
-        "internal_server_error",
-        "operation_fail"
-    );
-
-    let resp = Response::new(true, emunet, String::new());
-
-    Ok(warp::reply::json(&resp))
+#[derive(Deserialize)]
+struct Request {
+    emunet_uuid: Uuid,
 }
 
-/// This filter retrieves the core information of the emunet from the database.
+async fn get_emunet_info(req: Request, client: &mut Client) -> Result<Response<ResponseData>, ClientError> {
+    let mut tran = client.guarded_tran().await?;
+
+    let emunet = match helpers::get_emunet(&mut tran, req.emunet_uuid.clone()).await? {
+        None => return Ok(Response::fail(format!("emunet {} does not exist", req.emunet_uuid))),
+        Some(emunet) => emunet,
+    };
+    let graph = emunet.release_emunet_graph();
+    
+    let mut link_infos = Vec::new();
+    for ((s, d), edge) in graph.edges() {
+        link_infos.push(LinkInfo {
+            link_id: (*s, *d),
+            meta: edge.clone()
+        });
+    }
+
+    let mut server_infos = Vec::new();
+    for (_, cs) in emunet.servers().iter() {
+        let mut dev_infos = Vec::new();
+        for dev_id in cs.devs().iter() {
+            dev_infos.push( DeviceInfo {
+                id: *dev_id,
+                meta: graph.get_node(*dev_id).unwrap().clone()
+            });
+        }
+        server_infos.push(ServerInfo {
+            dev_infos,
+            server_info: cs.server_info().clone()
+        });
+    }
+
+    let emunet_info  = EmunetInfo{
+        emunet_name: emunet.emunet_name().clone(),
+        emunet_uuid: emunet.emunet_uuid().clone(),
+        max_capacity: emunet.max_capacity(),
+        user_name: emunet.emunet_user().clone(),
+        state: emunet.state().into(),
+        dev_count: emunet.dev_count(),
+    };
+    
+
+    Ok(Response::success(ResponseData {
+        emunet_info,
+        server_infos,
+        link_infos
+    }))
+}
+
+async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
+    let res = get_emunet_info(req, &mut client).await;
+    match res {
+        Ok(resp) => Ok(resp.into()),
+        Err(e) => {
+            client.notify_failure();
+            let resp: Response<_> = e.into();
+            Ok(resp.into())
+        }
+    }
+}
+
 pub fn build_filter(
-    db_client: Client,
-) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone + Send + Sync + 'static
-{
-    let db_filter = warp::any().map(move || {
-        let clone = db_client.clone();
-        clone
-    });
-    warp::post()
-        .and(warp::path("v1"))
-        .and(warp::path("get_emunet_info"))
-        .and(warp::path::end())
-        .and(super::parse_json_body())
-        .and(db_filter)
-        .and_then(get_emunet)
+    connector: Connector,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
+    super::filter_template("get_emunet_info".to_string(), connector, guard)
 }

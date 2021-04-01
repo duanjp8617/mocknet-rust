@@ -1,57 +1,88 @@
-#[macro_use]
-mod macros;
+use std::convert::From;
+use std::future::Future;
 
+use indradb_proto::ClientError;
 use serde::{de::DeserializeOwned, Serialize};
 use warp::Filter;
 
-// parse the input JSON message
-//
-// Note: when accepting a body, we want a JSON body and reject huge payloads
+use crate::database::{Client, Connector};
+
 fn parse_json_body<T: DeserializeOwned + Send>(
-) -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone {
+) -> impl warp::Filter<Extract = (T,), Error = warp::Rejection> + Clone {
     warp::body::content_length_limit(1024 * 16).and(warp::body::json())
 }
 
 #[derive(Serialize)]
 struct Response<T: Serialize> {
     success: bool,
-    data: T,
+    data: Option<T>,
     message: String,
 }
 
 impl<T: Serialize> Response<T> {
-    fn new(success: bool, data: T, message: String) -> Self {
+    fn success(data: T) -> Self {
         Self {
-            success,
-            data,
-            message,
+            success: true,
+            data: Some(data),
+            message: String::new(),
+        }
+    }
+
+    fn fail(err_msg: String) -> Self {
+        Self {
+            success: false,
+            data: None,
+            message: err_msg,
         }
     }
 }
 
-use crate::database::Client;
-use crate::emunet::net::{EmuNet, EmuNetError};
-// helper function to update error state on the emunet object
-async fn emunet_error(client: Client, mut emunet: EmuNet, err: EmuNetError) {
-    emunet.error(err);
-    // store the error state in the database, panic the server program on failure
-    let res = client
-        .set_emu_net(emunet)
-        .await
-        .expect("this should not happen");
-    if res.is_err() {
-        panic!("this should never happen");
+impl<T: Serialize> From<Response<T>> for warp::reply::Json {
+    fn from(resp: Response<T>) -> Self {
+        warp::reply::json(&resp)
     }
 }
 
-pub mod create_emunet;
-pub mod delete_emunet;
-pub mod destruct_emunet;
-pub mod get_emunet_info;
-pub mod get_emunet_topo;
-pub mod init_emunet;
+impl From<ClientError> for Response<()> {
+    fn from(e: ClientError) -> Self {
+        Response::<()>::fail(format!("fatal: {}", e))
+    }
+}
+
+async fn get_client(connector: Connector) -> Result<Client, warp::Rejection> {
+    connector.connect().await.map_err(|_| warp::reject())
+}
+
+fn filter_template<Req, F, R>(
+    api_prefix: String,
+    connector: Connector,
+    handle: F,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Send + Clone
+where
+    Req: DeserializeOwned + Send,
+    F: Fn(Req, Client) -> R + Send + Clone,
+    R: Future<Output = Result<warp::reply::Json, warp::Rejection>> + Send,
+{
+    let connector_filter = warp::any()
+        .map(move || {
+            let clone = connector.clone();
+            clone
+        })
+        .and_then(get_client);
+    warp::post()
+        .and(warp::path("v1"))
+        .and(warp::path(api_prefix))
+        .and(warp::path::end())
+        .and(parse_json_body())
+        .and(connector_filter)
+        .and_then(handle)
+}
+
+pub mod emunet_creation;
+pub mod emunet_deletion;
+pub mod emunet_init;
+pub mod list_all;
 pub mod list_emunet;
-pub mod register_user;
-pub mod delete_user;
-pub mod update_emunet;
-pub mod server_ping;
+pub mod user_deletion;
+pub mod user_registration;
+pub mod get_emunet_info;

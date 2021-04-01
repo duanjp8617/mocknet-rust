@@ -2,9 +2,9 @@ use std::error::Error as StdError;
 
 use warp::Filter;
 
-use mocknet::new_database::*;
-use mocknet::new_emunet::*;
-use mocknet::new_restful::*;
+use mocknet::database::*;
+use mocknet::emunet::*;
+use mocknet::restful::*;
 
 const LOCAL_ADDR: [u8; 4] = [172,27,220,175];
 const LOCAL_PORT: u16 = 3031;
