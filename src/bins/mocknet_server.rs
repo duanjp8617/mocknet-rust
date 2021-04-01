@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, io::BufRead};
+use std::error::Error as StdError;
 
 use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
@@ -29,8 +29,8 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     if let Some(config_file) = arg.cluster_config_path {
         let json_str = read_to_string(&config_file).await?;
-        let server_infos: Vec<ServerInfo> = serde_json::from_str(&json_str)
-            .expect("invalid cluster configuration file format");
+        let server_infos: Vec<ServerInfo> =
+            serde_json::from_str(&json_str).expect("invalid cluster configuration file format");
 
         let mut cluster = ClusterInfo::new();
         for server_info in server_infos {

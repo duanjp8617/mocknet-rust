@@ -10,8 +10,8 @@ description = "MockNet backend implementation"
 #path = "src/bins/server_check.rs"
 
 [[bin]]
-name = "emunet_server"
-path = "src/bins/emunet_server.rs"
+name = "mocknet_server"
+path = "src/bins/mocknet_server.rs"
 
 [dependencies]
 tonic = "0.4.0"
