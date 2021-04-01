@@ -785,6 +785,7 @@ dependencies = [
 name = "mocknet"
 version = "0.1.1"
 dependencies = [
+ "clap",
  "http",
  "indradb-lib",
  "indradb-proto",

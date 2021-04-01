@@ -1,40 +1,65 @@
-use std::error::Error as StdError;
+use std::{error::Error as StdError, io::BufRead};
 
+use serde::{Deserialize, Serialize};
+use tokio::fs::read_to_string;
 use warp::Filter;
 
+use mocknet::cli::*;
 use mocknet::database::*;
 use mocknet::emunet::ClusterInfo;
 use mocknet::restful::*;
 
-const LOCAL_ADDR: [u8; 4] = [172, 27, 220, 175];
-const LOCAL_PORT: u16 = 3031;
+#[derive(Deserialize, Serialize)]
+struct ServerInfo {
+    conn_addr: String,
+    max_capacity: u64,
+    username: String,
+    password: String,
+}
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
-    let connector = new_connector("grpc://127.0.0.1:27615").await?;
-    let mut cluster = ClusterInfo::new();
-    cluster
-        .add_server_info("192.168.0.1", 1, "djp", "djp")
-        .unwrap();
-    cluster
-        .add_server_info("192.168.0.2", 2, "djp", "djp")
-        .unwrap();
-    cluster
-        .add_server_info("192.168.0.3", 1, "djp", "djp")
-        .unwrap();
-    cluster
-        .add_server_info("192.168.0.4", 2, "djp", "djp")
-        .unwrap();
+    let arg = parse_cli_arg();
 
-    let res = init(&connector, cluster).await?;
-    match res {
-        Ok(_) => {
-            println!("successfully initialize the database");
+    let warp_socket_addr = arg
+        .warp_addr
+        .parse::<std::net::SocketAddr>()
+        .expect("invalid warp listening address");
+    let connector = new_connector(format!("grpc://{}", &arg.indradb_addr)).await?;
+
+    if let Some(config_file) = arg.cluster_config_path {
+        let json_str = read_to_string(&config_file).await?;
+        let server_infos: Vec<ServerInfo> = serde_json::from_str(&json_str)
+            .expect("invalid cluster configuration file format");
+
+        let mut cluster = ClusterInfo::new();
+        for server_info in server_infos {
+            cluster
+                .add_server_info(
+                    server_info.conn_addr,
+                    server_info.max_capacity,
+                    server_info.username,
+                    server_info.password,
+                )
+                .expect("invalid server configuration");
         }
-        Err(e) => {
-            println!("{}", e);
+
+        let res = init(&connector, cluster).await?;
+        match res {
+            Ok(_) => {
+                println!("successfully initialize the database");
+            }
+            Err(e) => {
+                println!("{}", e);
+            }
         }
-    }
+    } else {
+        let is_init = init_ok(&connector).await?;
+        if !is_init {
+            println!("the database is not initialized");
+            return Ok(());
+        }
+    };
 
     let routes = user_registration::build_filter(connector.clone());
     let routes = routes.or(emunet_creation::build_filter(connector.clone()));
@@ -44,6 +69,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let routes = routes.or(emunet_init::build_filter(connector.clone()));
     let routes = routes.or(emunet_deletion::build_filter(connector.clone()));
     let routes = routes.or(get_emunet_info::build_filter(connector.clone()));
-    warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;
+
+    warp::serve(routes).run(warp_socket_addr).await;
     Ok(())
 }

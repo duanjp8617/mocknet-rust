@@ -6,10 +6,6 @@ authors = ["duanjp8617 <duanjp8617@gmail.com>"]
 description = "MockNet backend implementation"
 
 #[[bin]]
-#name = "server_main"
-#path = "src/bins/server_main.rs"
-
-#[[bin]]
 #name = "server_check"
 #path = "src/bins/server_check.rs"
 
@@ -28,3 +24,4 @@ uuid = { version = "0.8.1", features = ["serde"] }
 indradb-lib = { version = "2.1.0", features = ["rocksdb-datastore", "sled-datastore"] }
 indradb-proto = { version = "2.1.0", features = ["client"] }
 lazy_static = "1.4.0"
+clap = "2.0"

@@ -158,9 +158,11 @@ impl Connector {
     }
 }
 
-pub async fn new_connector(db_addr: &str) -> Result<Connector, ConnectorError> {
+pub async fn new_connector<S: std::convert::AsRef<str>>(
+    db_addr: S,
+) -> Result<Connector, ConnectorError> {
     let (sender, queue) = message_queue::create();
-    let connector_backend = ConnectorBackend::new(db_addr, queue).await?;
+    let connector_backend = ConnectorBackend::new(db_addr.as_ref(), queue).await?;
     let _ = tokio::spawn(connector_backend.backend_task());
     Ok(Connector { sender })
 }
@@ -185,4 +187,17 @@ pub async fn init(
         }
         false => Ok(Err("database has already been initialized".to_string())),
     }
+}
+
+pub async fn init_ok(connector: &Connector) -> Result<bool, proto::ClientError> {
+    let mut client = connector
+        .connect()
+        .await
+        .map_err(|_| proto::ClientError::ChannelClosed)?;
+    let mut tran = client.guarded_tran().await?;
+
+    let res =
+        helpers::get_vertex_json_value(&mut tran, super::CORE_INFO_ID.clone(), "user_map").await?;
+
+    Ok(res.is_some())
 }

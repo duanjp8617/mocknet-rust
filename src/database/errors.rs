@@ -22,7 +22,7 @@ impl From<QueueDrop> for ConnectorError {
 impl From<ClientError> for ConnectorError {
     fn from(e: ClientError) -> ConnectorError {
         Self::ConnectionError {
-            reason: format!("connection error: {}", e),
+            reason: format!("{}", e),
         }
     }
 }
@@ -30,7 +30,7 @@ impl From<ClientError> for ConnectorError {
 impl From<InvalidUri> for ConnectorError {
     fn from(e: InvalidUri) -> ConnectorError {
         Self::ConnectionError {
-            reason: format!("connection error: {}", e),
+            reason: format!("{}", e),
         }
     }
 }
@@ -38,7 +38,7 @@ impl From<InvalidUri> for ConnectorError {
 impl From<Elapsed> for ConnectorError {
     fn from(e: Elapsed) -> ConnectorError {
         Self::ConnectionError {
-            reason: format!("connection error: connection timeout {}", e),
+            reason: format!("connection timeout: {}", e),
         }
     }
 }

@@ -12,4 +12,4 @@ pub(crate) mod helpers;
 pub(crate) use client::Client;
 
 pub mod errors;
-pub use client::{init, new_connector, Connector};
+pub use client::{init, init_ok, new_connector, Connector};
