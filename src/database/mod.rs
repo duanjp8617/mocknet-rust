@@ -6,9 +6,10 @@ lazy_static! {
 }
 
 mod client;
-pub mod errors;
-pub(crate) mod helpers;
 mod message_queue;
 
+pub(crate) mod helpers;
 pub(crate) use client::Client;
+
+pub mod errors;
 pub use client::{init, new_connector, Connector};

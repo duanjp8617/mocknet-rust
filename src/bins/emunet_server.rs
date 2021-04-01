@@ -3,16 +3,16 @@ use std::error::Error as StdError;
 use warp::Filter;
 
 use mocknet::database::*;
-use mocknet::emunet::*;
+use mocknet::emunet::ClusterInfo;
 use mocknet::restful::*;
 
-const LOCAL_ADDR: [u8; 4] = [172,27,220,175];
+const LOCAL_ADDR: [u8; 4] = [172, 27, 220, 175];
 const LOCAL_PORT: u16 = 3031;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
     let connector = new_connector("grpc://127.0.0.1:27615").await?;
-    let mut cluster = cluster::ClusterInfo::new();
+    let mut cluster = ClusterInfo::new();
     cluster
         .add_server_info("192.168.0.1", 1, "djp", "djp")
         .unwrap();

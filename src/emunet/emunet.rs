@@ -1,25 +1,25 @@
 use std::{
     cell::{Cell, RefCell},
-    collections::{hash_map::ValuesMut, HashMap},
+    collections::HashMap,
 };
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::cluster::{ContainerServer, ServerInfo};
+use super::cluster::ContainerServer;
 use super::device::*;
 use crate::algo::*;
 
-pub static EMUNET_NODE_PROPERTY: &'static str = "default";
+pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum EmunetError {
+pub(crate) enum EmunetError {
     PartitionFail(String),
     DatabaseFail(String),
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub enum EmunetState {
+pub(crate) enum EmunetState {
     Uninit,
     Working,
     Normal,
@@ -38,7 +38,7 @@ impl std::convert::From<EmunetState> for String {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct EmuNet {
+pub(crate) struct EmuNet {
     emunet_name: String,
     emunet_uuid: uuid::Uuid,
     max_capacity: u64,
@@ -46,11 +46,11 @@ pub struct EmuNet {
     state: RefCell<EmunetState>,
     dev_count: Cell<u64>,
     servers: RefCell<HashMap<uuid::Uuid, ContainerServer>>,
-    devices: RefCell<HashMap<u64, Device<String, String>>>,
+    devices: RefCell<HashMap<u64, Device<String, String>>>
 }
 
 impl EmuNet {
-    pub fn new(
+    pub(crate) fn new(
         emunet_name: String,
         emunet_uuid: Uuid,
         user_name: String,
@@ -74,44 +74,44 @@ impl EmuNet {
             state: RefCell::new(EmunetState::Uninit),
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
-            devices: RefCell::new(HashMap::new()),
+            devices: RefCell::new(HashMap::new())
         }
     }
 }
 
 impl EmuNet {
-    pub fn max_capacity(&self) -> u64 {
+    pub(crate) fn max_capacity(&self) -> u64 {
         self.max_capacity
     }
 
-    pub fn emunet_uuid(&self) -> Uuid {
+    pub(crate) fn emunet_uuid(&self) -> Uuid {
         self.emunet_uuid.clone()
     }
 
-    pub fn emunet_user(&self) -> String {
+    pub(crate) fn emunet_user(&self) -> String {
         self.user_name.clone()
     }
 
-    pub fn emunet_name(&self) -> String {
+    pub(crate) fn emunet_name(&self) -> String {
         self.emunet_name.clone()
     }
 
-    pub fn dev_count(&self) -> u64 {
+    pub(crate) fn dev_count(&self) -> u64 {
         self.dev_count.get()
     }
 
-    pub fn servers(&self) -> std::cell::Ref<HashMap<uuid::Uuid, ContainerServer>> {
+    pub(crate) fn servers(&self) -> std::cell::Ref<HashMap<uuid::Uuid, ContainerServer>> {
         self.servers.borrow()
     }
 }
 
 impl EmuNet {
     // modifying the state of the EmuNet
-    pub fn state(&self) -> EmunetState {
+    pub(crate) fn state(&self) -> EmunetState {
         self.state.borrow().clone()
     }
 
-    pub fn set_state(&self, state: EmunetState) {
+    pub(crate) fn set_state(&self, state: EmunetState) {
         *self.state.borrow_mut() = state;
     }
 }
@@ -167,7 +167,7 @@ impl EmuNet {
             for link in dev.links().iter() {
                 edges.push((link.link_id(), link.meta().clone()))
             }
-        };
+        }
 
         UndirectedGraph::new(nodes, edges).unwrap()
     }

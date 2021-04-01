@@ -1,7 +1,5 @@
-// pub mod in_memory_graph;
-
-mod traits;
-pub(crate) use traits::*;
-
 mod graph;
+mod traits;
+
 pub(crate) use graph::*;
+pub(crate) use traits::*;

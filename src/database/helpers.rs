@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::future::Future;
 
-use indradb::BulkInsertItem;
 use indradb::Type;
-use indradb::{RangeVertexQuery, SpecificVertexQuery, VertexQueryExt};
+use indradb::{SpecificVertexQuery, VertexQueryExt};
 use indradb::{Vertex, VertexQuery};
-use indradb_proto::{Client, ClientError, Transaction};
+use indradb_proto::{ClientError, Transaction};
 use uuid::Uuid;
 
 use crate::emunet::cluster::ClusterInfo;
@@ -56,28 +55,6 @@ pub(crate) async fn set_vertex_json_value(
         .property(property_name);
     tran.set_vertex_properties(q, json).await?;
     Ok(true)
-}
-
-// This is not really required, I will delete it when necessary
-pub(crate) async fn bulk_insert(
-    client: &mut Client,
-    qs: Vec<BulkInsertItem>,
-) -> Result<(), ClientError> {
-    client.bulk_insert(qs.into_iter()).await
-}
-
-// This is not needed as well
-pub(crate) async fn get_vertex_properties(
-    tran: &mut Transaction,
-    q: RangeVertexQuery,
-) -> Result<Vec<serde_json::Value>, ClientError> {
-    let q = q.property("default".to_string());
-    tran.get_vertex_properties(q).await.map(|vp| {
-        vp.into_iter().fold(Vec::new(), |mut vec, vp| {
-            vec.push(vp.value);
-            vec
-        })
-    })
 }
 
 pub(crate) async fn delete_vertex(tran: &mut Transaction, vid: Uuid) -> Result<(), ClientError> {
@@ -133,7 +110,7 @@ pub(crate) async fn get_emunet(
 ) -> Result<Option<EmuNet>, ClientError> {
     let jv = match get_vertex_json_value(tran, emunet_uuid, emunet::EMUNET_NODE_PROPERTY).await? {
         None => return Ok(None),
-        Some(jv) => jv
+        Some(jv) => jv,
     };
 
     let emunet: EmuNet = serde_json::from_value(jv).expect("FATAL: this should not happen");
@@ -148,14 +125,9 @@ pub(crate) fn set_emunet<'a>(
     let emunet_uuid = emunet.emunet_uuid();
 
     async move {
-        let res = set_vertex_json_value(
-            tran,
-            emunet_uuid,
-            emunet::EMUNET_NODE_PROPERTY,
-            &jv,
-        )
-        .await?;
-    
+        let res =
+            set_vertex_json_value(tran, emunet_uuid, emunet::EMUNET_NODE_PROPERTY, &jv).await?;
+
         Ok(res)
     }
 }

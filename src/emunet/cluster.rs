@@ -8,7 +8,7 @@ use super::device::{DeviceInfo, LinkInfo};
 use crate::algo::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ServerInfo {
+pub(crate) struct ServerInfo {
     pub uuid: uuid::Uuid,
     pub conn_addr: std::net::IpAddr,
     pub max_capacity: u64,
@@ -65,7 +65,10 @@ impl ClusterInfo {
         Ok(())
     }
 
-    pub fn rellocate_servers(&mut self, servers: Vec<ContainerServer>) -> Option<Vec<ContainerServer>> {
+    pub(crate) fn rellocate_servers(
+        &mut self,
+        servers: Vec<ContainerServer>,
+    ) -> Option<Vec<ContainerServer>> {
         for server in servers.iter() {
             if self.addr_exist(&server.server_info.conn_addr) {
                 return Some(servers);
@@ -77,11 +80,11 @@ impl ClusterInfo {
         None
     }
 
-    pub fn into_vec(self) -> Vec<ServerInfo> {
+    pub(crate) fn into_vec(self) -> Vec<ServerInfo> {
         self.servers
     }
 
-    pub fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
+    pub(crate) fn allocate_servers(&mut self, quantity: u64) -> Result<Vec<ContainerServer>, u64> {
         let mut target = 0;
 
         self.servers
@@ -110,17 +113,17 @@ impl ClusterInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContainerServer {
+pub(crate) struct ContainerServer {
     server_info: ServerInfo,
     devs: RefCell<HashSet<u64>>,
 }
 
 impl ContainerServer {
-    pub fn server_info(&self) -> &ServerInfo {
+    pub(crate) fn server_info(&self) -> &ServerInfo {
         return &self.server_info;
     }
 
-    pub fn devs(&self) -> std::cell::Ref<HashSet<u64>> {
+    pub(crate) fn devs(&self) -> std::cell::Ref<HashSet<u64>> {
         self.devs.borrow()
     }
 }
@@ -169,7 +172,7 @@ where
     fn partition(
         &self,
         mut bins: I,
-    ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {  
+    ) -> Option<HashMap<Self::ItemId, <ContainerServer as PartitionBin>::BinId>> {
         let mut dev_ids = self.nodes().map(|(nid, _)| *nid);
 
         let mut curr_server = bins.next()?;
