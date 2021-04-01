@@ -25,34 +25,28 @@ async fn emunet_deletion(req: Request, client: &mut Client) -> Result<Response<(
 
     emunet.set_state(EmunetState::Working);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    let res = fut.await?;
-    if !res {
-        panic!("FATAL: this should not happen");
-    }
+    assert!(fut.await.unwrap() == true);
     drop(guarded_tran);
 
     // emulation deletion work
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
+    // the following steps should never fail
     let mut guarded_tran = client.guarded_tran().await.expect("FATAL");
 
-    let mut cluster_info = helpers::get_cluster_info(&mut guarded_tran)
-        .await
-        .expect("FATAL");
+    let mut cluster_info = helpers::get_cluster_info(&mut guarded_tran).await.unwrap();
     let cs_v = emunet.release_emunet_resource();
     cluster_info.rellocate_servers(cs_v);
     helpers::set_cluster_info(&mut guarded_tran, cluster_info)
         .await
-        .expect("FATAL");
+        .unwrap();
 
     let emunet_uuid = emunet.emunet_uuid();
     helpers::delete_vertex(&mut guarded_tran, emunet_uuid)
         .await
-        .expect("FATAL");
+        .unwrap();
 
-    let mut user_map = helpers::get_user_map(&mut guarded_tran)
-        .await
-        .expect("FATAL");
+    let mut user_map = helpers::get_user_map(&mut guarded_tran).await.unwrap();
     assert!(
         user_map
             .get_mut(&emunet.emunet_user())
@@ -63,7 +57,7 @@ async fn emunet_deletion(req: Request, client: &mut Client) -> Result<Response<(
     );
     helpers::set_user_map(&mut guarded_tran, user_map)
         .await
-        .expect("FATAL");
+        .unwrap();
 
     Ok(Response::success(()))
 }

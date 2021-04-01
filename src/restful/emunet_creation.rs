@@ -46,22 +46,19 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
         }
     };
 
+    // the following steps should never fail
     if !(helpers::create_vertex(&mut tran, emunet_uuid.clone()).await?) {
         panic!(format!("invalid emunet uuid {}", emunet_uuid));
     }
 
     let emunet = Emunet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
     let fut = helpers::set_emunet(&mut tran, &emunet);
-    if fut.await? == false {
-        panic!("vertex not exist");
-    }
+    assert!(fut.await.unwrap() == true);
 
-    helpers::set_user_map(&mut tran, user_map)
-        .await
-        .expect("can't fail");
+    helpers::set_user_map(&mut tran, user_map).await.unwrap();
     helpers::set_cluster_info(&mut tran, cluster_info)
         .await
-        .expect("can't fail");
+        .unwrap();
 
     Ok(Response::success(emunet_uuid))
 }

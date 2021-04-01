@@ -35,7 +35,7 @@ impl ClusterInfo {
         sorted.binary_search(&server_addr).is_ok()
     }
 
-    pub fn add_server_info<S: std::convert::Into<String>>(
+    pub fn add_server_info<S: std::convert::AsRef<str>>(
         &mut self,
         conn_ip: S,
         max_capacity: u64,
@@ -43,7 +43,7 @@ impl ClusterInfo {
         password: S,
     ) -> Result<(), String> {
         let conn_addr = conn_ip
-            .into()
+            .as_ref()
             .parse::<std::net::IpAddr>()
             .map_err(|e| format!("{:?}", e))?;
 
@@ -58,8 +58,8 @@ impl ClusterInfo {
             uuid: indradb::util::generate_uuid_v1(),
             conn_addr,
             max_capacity,
-            username: username.into(),
-            password: password.into(),
+            username: username.as_ref().into(),
+            password: password.as_ref().into(),
         });
 
         Ok(())
@@ -70,6 +70,8 @@ impl ClusterInfo {
         servers: Vec<ContainerServer>,
     ) -> Option<Vec<ContainerServer>> {
         for server in servers.iter() {
+            assert!(server.devs().len() == 0);
+
             if self.addr_exist(&server.server_info.conn_addr) {
                 return Some(servers);
             }

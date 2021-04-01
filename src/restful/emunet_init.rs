@@ -28,9 +28,7 @@ async fn background_task(
     {
         let mut guarded_tran = client.guarded_tran().await?;
         let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-        if fut.await? == false {
-            panic!("vertex not exist");
-        }
+        assert!(fut.await.unwrap() == true);
     }
 
     // emulate creation work
@@ -39,9 +37,7 @@ async fn background_task(
     emunet.set_state(EmunetState::Normal);
     let mut guarded_tran = client.guarded_tran().await?;
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    if fut.await? == false {
-        panic!("vertex not exist");
-    }
+    assert!(fut.await.unwrap() == true);
 
     Ok(())
 }
@@ -101,13 +97,14 @@ async fn emunet_init(
     if graph.nodes_num() > emunet.max_capacity() as usize {
         return Ok(Err("input graph exceeds capacity limitation".to_string()));
     }
+    if emunet.dev_count() > 0 {
+        return Ok(Err("FATAL: emunet has active devices, this should never happen".to_string()));
+    }
 
     emunet.set_state(EmunetState::Working);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    if fut.await? == false {
-        panic!("vertex not exist");
-    }
-
+    assert!(fut.await.unwrap() == true);
+    
     Ok(Ok((emunet, graph)))
 }
 

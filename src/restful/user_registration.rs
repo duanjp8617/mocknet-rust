@@ -29,7 +29,7 @@ async fn user_registration(
 
     let user = User::new(&req.name);
     user_map.insert(req.name.clone(), user);
-    helpers::set_user_map(&mut guarded_tran, user_map).await?;
+    helpers::set_user_map(&mut guarded_tran, user_map).await.unwrap();
 
     Ok(Response::success(req.name))
 }

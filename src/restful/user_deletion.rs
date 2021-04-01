@@ -31,8 +31,7 @@ async fn user_deletion(req: Request, client: &mut Client) -> Result<Response<()>
     }
 
     helpers::set_user_map(&mut guarded_tran, user_map)
-        .await
-        .expect("can't fail");
+        .await.unwrap();
 
     Ok(Response::success(()))
 }

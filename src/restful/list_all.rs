@@ -22,7 +22,7 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
     let user_map = user_map
         .into_iter()
         .fold(HashMap::new(), |mut hm, (user_name, user)| {
-            hm.insert(user_name, user.into_uuid_map());
+            assert!(hm.insert(user_name, user.into_uuid_map()).is_none() == true);
             hm
         });
 
@@ -31,8 +31,7 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
         let mut emunets = HashMap::new();
         for (emunet_name, emunet_uuid) in emunet_map.into_iter() {
             let emunet = helpers::get_emunet(&mut guarded_tran, emunet_uuid.clone())
-                .await?
-                .expect("FATAL: this hould not happen");
+                .await?.unwrap();
 
             emunets.insert(emunet_name, emunet);
         }
@@ -44,7 +43,7 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
         .into_vec();
     let mut usable_servers = HashMap::new();
     for si in servers.into_iter() {
-        usable_servers.insert(si.uuid.clone(), si);
+        assert!(usable_servers.insert(si.uuid.clone(), si).is_none() == true);
     }
 
     Ok(Response::success(Inner {
