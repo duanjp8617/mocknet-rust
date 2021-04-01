@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

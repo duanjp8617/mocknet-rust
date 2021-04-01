@@ -7,7 +7,7 @@ use mocknet::new_emunet::*;
 use mocknet::new_restful::*;
 
 const LOCAL_ADDR: [u8; 4] = [172,27,220,175];
-const LOCAL_PORT: u16 = 3030;
+const LOCAL_PORT: u16 = 3031;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
@@ -43,6 +43,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let routes = routes.or(user_deletion::build_filter(connector.clone()));
     let routes = routes.or(emunet_init::build_filter(connector.clone()));
     let routes = routes.or(emunet_deletion::build_filter(connector.clone()));
+    let routes = routes.or(get_emunet_info::build_filter(connector.clone()));
     warp::serve(routes).run((LOCAL_ADDR, LOCAL_PORT)).await;
     Ok(())
 }
