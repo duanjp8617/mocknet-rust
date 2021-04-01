@@ -4,8 +4,7 @@ use super::errors::ConnectorError;
 use super::helpers;
 use super::message_queue;
 use super::message_queue::{Queue, Sender};
-use crate::emunet::cluster::ClusterInfo;
-use crate::emunet::user::User;
+use crate::emunet::{ClusterInfo, User};
 
 use indradb_proto as proto;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};

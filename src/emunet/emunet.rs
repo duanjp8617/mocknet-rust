@@ -38,7 +38,7 @@ impl std::convert::From<EmunetState> for String {
 }
 
 #[derive(Deserialize, Serialize)]
-pub(crate) struct EmuNet {
+pub(crate) struct Emunet {
     emunet_name: String,
     emunet_uuid: uuid::Uuid,
     max_capacity: u64,
@@ -49,7 +49,7 @@ pub(crate) struct EmuNet {
     devices: RefCell<HashMap<u64, Device<String, String>>>
 }
 
-impl EmuNet {
+impl Emunet {
     pub(crate) fn new(
         emunet_name: String,
         emunet_uuid: Uuid,
@@ -79,7 +79,7 @@ impl EmuNet {
     }
 }
 
-impl EmuNet {
+impl Emunet {
     pub(crate) fn max_capacity(&self) -> u64 {
         self.max_capacity
     }
@@ -105,7 +105,7 @@ impl EmuNet {
     }
 }
 
-impl EmuNet {
+impl Emunet {
     // modifying the state of the EmuNet
     pub(crate) fn state(&self) -> EmunetState {
         self.state.borrow().clone()
@@ -116,7 +116,7 @@ impl EmuNet {
     }
 }
 
-impl EmuNet {
+impl Emunet {
     pub(crate) fn build_emunet_graph(
         &self,
         graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,

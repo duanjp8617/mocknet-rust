@@ -7,8 +7,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::emunet::EmuNet;
-use crate::emunet::user::User;
+use crate::emunet::{Emunet, User};
 
 #[derive(Deserialize)]
 struct Request {
@@ -51,7 +50,7 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
         panic!(format!("invalid emunet uuid {}", emunet_uuid));
     }
 
-    let emunet = EmuNet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
+    let emunet = Emunet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
     let fut = helpers::set_emunet(&mut tran, &emunet);
     if fut.await? == false {
         panic!("vertex not exist");

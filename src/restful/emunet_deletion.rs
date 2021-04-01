@@ -4,7 +4,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::emunet::EmunetState;
+use crate::emunet::EmunetState;
 
 #[derive(Deserialize)]
 struct Request {

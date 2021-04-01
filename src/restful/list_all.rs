@@ -7,13 +7,11 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::cluster::ServerInfo;
-use crate::emunet::emunet::EmuNet;
-use crate::emunet::user::User;
+use crate::emunet::{Emunet, ServerInfo, User};
 
 #[derive(Serialize)]
 struct Inner {
-    users: HashMap<String, HashMap<String, EmuNet>>,
+    users: HashMap<String, HashMap<String, Emunet>>,
     usable_servers: HashMap<Uuid, ServerInfo>,
 }
 

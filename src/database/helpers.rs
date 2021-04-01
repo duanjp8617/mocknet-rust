@@ -7,9 +7,7 @@ use indradb::{Vertex, VertexQuery};
 use indradb_proto::{ClientError, Transaction};
 use uuid::Uuid;
 
-use crate::emunet::cluster::ClusterInfo;
-use crate::emunet::emunet::{self, EmuNet};
-use crate::emunet::user::User;
+use crate::emunet::{self, ClusterInfo, Emunet, User};
 
 pub(crate) async fn create_vertex(tran: &mut Transaction, id: Uuid) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();
@@ -107,19 +105,19 @@ pub(crate) async fn set_user_map(
 pub(crate) async fn get_emunet(
     tran: &mut Transaction,
     emunet_uuid: Uuid,
-) -> Result<Option<EmuNet>, ClientError> {
+) -> Result<Option<Emunet>, ClientError> {
     let jv = match get_vertex_json_value(tran, emunet_uuid, emunet::EMUNET_NODE_PROPERTY).await? {
         None => return Ok(None),
         Some(jv) => jv,
     };
 
-    let emunet: EmuNet = serde_json::from_value(jv).expect("FATAL: this should not happen");
+    let emunet: Emunet = serde_json::from_value(jv).expect("FATAL: this should not happen");
     Ok(Some(emunet))
 }
 
 pub(crate) fn set_emunet<'a>(
     tran: &'a mut Transaction,
-    emunet: &EmuNet,
+    emunet: &Emunet,
 ) -> impl Future<Output = Result<bool, ClientError>> + Send + 'a {
     let jv = serde_json::to_value(emunet).unwrap();
     let emunet_uuid = emunet.emunet_uuid();

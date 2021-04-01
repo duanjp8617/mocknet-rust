@@ -7,7 +7,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::user::User;
+use crate::emunet::User;
 
 type RespType = HashMap<String, Uuid>;
 

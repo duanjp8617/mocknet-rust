@@ -5,8 +5,7 @@ use warp::Filter;
 use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::device::*;
-use crate::emunet::emunet::{EmuNet, EmunetState};
+use crate::emunet::{DeviceInfo, Emunet, EmunetState, LinkInfo};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -21,7 +20,7 @@ struct ResponseData {
 }
 
 async fn background_task(
-    emunet: EmuNet,
+    emunet: Emunet,
     graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     client: &mut Client,
 ) -> Result<(), ClientError> {
@@ -48,7 +47,7 @@ async fn background_task(
 }
 
 async fn background_task_guard(
-    emunet: EmuNet,
+    emunet: Emunet,
     graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     mut client: Client,
 ) {
@@ -67,7 +66,7 @@ async fn emunet_init(
 ) -> Result<
     Result<
         (
-            EmuNet,
+            Emunet,
             UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
         ),
         String,
@@ -76,7 +75,7 @@ async fn emunet_init(
 > {
     let mut guarded_tran = client.guarded_tran().await?;
 
-    let emunet: EmuNet =
+    let emunet: Emunet =
         match helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await? {
             None => return Ok(Err(format!("emunet {} does not exist", req.emunet_uuid))),
             Some(emunet) => emunet,
