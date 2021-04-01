@@ -8,23 +8,22 @@ use warp::Filter;
 use super::Response;
 use crate::new_database::{helpers, Client, Connector};
 use crate::new_emunet::cluster;
-use crate::new_emunet::user::User;
 
 #[derive(Serialize)] 
-struct VertexInfo {
+struct DeviceInfo {
     id: u64,
     meta: String,
 }
 
 #[derive(Serialize)]
 struct ServerInfo {
-    vertex_infos: Vec<VertexInfo>,
+    dev_infos: Vec<DeviceInfo>,
     server_info: cluster::ServerInfo,
 }
 
 #[derive(Serialize)]
-struct EdgeInfo {
-    edge_id: (u64, u64),
+struct LinkInfo {
+    link_id: (u64, u64),
     meta: String
 }
 
@@ -42,7 +41,7 @@ struct EmunetInfo {
 struct ResponseData {
     emunet_info: EmunetInfo,
     server_infos: Vec<ServerInfo>,
-    edge_infos: Vec<EdgeInfo>
+    link_infos: Vec<LinkInfo>
 }
 
 #[derive(Deserialize)]
@@ -59,25 +58,25 @@ async fn get_emunet_info(req: Request, client: &mut Client) -> Result<Response<R
     };
     let graph = emunet.release_emunet_graph();
     
-    let mut edge_infos = Vec::new();
+    let mut link_infos = Vec::new();
     for ((s, d), edge) in graph.edges() {
-        edge_infos.push(EdgeInfo {
-            edge_id: (*s, *d),
+        link_infos.push(LinkInfo {
+            link_id: (*s, *d),
             meta: edge.clone()
         });
     }
 
     let mut server_infos = Vec::new();
     for (_, cs) in emunet.servers().iter() {
-        let mut vertex_infos = Vec::new();
+        let mut dev_infos = Vec::new();
         for dev_id in cs.devs().iter() {
-            vertex_infos.push( VertexInfo {
+            dev_infos.push( DeviceInfo {
                 id: *dev_id,
                 meta: graph.get_node(*dev_id).unwrap().clone()
             });
         }
         server_infos.push(ServerInfo {
-            vertex_infos,
+            dev_infos,
             server_info: cs.server_info().clone()
         });
     }
@@ -95,7 +94,7 @@ async fn get_emunet_info(req: Request, client: &mut Client) -> Result<Response<R
     Ok(Response::success(ResponseData {
         emunet_info,
         server_infos,
-        edge_infos
+        link_infos
     }))
 }
 

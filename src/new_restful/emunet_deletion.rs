@@ -1,14 +1,10 @@
-use std::collections::HashMap;
-
 use indradb_proto::ClientError;
 use serde::Deserialize;
-use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
 use crate::new_database::{helpers, Client, Connector};
-use crate::new_emunet::emunet::{EmuNet, EmunetState};
-use crate::new_emunet::user::User;
+use crate::new_emunet::emunet::EmunetState;
 
 #[derive(Deserialize)]
 struct Request {
@@ -39,20 +35,35 @@ async fn emunet_deletion(req: Request, client: &mut Client) -> Result<Response<(
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
     let mut guarded_tran = client.guarded_tran().await.expect("FATAL");
-    
+
     let mut cluster_info = helpers::get_cluster_info(&mut guarded_tran)
         .await
         .expect("FATAL");
     let cs_v = emunet.release_emunet_resource();
     cluster_info.rellocate_servers(cs_v);
-    helpers::set_cluster_info(&mut guarded_tran, cluster_info).await.expect("FATAL");
-    
+    helpers::set_cluster_info(&mut guarded_tran, cluster_info)
+        .await
+        .expect("FATAL");
+
     let emunet_uuid = emunet.emunet_uuid();
-    helpers::delete_vertex(&mut guarded_tran, emunet_uuid).await.expect("FATAL");
-    
-    let mut user_map = helpers::get_user_map(&mut guarded_tran).await.expect("FATAL");
-    assert!(user_map.get_mut(&emunet.emunet_user()).unwrap().delete_emunet(&emunet.emunet_name()).is_some() == true);
-    helpers::set_user_map(&mut guarded_tran, user_map).await.expect("FATAL");
+    helpers::delete_vertex(&mut guarded_tran, emunet_uuid)
+        .await
+        .expect("FATAL");
+
+    let mut user_map = helpers::get_user_map(&mut guarded_tran)
+        .await
+        .expect("FATAL");
+    assert!(
+        user_map
+            .get_mut(&emunet.emunet_user())
+            .unwrap()
+            .delete_emunet(&emunet.emunet_name())
+            .is_some()
+            == true
+    );
+    helpers::set_user_map(&mut guarded_tran, user_map)
+        .await
+        .expect("FATAL");
 
     Ok(Response::success(()))
 }

@@ -6,7 +6,7 @@ use super::Response;
 use crate::algo::*;
 use crate::new_database::{helpers, Client, Connector};
 use crate::new_emunet::device::*;
-use crate::new_emunet::emunet::{self, EmuNet, EmunetState};
+use crate::new_emunet::emunet::{EmuNet, EmunetState};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -32,7 +32,7 @@ async fn background_task(
         if fut.await? == false {
             panic!("vertex not exist");
         }
-    }   
+    }
 
     // emulate creation work
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -76,10 +76,11 @@ async fn emunet_init(
 > {
     let mut guarded_tran = client.guarded_tran().await?;
 
-    let emunet: EmuNet = match helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await? {
-        None => return Ok(Err(format!("emunet {} does not exist", req.emunet_uuid))),
-        Some(emunet) => emunet,
-    };
+    let emunet: EmuNet =
+        match helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await? {
+            None => return Ok(Err(format!("emunet {} does not exist", req.emunet_uuid))),
+            Some(emunet) => emunet,
+        };
 
     match emunet.state() {
         EmunetState::Uninit => {}
