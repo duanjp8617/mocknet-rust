@@ -119,6 +119,10 @@ impl ContainerServer {
     pub fn server_info(&self) -> &ServerInfo {
         return &self.server_info;
     }
+
+    pub fn devs(&self) -> std::cell::Ref<HashSet<u64>> {
+        self.devs.borrow()
+    }
 }
 
 impl PartitionBin for ContainerServer {

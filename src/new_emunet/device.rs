@@ -42,6 +42,10 @@ impl<L> Link<L> {
     pub fn link_id(&self) -> (u64, u64) {
         self.link_id
     }
+
+    pub fn meta(&self) -> &L {
+        &self.meta
+    }
 }
 
 // necessary trait implemenation to make Link HashSet compatible
@@ -116,5 +120,9 @@ impl<D, L> Device<D, L> {
 
     pub fn links(&self) -> std::cell::Ref<HashSet<Link<L>>> {
         self.links.borrow()
+    }
+
+    pub fn meta(&self) -> &D {
+        return &self.meta
     }
 }

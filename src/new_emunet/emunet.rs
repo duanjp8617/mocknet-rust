@@ -26,6 +26,17 @@ pub enum EmunetState {
     Error(EmunetError),
 }
 
+impl std::convert::From<EmunetState> for String {
+    fn from(e: EmunetState) -> String {
+        match e {
+            EmunetState::Uninit => "Uninit".to_string(),
+            EmunetState::Working => "Working".to_string(),
+            EmunetState::Normal => "Normal".to_string(),
+            EmunetState::Error(_) => "Error".to_string(),
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct EmuNet {
     emunet_name: String,
@@ -84,6 +95,14 @@ impl EmuNet {
     pub fn emunet_name(&self) -> String {
         self.emunet_name.clone()
     }
+
+    pub fn dev_count(&self) -> u64 {
+        self.dev_count.get()
+    }
+
+    pub fn servers(&self) -> std::cell::Ref<HashMap<uuid::Uuid, ContainerServer>> {
+        self.servers.borrow()
+    }
 }
 
 impl EmuNet {
@@ -137,6 +156,20 @@ impl EmuNet {
         }
 
         self.dev_count.set(total_devs as u64);
+    }
+
+    pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
+        let mut nodes: Vec<(u64, String)> = Vec::new();
+        let mut edges: Vec<((u64, u64), String)> = Vec::new();
+
+        for (dev_id, dev) in self.devices.borrow().iter() {
+            nodes.push((*dev_id, dev.meta().clone()));
+            for link in dev.links().iter() {
+                edges.push((link.link_id(), link.meta().clone()))
+            }
+        };
+
+        UndirectedGraph::new(nodes, edges).unwrap()
     }
 
     pub(crate) fn release_emunet_resource(&self) -> Vec<ContainerServer> {

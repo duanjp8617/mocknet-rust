@@ -60,6 +60,10 @@ where
         self.inner.nodes.iter()
     }
 
+    pub(crate) fn edges(&self) -> impl Iterator<Item = (&(Nid, Nid), &Edge)> {
+        self.inner.edges.iter()
+    }
+
     pub(crate) fn nodes_num(&self) -> usize {
         self.inner.nodes.len()
     }
