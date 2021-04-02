@@ -10,17 +10,17 @@ use uuid::Uuid;
 // LinkInfo is deserialized from the incoming HTTP message
 #[derive(Deserialize)]
 pub(crate) struct LinkInfo<T> {
-    link_id: (u64, u64),
-    meta: T,
+    edge_id: (u64, u64),
+    description: T,
 }
 
 impl<T> LinkInfo<T> {
     pub(crate) fn link_id(&self) -> (u64, u64) {
-        self.link_id
+        self.edge_id
     }
 
     pub(crate) fn meta(&self) -> &T {
-        &self.meta
+        &self.description
     }
 }
 
@@ -73,7 +73,7 @@ impl<L> Hash for Link<L> {
 #[derive(Deserialize)]
 pub(crate) struct DeviceInfo<T> {
     id: u64,
-    meta: T,
+    description: T,
 }
 
 impl<T> DeviceInfo<T> {
@@ -82,7 +82,7 @@ impl<T> DeviceInfo<T> {
     }
 
     pub(crate) fn meta(&self) -> &T {
-        &self.meta
+        &self.description
     }
 }
 
