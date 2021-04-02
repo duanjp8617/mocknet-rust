@@ -29,10 +29,10 @@ pub(crate) enum EmunetState {
 impl std::convert::From<EmunetState> for String {
     fn from(e: EmunetState) -> String {
         match e {
-            EmunetState::Uninit => "Uninit".to_string(),
-            EmunetState::Working => "Working".to_string(),
-            EmunetState::Normal => "Normal".to_string(),
-            EmunetState::Error(_) => "Error".to_string(),
+            EmunetState::Uninit => "uninit".to_string(),
+            EmunetState::Working => "working".to_string(),
+            EmunetState::Normal => "normal".to_string(),
+            EmunetState::Error(_) => "error".to_string(),
         }
     }
 }

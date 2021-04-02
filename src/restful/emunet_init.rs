@@ -116,9 +116,10 @@ async fn guard(
     match res {
         Ok(res) => match res {
             Ok((emunet, graph)) => {
+                let state_str = emunet.state().into();
                 tokio::spawn(background_task_guard(emunet, graph, client));
 
-                Ok(Response::success("working".to_string()).into())
+                Ok(Response::success(ResponseData {status: state_str}).into())
             }
             Err(s) => {
                 let resp: Response<String> = Response::fail(s);
