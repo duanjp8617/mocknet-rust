@@ -790,10 +790,12 @@ dependencies = [
  "indradb-lib",
  "indradb-proto",
  "lazy_static",
+ "prost",
  "serde",
  "serde_json",
  "tokio",
  "tonic",
+ "tonic-build",
  "uuid",
  "warp",
 ]

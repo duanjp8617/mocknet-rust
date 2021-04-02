@@ -15,6 +15,7 @@ path = "src/bins/mocknet_server.rs"
 
 [dependencies]
 tonic = "0.4.0"
+prost = "0.7"
 tokio = { version = "1.0", features = ["full"] }
 warp = "0.3"
 http = "0.2"
@@ -25,3 +26,6 @@ indradb-lib = { version = "2.1.0", features = ["rocksdb-datastore", "sled-datast
 indradb-proto = { version = "2.1.0", features = ["client"] }
 lazy_static = "1.4.0"
 clap = "2.0"
+
+[build-dependencies]
+tonic-build = "0.4"

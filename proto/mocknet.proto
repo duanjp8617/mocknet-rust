@@ -1,0 +1,58 @@
+syntax = "proto3";
+package mocknet_proto;
+
+message TopologyMeta {
+    string name = 1;
+}
+
+message TopologyLink {
+    uint64 uid = 1;
+    string peer_pod = 2;
+    string local_intf = 3;
+    string peer_intf = 4;
+    string local_ip = 5;
+    string peer_ip = 6;
+}
+
+message TopologyLinks {
+    repeated TopologyLink links = 1;
+}
+
+message Topology {
+    TopologyMeta metadata = 1;
+    TopologyLinks spec = 2;
+}
+
+message PodMeta {
+    string name = 1;
+}
+
+message PodSpec {
+    string nodeSelector = 1;
+}
+
+message Pod {
+    PodMeta metadata = 1;
+    PodSpec spec = 2;
+}
+
+message EmunetReq {
+    repeated Pod pods = 1;
+    repeated Topology topologies = 2; 
+}
+
+message DeviceInfo {
+    string login_ip = 1;
+    string username = 2;
+    string password = 3;
+}
+
+message EmunetResp {
+    bool status = 1;
+    repeated DeviceInfo device_infos = 2;
+}
+
+service Mocknet {
+    rpc EmunetInit (EmunetReq) returns (EmunetResp);
+    rpc EmunetDelete (EmunetReq) returns (EmunetResp);   
+}
