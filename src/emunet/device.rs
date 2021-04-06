@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+
 // LinkInfo represents an undirected edge connecting one node to another
 // LinkInfo is deserialized from the incoming HTTP message
 #[derive(Deserialize)]
@@ -89,16 +89,16 @@ impl<T> DeviceInfo<T> {
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Device<D, L> {
     id: u64,
-    server_uuid: uuid::Uuid,
+    server_name: String,
     links: RefCell<HashSet<Link<L>>>,
     meta: D,
 }
 
 impl<D, L> Device<D, L> {
-    pub(crate) fn new(id: u64, server_uuid: uuid::Uuid, meta: D) -> Self {
+    pub(crate) fn new(id: u64, server_name: String, meta: D) -> Self {
         Self {
             id,
-            server_uuid,
+            server_name,
             links: RefCell::new(HashSet::new()),
             meta,
         }
@@ -110,8 +110,8 @@ impl<D, L> Device<D, L> {
 }
 
 impl<D, L> Device<D, L> {
-    pub(crate) fn server_uuid(&self) -> Uuid {
-        self.server_uuid.clone()
+    pub(crate) fn server_name(&self) -> String {
+        self.server_name.clone()
     }
 
     pub(crate) fn links(&self) -> std::cell::Ref<HashSet<Link<L>>> {

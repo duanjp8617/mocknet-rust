@@ -1,26 +1,26 @@
-[
-    {
-        "conn_addr": "192.168.0.1",
-        "max_capacity": 1,
-        "username": "djp",
-        "password": "djp"
+{
+    "api_server_addr": "grpc://192.168.0.2:1924",
+    "access_info": {
+        "login_server_addr": "192.168.0.1",
+        "login_server_user": "root",
+        "login_server_pwd": "root"
     },
-    {
-        "conn_addr": "192.168.0.2",
-        "max_capacity": 2,
-        "username": "djp",
-        "password": "djp"
-    },
-    {
-        "conn_addr": "192.168.0.3",
-        "max_capacity": 2,
-        "username": "djp",
-        "password": "djp"
-    },
-    {
-        "conn_addr": "192.168.0.4",
-        "max_capacity": 5,
-        "username": "djp",
-        "password": "djp"
-    }
-]
+    "k8s_nodes": [
+        {
+            "node_name": "node1",
+            "max_capacity": 1
+        },
+        {
+            "node_name": "node2",
+            "max_capacity": 2
+        },
+        {
+            "node_name": "node3",
+            "max_capacity": 2
+        },
+        {
+            "node_name": "node4",
+            "max_capacity": 5
+        }
+    ]
+}

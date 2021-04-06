@@ -1,7 +1,7 @@
 MOCKNET_SERVER_DIR=/home/djp/Rust/mocknet-rust/target/debug
 INDRADB_SERVER_DIR=/home/djp/Rust/indradb/target/debug
 
-IP=172.23.66.208
+IP=172.21.103.147
 MOCKNETPORT=3030
 INDRADBPORT=3031
 IMAGE=ubuntu:20.04

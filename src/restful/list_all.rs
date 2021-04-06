@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use indradb_proto::ClientError;
 use serde::Serialize;
-use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
@@ -12,7 +11,7 @@ use crate::emunet::{Emunet, ServerInfo, User};
 #[derive(Serialize)]
 struct Inner {
     users: HashMap<String, HashMap<String, Emunet>>,
-    usable_servers: HashMap<Uuid, ServerInfo>,
+    usable_servers: HashMap<String, ServerInfo>,
 }
 
 async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
@@ -43,7 +42,7 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
         .into_vec();
     let mut usable_servers = HashMap::new();
     for si in servers.into_iter() {
-        assert!(usable_servers.insert(si.uuid.clone(), si).is_none() == true);
+        assert!(usable_servers.insert(si.node_name.clone(), si).is_none() == true);
     }
 
     Ok(Response::success(Inner {

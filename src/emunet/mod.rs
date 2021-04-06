@@ -4,6 +4,7 @@ mod emunet;
 mod user;
 
 pub use cluster::ClusterInfo;
+pub use cluster::ClusterConfig;
 
 pub(crate) use cluster::ServerInfo;
 pub(crate) use device::*;
@@ -14,3 +15,5 @@ mod test;
 use test::mocknet_proto::EmunetReq;
 use test::mocknet_proto::EmunetResp;
 use test::mocknet_proto::mocknet_client::MocknetClient;
+
+mod device_metadata;

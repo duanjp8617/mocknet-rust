@@ -1,16 +1,48 @@
-use std::{
-    cell::{Cell, RefCell},
-    collections::HashMap,
-};
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::net::Ipv4Addr;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::cluster::ContainerServer;
+use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
 use crate::algo::*;
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
+
+#[derive(Serialize, Deserialize)]
+struct Ipv4AddrAllocator {
+    ipv4_base: [u8; 4],
+    curr_idx: u32,
+}
+
+impl Ipv4AddrAllocator {
+    fn new() -> Self {
+        Self {
+            ipv4_base: [10, 0, 0, 0],
+            curr_idx: 1,
+        }
+    }
+
+    fn try_alloc(&mut self) -> Option<Ipv4Addr> {
+        let base_addr: Ipv4Addr = self.ipv4_base.into();
+        let base_addr_u32: u32 = base_addr.into();
+
+        loop {
+            let new_addr: Ipv4Addr = (base_addr_u32 + self.curr_idx).into();
+            let new_addr_array = new_addr.octets();
+            if new_addr_array[0] != 10 {
+                break None;
+            }
+
+            self.curr_idx += 1;
+            if new_addr_array[3] != 0 && new_addr_array[3] != 255 {
+                break Some(new_addr);
+            }
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetError {
@@ -43,10 +75,12 @@ pub(crate) struct Emunet {
     emunet_uuid: uuid::Uuid,
     max_capacity: u64,
     user_name: String,
+    api_server_addr: String,
+    access_info: EmunetAccessInfo,
     state: RefCell<EmunetState>,
     dev_count: Cell<u64>,
-    servers: RefCell<HashMap<uuid::Uuid, ContainerServer>>,
-    devices: RefCell<HashMap<u64, Device<String, String>>>
+    servers: RefCell<HashMap<String, ContainerServer>>,
+    devices: RefCell<HashMap<u64, Device<String, String>>>,
 }
 
 impl Emunet {
@@ -54,6 +88,8 @@ impl Emunet {
         emunet_name: String,
         emunet_uuid: Uuid,
         user_name: String,
+        api_server_addr: String,
+        access_info: EmunetAccessInfo,
         servers: Vec<ContainerServer>,
     ) -> Self {
         let (hm, max_capacity) =
@@ -61,8 +97,8 @@ impl Emunet {
                 .into_iter()
                 .fold((HashMap::new(), 0), |(mut hm, mut max_capacity), cs| {
                     max_capacity += cs.server_info().max_capacity;
-                    let cs_uuid = cs.server_info().uuid.clone();
-                    hm.insert(cs_uuid, cs);
+                    let cs_name = cs.server_info().node_name.clone();
+                    hm.insert(cs_name, cs);
                     (hm, max_capacity)
                 });
 
@@ -71,10 +107,12 @@ impl Emunet {
             emunet_uuid,
             max_capacity,
             user_name,
+            api_server_addr,
+            access_info,
             state: RefCell::new(EmunetState::Uninit),
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
-            devices: RefCell::new(HashMap::new())
+            devices: RefCell::new(HashMap::new()),
         }
     }
 }
@@ -100,7 +138,7 @@ impl Emunet {
         self.dev_count.get()
     }
 
-    pub(crate) fn servers(&self) -> std::cell::Ref<HashMap<uuid::Uuid, ContainerServer>> {
+    pub(crate) fn servers(&self) -> std::cell::Ref<HashMap<String, ContainerServer>> {
         self.servers.borrow()
     }
 }
@@ -177,7 +215,7 @@ impl Emunet {
         for (dev_id, dev) in device_map.into_iter() {
             self.servers
                 .borrow_mut()
-                .get_mut(&dev.server_uuid())
+                .get_mut(&dev.server_name())
                 .map(|cs| {
                     assert!(cs.release(&dev_id) == true);
                 })
@@ -186,5 +224,28 @@ impl Emunet {
         self.dev_count.set(0);
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allocation_valid() {
+        let mut allocator = Ipv4AddrAllocator::new();
+        let mut prev_addr = allocator.try_alloc().unwrap();
+        assert_eq!(prev_addr.octets()[3] != 0, true);
+        assert_eq!(prev_addr.octets()[3] != 255, true);
+        assert_eq!(prev_addr.octets()[0] == 10, true);
+
+        while let Some(curr_addr) = allocator.try_alloc() {
+            assert_eq!(curr_addr.octets()[3] != 0, true);
+            assert_eq!(curr_addr.octets()[3] != 255, true);
+            assert_eq!(curr_addr.octets()[0] == 10, true);
+            assert_eq!(curr_addr > prev_addr, true);
+
+            prev_addr = curr_addr;
+        }
     }
 }

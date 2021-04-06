@@ -1,21 +1,12 @@
 use std::error::Error as StdError;
 
-use serde::{Deserialize, Serialize};
 use tokio::fs::read_to_string;
 use warp::Filter;
 
 use mocknet::cli::*;
 use mocknet::database::*;
-use mocknet::emunet::ClusterInfo;
+use mocknet::emunet::{ClusterInfo, ClusterConfig};
 use mocknet::restful::*;
-
-#[derive(Deserialize, Serialize)]
-struct ServerInfo {
-    conn_addr: String,
-    max_capacity: u64,
-    username: String,
-    password: String,
-}
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
@@ -29,20 +20,10 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     if let Some(config_file) = arg.cluster_config_path {
         let json_str = read_to_string(&config_file).await?;
-        let server_infos: Vec<ServerInfo> =
+        let mocknet_config: ClusterConfig =
             serde_json::from_str(&json_str).expect("invalid cluster configuration file format");
 
-        let mut cluster = ClusterInfo::new();
-        for server_info in server_infos {
-            cluster
-                .add_server_info(
-                    server_info.conn_addr,
-                    server_info.max_capacity,
-                    server_info.username,
-                    server_info.password,
-                )
-                .expect("invalid server configuration");
-        }
+        let cluster = ClusterInfo::try_new(mocknet_config).expect("invalid cluster configuration");
 
         let res = init(&connector, cluster).await?;
         match res {

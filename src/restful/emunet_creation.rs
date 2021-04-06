@@ -51,7 +51,14 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
         panic!(format!("invalid emunet uuid {}", emunet_uuid));
     }
 
-    let emunet = Emunet::new(req.emunet, emunet_uuid.clone(), req.user, allocation);
+    let emunet = Emunet::new(
+        req.emunet,
+        emunet_uuid.clone(),
+        req.user,
+        cluster_info.api_server_addr().into(),
+        cluster_info.emunet_access_info().clone(),
+        allocation,
+    );
     let fut = helpers::set_emunet(&mut tran, &emunet);
     assert!(fut.await.unwrap() == true);
 

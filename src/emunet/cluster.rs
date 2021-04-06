@@ -7,62 +7,72 @@ use serde::{Deserialize, Serialize};
 use super::device::{DeviceInfo, LinkInfo};
 use crate::algo::*;
 
+#[derive(Serialize, Deserialize, Clone)]
+pub(crate) struct EmunetAccessInfo {
+    pub(crate) login_server_addr: String,
+    pub(crate) login_server_user: String,
+    pub(crate) login_server_pwd: String,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct ServerInfo {
-    pub uuid: uuid::Uuid,
-    pub conn_addr: std::net::IpAddr,
-    pub max_capacity: u64,
-    pub username: String,
-    pub password: String,
+    pub(crate) node_name: String,
+    pub(crate) max_capacity: u64,
+}
+
+#[derive(Deserialize)]
+pub struct ClusterConfig {
+    api_server_addr: String,
+    access_info: EmunetAccessInfo,
+    k8s_nodes: Vec<ServerInfo>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ClusterInfo {
+    api_server_addr: String,
+    access_info: EmunetAccessInfo,
     servers: Vec<ServerInfo>,
 }
 
 impl ClusterInfo {
-    pub fn new() -> Self {
-        Self {
-            servers: Vec::new(),
-        }
-    }
-
-    fn addr_exist(&self, server_addr: &std::net::IpAddr) -> bool {
-        let mut sorted: Vec<&std::net::IpAddr> =
-            self.servers.iter().map(|e| &e.conn_addr).collect();
+    fn node_name_exist(&self, node_name: &str) -> bool {
+        let mut sorted: Vec<&str> = self.servers.iter().map(|e| &e.node_name[..]).collect();
         sorted.sort();
-        sorted.binary_search(&server_addr).is_ok()
+        sorted.binary_search(&node_name).is_ok()
     }
 
-    pub fn add_server_info<S: std::convert::AsRef<str>>(
+    fn add_server_info<S: std::convert::AsRef<str>>(
         &mut self,
-        conn_ip: S,
+        node_name: S,
         max_capacity: u64,
-        username: S,
-        password: S,
     ) -> Result<(), String> {
-        let conn_addr = conn_ip
-            .as_ref()
-            .parse::<std::net::IpAddr>()
-            .map_err(|e| format!("{:?}", e))?;
-
-        if self.addr_exist(&conn_addr) {
+        if self.node_name_exist(node_name.as_ref()) {
             return Err(format!(
                 "Address {:?} is already stored in the list.",
-                &conn_addr
+                node_name.as_ref()
             ));
         }
 
         self.servers.push(ServerInfo {
-            uuid: indradb::util::generate_uuid_v1(),
-            conn_addr,
+            node_name: node_name.as_ref().into(),
             max_capacity,
-            username: username.as_ref().into(),
-            password: password.as_ref().into(),
         });
 
         Ok(())
+    }
+
+    pub fn try_new(config: ClusterConfig) -> Result<Self, String> {
+        let mut cluster_info = Self {
+            api_server_addr: config.api_server_addr,
+            access_info: config.access_info,
+            servers: Vec::new(),
+        };
+
+        for node_info in config.k8s_nodes {
+            cluster_info.add_server_info(node_info.node_name, node_info.max_capacity)?;
+        }
+
+        Ok(cluster_info)
     }
 
     pub(crate) fn rellocate_servers(
@@ -72,7 +82,7 @@ impl ClusterInfo {
         for server in servers.iter() {
             assert!(server.devs().len() == 0);
 
-            if self.addr_exist(&server.server_info.conn_addr) {
+            if self.node_name_exist(&server.server_info.node_name) {
                 return Some(servers);
             }
         }
@@ -114,6 +124,16 @@ impl ClusterInfo {
     }
 }
 
+impl ClusterInfo {
+    pub(crate) fn emunet_access_info(&self) -> &EmunetAccessInfo {
+        &self.access_info
+    }
+
+    pub(crate) fn api_server_addr(&self) -> &str {
+        &self.api_server_addr
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub(crate) struct ContainerServer {
     server_info: ServerInfo,
@@ -132,7 +152,7 @@ impl ContainerServer {
 
 impl PartitionBin for ContainerServer {
     type Item = u64;
-    type BinId = uuid::Uuid;
+    type BinId = String;
 
     fn fill(&mut self, dev_id: Self::Item) -> bool {
         if self.devs.borrow().len() + 1 > self.server_info.max_capacity as usize {
@@ -148,7 +168,7 @@ impl PartitionBin for ContainerServer {
     }
 
     fn bin_id(&self) -> Self::BinId {
-        return self.server_info().uuid.clone();
+        return self.server_info().node_name.clone();
     }
 }
 
