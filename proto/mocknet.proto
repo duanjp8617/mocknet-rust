@@ -41,19 +41,20 @@ message EmunetReq {
     repeated Topology topologies = 2; 
 }
 
-message DeviceInfo {
-    string login_ip = 1;
-    string username = 2;
-    string password = 3;
-}
-
 message EmunetResp {
     bool status = 1;
 }
 
 message QueryReq {
     bool is_init = 1;
-    repeated string pods = 2;
+    repeated string pod_names = 2;
+}
+
+message DeviceInfo {
+    string pod_name = 1;
+    string login_ip = 2;
+    string username = 3;
+    string password = 4;
 }
 
 message QueryResp {
@@ -62,7 +63,7 @@ message QueryResp {
 }
 
 service Mocknet {
-    rpc EmunetInit (EmunetReq) returns (EmunetResp);
-    rpc EmunetDelete (EmunetReq) returns (EmunetResp);
-    rpc EmunetQuery (QueryReq) returns (QueryResp);
+    rpc Init (EmunetReq) returns (EmunetResp);
+    rpc Delete (EmunetReq) returns (EmunetResp);
+    rpc Query (QueryReq) returns (QueryResp);
 }
