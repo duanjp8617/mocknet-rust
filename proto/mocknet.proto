@@ -49,10 +49,20 @@ message DeviceInfo {
 
 message EmunetResp {
     bool status = 1;
+}
+
+message QueryReq {
+    bool is_init = 1;
+    repeated string pods = 2;
+}
+
+message QueryResp {
+    bool status = 1;
     repeated DeviceInfo device_infos = 2;
 }
 
 service Mocknet {
     rpc EmunetInit (EmunetReq) returns (EmunetResp);
-    rpc EmunetDelete (EmunetReq) returns (EmunetResp);   
+    rpc EmunetDelete (EmunetReq) returns (EmunetResp);
+    rpc EmunetQuery (QueryReq) returns (QueryResp);
 }
