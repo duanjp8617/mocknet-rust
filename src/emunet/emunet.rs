@@ -9,21 +9,16 @@ use super::device::*;
 use super::device_metadata::*;
 use super::utils::Ipv4AddrAllocator;
 use crate::algo::*;
+use crate::k8s_api::{EmunetReq, Topology, TopologyLinks, TopologyMeta};
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub(crate) enum EmunetError {
-    PartitionFail(String),
-    DatabaseFail(String),
-}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetState {
     Uninit,
     Working,
     Normal,
-    Error(EmunetError),
+    Error(String),
 }
 
 impl std::convert::From<EmunetState> for String {
@@ -32,7 +27,7 @@ impl std::convert::From<EmunetState> for String {
             EmunetState::Uninit => "uninit".to_string(),
             EmunetState::Working => "working".to_string(),
             EmunetState::Normal => "normal".to_string(),
-            EmunetState::Error(_) => "error".to_string(),
+            EmunetState::Error(inner) => format!("error: {}", inner),
         }
     }
 }
@@ -111,6 +106,10 @@ impl Emunet {
     pub(crate) fn servers(&self) -> std::cell::Ref<HashMap<String, ContainerServer>> {
         self.servers.borrow()
     }
+
+    pub(crate) fn api_server_addr(&self) -> String {
+        self.api_server_addr.clone()
+    }
 }
 
 impl Emunet {
@@ -183,47 +182,6 @@ impl Emunet {
         self.dev_count.set(total_devs as u64);
     }
 
-    // pub(crate) fn build_emunet_graph(
-    //     &self,
-    //     graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
-    // ) {
-    //     assert_eq!(self.dev_count.get(), 0);
-    //     assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
-    //     assert_eq!(self.devices.borrow().len(), 0);
-
-    //     let mut servers_ref = self.servers.borrow_mut();
-    //     let bins = servers_ref.values_mut();
-    //     let assignment = graph
-    //         .partition(bins)
-    //         .expect("FATAL: this should always succeed");
-
-    //     let total_devs = assignment.len();
-
-    //     for (dev_id, server_uuid) in assignment.into_iter() {
-    //         let dev_info = graph.get_node(dev_id).unwrap();
-    //         let device = Device::new(dev_id, server_uuid, dev_info.meta().clone());
-
-    //         let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
-    //         for (_, other) in out_edge_iter {
-    //             let link_info = graph.get_edge((dev_id, other)).unwrap();
-    //             let link = Link::new(dev_id, other, link_info.meta().clone());
-    //             assert_eq!(device.add_link(link), true);
-    //         }
-    //         for (other, _) in in_edge_iter {
-    //             let link_info = graph.get_edge((other, dev_id)).unwrap();
-    //             let link = Link::new(dev_id, other, link_info.meta().clone());
-    //             assert_eq!(device.add_link(link), true);
-    //         }
-
-    //         assert_eq!(
-    //             self.devices.borrow_mut().insert(dev_id, device).is_none(),
-    //             true
-    //         );
-    //     }
-
-    //     self.dev_count.set(total_devs as u64);
-    // }
-
     pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
         let mut nodes: Vec<(u64, String)> = Vec::new();
         let mut edges: Vec<((u64, u64), String)> = Vec::new();
@@ -252,5 +210,44 @@ impl Emunet {
         self.dev_count.set(0);
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()
+    }
+
+    pub(crate) fn release_grpc_messages(&self) -> EmunetReq {
+        let mut pods = Vec::new();
+        let mut topologies = Vec::new();
+
+        for (_, dev) in self.devices.borrow().iter() {
+            pods.push(dev.meta().get_pod());
+
+            let mut topology_links = Vec::new();
+            for link in dev.links().iter() {
+                let link_id = link.link_id();
+                let peer_pod = self
+                    .devices
+                    .borrow()
+                    .get(&link_id.1)
+                    .unwrap()
+                    .meta()
+                    .pod_name();
+
+                let devices_ref = self.devices.borrow();
+                let peer_links_ref = devices_ref.get(&link_id.1).unwrap().links();
+                let peer_link = peer_links_ref.get(&(link_id.1, link_id.0)).unwrap().meta();
+
+                let topo_link = link.meta().gen_topology_link(&peer_pod, peer_link);
+                topology_links.push(topo_link);
+            }
+
+            topologies.push(Topology {
+                metadata: Some(TopologyMeta {
+                    name: dev.meta().pod_name(),
+                }),
+                spec: Some(TopologyLinks {
+                    links: topology_links,
+                }),
+            })
+        }
+
+        EmunetReq { pods, topologies }
     }
 }

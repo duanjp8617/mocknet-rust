@@ -1,5 +1,5 @@
 {
-    "api_server_addr": "grpc://192.168.0.2:1924",
+    "api_server_addr": "grpc://127.0.0.1:3032",
     "access_info": {
         "login_server_addr": "192.168.0.1",
         "login_server_user": "root",

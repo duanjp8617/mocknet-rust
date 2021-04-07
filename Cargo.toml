@@ -13,6 +13,10 @@ description = "MockNet backend implementation"
 name = "mocknet_server"
 path = "src/bins/mocknet_server.rs"
 
+[[bin]]
+name = "api_mockserver"
+path = "src/bins/api_mockserver.rs"
+
 [dependencies]
 tonic = "0.4.0"
 prost = "0.7"

@@ -6,6 +6,7 @@ use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{DeviceInfo, Emunet, EmunetState, LinkInfo};
+use crate::k8s_api::*;
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -30,6 +31,27 @@ async fn background_task(
         let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
         assert!(fut.await.unwrap() == true);
     }
+
+    let api_server_addr = emunet.api_server_addr();
+    let mut k8s_api_client =
+        match mocknet_client::MocknetClient::connect(api_server_addr.clone()).await {
+            Ok(inner) => inner,
+            Err(_) => {
+                emunet.set_state(EmunetState::Error(format!(
+                    "can't connect to k8s api server at {}",
+                    api_server_addr
+                )));
+                {
+                    let mut guarded_tran = client.guarded_tran().await?;
+                    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+                    assert!(fut.await.unwrap() == true);
+                }
+                return Ok(());
+            }
+        };
+
+    let grpc_req = tonic::Request::new(emunet.release_grpc_messages());
+    let _response = k8s_api_client.init(grpc_req).await;
 
     // emulate creation work
     tokio::time::sleep(std::time::Duration::from_secs(1)).await;

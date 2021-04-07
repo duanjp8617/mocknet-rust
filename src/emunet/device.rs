@@ -19,7 +19,7 @@ impl<T> LinkInfo<T> {
         self.edge_id
     }
 
-    pub(crate) fn meta(&self) -> &T {
+    pub(crate) fn _meta(&self) -> &T {
         &self.description
     }
 }
@@ -81,7 +81,7 @@ impl<T> DeviceInfo<T> {
         return self.id;
     }
 
-    pub(crate) fn meta(&self) -> &T {
+    pub(crate) fn _meta(&self) -> &T {
         &self.description
     }
 }

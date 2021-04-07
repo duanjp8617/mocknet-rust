@@ -42,6 +42,10 @@ impl DeviceMeta {
         self.int_id_idx.set(self.int_id_idx.get() + 1);
         res
     }
+
+    pub(crate) fn pod_name(&self) -> String {
+        self.pod.clone()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -60,33 +64,19 @@ impl LinkMeta {
         }
     }
 
-    fn gen_topology_link(&self, peer_pod: String, peer_link: &LinkMeta) -> TopologyLink {
+    pub(crate) fn gen_topology_link(&self, peer_pod: &str, peer_link: &LinkMeta) -> TopologyLink {
         assert!(self.link_id.0 < (2 as u64).pow(32));
         assert!(self.link_id.1 < (2 as u64).pow(32));
+        assert!(self.link_id.0 == peer_link.link_id.1);
+        assert!(self.link_id.1 == peer_link.link_id.0);
 
         TopologyLink {
-            uid: self.link_id.0 << 32 & self.link_id.1,
-            peer_pod,
+            uid: (self.link_id.0 << 32) | self.link_id.1,
+            peer_pod: peer_pod.to_string(),
             local_intf: self.intf.clone(),
             peer_intf: peer_link.intf.clone(),
             local_ip: self.ip.clone(),
             peer_ip: peer_link.ip.clone(),
         }
     }
-}
-
-fn get_pairing_topology_link<L>(
-    (link0, link1): (&LinkMeta, &LinkMeta),
-    devices: Ref<HashMap<u64, Device<DeviceMeta, L>>>,
-) -> (TopologyLink, TopologyLink) {
-    assert!(link0.link_id.0 == link1.link_id.1);
-    assert!(link0.link_id.1 == link1.link_id.0);
-
-    let link0_pod = devices.get(&link0.link_id.0).unwrap().meta().pod.clone();
-    let link1_pod = devices.get(&link1.link_id.0).unwrap().meta().pod.clone();
-
-    let l0 = link0.gen_topology_link(link1_pod, link1);
-    let l1 = link1.gen_topology_link(link0_pod, link0);
-
-    (l0, l1)
 }

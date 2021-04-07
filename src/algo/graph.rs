@@ -76,7 +76,7 @@ where
         self.inner.nodes.get(&nid)
     }
 
-    pub(crate) fn get_edge(&self, eid: (Nid, Nid)) -> Option<&Edge> {
+    pub(crate) fn _get_edge(&self, eid: (Nid, Nid)) -> Option<&Edge> {
         self.inner.edges.get(&eid)
     }
 }
