@@ -86,9 +86,34 @@ async fn emunet_init(
             )))
         }
     };
+    // this check is not necessary? consider delete it
+    if emunet.dev_count() > 0 {
+        return Ok(Err(
+            "FATAL: emunet has active devices, this should never happen".to_string(),
+        ));
+    }
+
+    let filter_dev_id: Option<Vec<DeviceInfo<String>>> = req
+        .devs
+        .into_iter()
+        .map(|dinfo| {
+            if dinfo.id() < (2 as u64).pow(32) {
+                Some(dinfo)
+            } else {
+                None
+            }
+        })
+        .collect();
+    if filter_dev_id.is_none() {
+        return Ok(Err("invalid device id".to_string()));
+    }
 
     let graph = match UndirectedGraph::new(
-        req.devs.into_iter().map(|v| (v.id(), v)).collect(),
+        filter_dev_id
+            .unwrap()
+            .into_iter()
+            .map(|v| (v.id(), v))
+            .collect(),
         req.links.into_iter().map(|e| (e.link_id(), e)).collect(),
     ) {
         None => return Ok(Err("invalid input graph".to_string())),
@@ -97,14 +122,11 @@ async fn emunet_init(
     if graph.nodes_num() > emunet.max_capacity() as usize {
         return Ok(Err("input graph exceeds capacity limitation".to_string()));
     }
-    if emunet.dev_count() > 0 {
-        return Ok(Err("FATAL: emunet has active devices, this should never happen".to_string()));
-    }
 
     emunet.set_state(EmunetState::Working);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     assert!(fut.await.unwrap() == true);
-    
+
     Ok(Ok((emunet, graph)))
 }
 
@@ -119,7 +141,7 @@ async fn guard(
                 let state_str = emunet.state().into();
                 tokio::spawn(background_task_guard(emunet, graph, client));
 
-                Ok(Response::success(ResponseData {status: state_str}).into())
+                Ok(Response::success(ResponseData { status: state_str }).into())
             }
             Err(s) => {
                 let resp: Response<String> = Response::fail(s);

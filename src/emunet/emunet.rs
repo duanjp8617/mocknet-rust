@@ -7,36 +7,37 @@ use uuid::Uuid;
 
 use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
+use super::device_metadata::*;
 use crate::algo::*;
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
 
 #[derive(Serialize, Deserialize)]
-struct Ipv4AddrAllocator {
+pub(crate) struct Ipv4AddrAllocator {
     ipv4_base: [u8; 4],
-    curr_idx: u32,
+    curr_idx: Cell<u32>,
 }
 
 impl Ipv4AddrAllocator {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             ipv4_base: [10, 0, 0, 0],
-            curr_idx: 1,
+            curr_idx: Cell::new(1),
         }
     }
 
-    fn try_alloc(&mut self) -> Option<Ipv4Addr> {
+    pub(crate) fn try_alloc(&self) -> Option<Ipv4Addr> {
         let base_addr: Ipv4Addr = self.ipv4_base.into();
         let base_addr_u32: u32 = base_addr.into();
 
         loop {
-            let new_addr: Ipv4Addr = (base_addr_u32 + self.curr_idx).into();
+            let new_addr: Ipv4Addr = (base_addr_u32 + self.curr_idx.get()).into();
             let new_addr_array = new_addr.octets();
             if new_addr_array[0] != 10 {
                 break None;
             }
 
-            self.curr_idx += 1;
+            self.curr_idx.set(self.curr_idx.get() + 1);
             if new_addr_array[3] != 0 && new_addr_array[3] != 255 {
                 break Some(new_addr);
             }
@@ -155,6 +156,32 @@ impl Emunet {
 }
 
 impl Emunet {
+    pub(crate) fn build_emunet_graph_new(
+        &self,
+        graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    ) {
+        assert_eq!(self.dev_count.get(), 0);
+        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
+        assert_eq!(self.devices.borrow().len(), 0);
+
+        let mut servers_ref = self.servers.borrow_mut();
+        let bins = servers_ref.values_mut();
+        let assignment = graph
+            .partition(bins)
+            .expect("FATAL: this should always succeed");
+
+        let total_devs = assignment.len();
+
+        let devices = HashMap::new();
+        for (dev_id, server_name) in assignment.iter() {
+            let dev_meta = DeviceMeta::new(*dev_id, &self.emunet_name, server_name.clone());
+            let device = Device::new(*dev_id, server_name.clone(), dev_meta);
+            devices.insert(*dev_id, device).unwrap();
+        }
+
+
+    }
+
     pub(crate) fn build_emunet_graph(
         &self,
         graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
@@ -173,6 +200,7 @@ impl Emunet {
 
         for (dev_id, server_uuid) in assignment.into_iter() {
             let dev_info = graph.get_node(dev_id).unwrap();
+            // let dev_meta = DeviceMeta::new(...);
             let device = Device::new(dev_id, server_uuid, dev_info.meta().clone());
 
             let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
