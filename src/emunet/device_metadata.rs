@@ -1,10 +1,13 @@
-use std::cell::{Cell, Ref, RefMut};
+use std::cell::{Cell, Ref};
 use std::collections::HashMap;
+use std::net::Ipv4Addr;
+
+use serde::{Deserialize, Serialize};
 
 use super::device::Device;
-use super::emunet::Ipv4AddrAllocator;
-use crate::k8s_api::{Pod, PodMeta, PodSpec};
+use crate::k8s_api::{Pod, PodMeta, PodSpec, TopologyLink};
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct DeviceMeta {
     pod: String,
     k8s_node: String,
@@ -12,11 +15,11 @@ pub(crate) struct DeviceMeta {
 }
 
 impl DeviceMeta {
-    pub(crate) fn new(dev_id: u64, emunet_name: &str, k8s_node: String) -> Self {
+    pub(crate) fn new(dev_id: u64, emunet_name: &str, k8s_node: &str) -> Self {
         Self {
             pod: format!("{}-dev-{}", emunet_name, dev_id),
-            k8s_node,
-            int_id_idx: 1,
+            k8s_node: k8s_node.to_string(),
+            int_id_idx: Cell::new(0),
         }
     }
 
@@ -34,36 +37,56 @@ impl DeviceMeta {
         }
     }
 
-    fn gen_intf_name(&self) -> String {
+    pub(crate) fn generate_intf_name(&self) -> String {
         let res = format!("intf-{}", self.int_id_idx.get());
         self.int_id_idx.set(self.int_id_idx.get() + 1);
         res
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct LinkMeta {
-    uid: u64,
+    link_id: (u64, u64),
     intf: String,
     ip: String,
 }
 
 impl LinkMeta {
-    pub(crate) fn new(
-        link_id: (u64, u64),
-        devices: Ref<HashMap<u64, Device<DeviceMeta, LinkMeta>>>,
-        addr_allocator: Ref<Ipv4AddrAllocator>,
-    ) -> Self {
-        assert!(link_id.0 < (2 as u64).pow(32));
-        assert!(link_id.1 < (2 as u64).pow(32));
-
-        let uid = (link_id.0 << 32) & link_id.1;
-        let intf = devices.get(&link_id.0).unwrap().meta().gen_intf_name();
-        let ip = addr_allocator.try_alloc().unwrap();
-
+    pub(crate) fn new(source: u64, destination: u64, intf: String, ip: Ipv4Addr) -> Self {
         LinkMeta {
-            uid,
+            link_id: (source, destination),
             intf,
             ip: ip.to_string(),
         }
     }
+
+    fn gen_topology_link(&self, peer_pod: String, peer_link: &LinkMeta) -> TopologyLink {
+        assert!(self.link_id.0 < (2 as u64).pow(32));
+        assert!(self.link_id.1 < (2 as u64).pow(32));
+
+        TopologyLink {
+            uid: self.link_id.0 << 32 & self.link_id.1,
+            peer_pod,
+            local_intf: self.intf.clone(),
+            peer_intf: peer_link.intf.clone(),
+            local_ip: self.ip.clone(),
+            peer_ip: peer_link.ip.clone(),
+        }
+    }
+}
+
+fn get_pairing_topology_link<L>(
+    (link0, link1): (&LinkMeta, &LinkMeta),
+    devices: Ref<HashMap<u64, Device<DeviceMeta, L>>>,
+) -> (TopologyLink, TopologyLink) {
+    assert!(link0.link_id.0 == link1.link_id.1);
+    assert!(link0.link_id.1 == link1.link_id.0);
+
+    let link0_pod = devices.get(&link0.link_id.0).unwrap().meta().pod.clone();
+    let link1_pod = devices.get(&link1.link_id.0).unwrap().meta().pod.clone();
+
+    let l0 = link0.gen_topology_link(link1_pod, link1);
+    let l1 = link1.gen_topology_link(link0_pod, link0);
+
+    (l0, l1)
 }

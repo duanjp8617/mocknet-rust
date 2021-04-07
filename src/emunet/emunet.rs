@@ -1,6 +1,5 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::net::Ipv4Addr;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -8,42 +7,10 @@ use uuid::Uuid;
 use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
 use super::device_metadata::*;
+use super::utils::Ipv4AddrAllocator;
 use crate::algo::*;
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct Ipv4AddrAllocator {
-    ipv4_base: [u8; 4],
-    curr_idx: Cell<u32>,
-}
-
-impl Ipv4AddrAllocator {
-    pub(crate) fn new() -> Self {
-        Self {
-            ipv4_base: [10, 0, 0, 0],
-            curr_idx: Cell::new(1),
-        }
-    }
-
-    pub(crate) fn try_alloc(&self) -> Option<Ipv4Addr> {
-        let base_addr: Ipv4Addr = self.ipv4_base.into();
-        let base_addr_u32: u32 = base_addr.into();
-
-        loop {
-            let new_addr: Ipv4Addr = (base_addr_u32 + self.curr_idx.get()).into();
-            let new_addr_array = new_addr.octets();
-            if new_addr_array[0] != 10 {
-                break None;
-            }
-
-            self.curr_idx.set(self.curr_idx.get() + 1);
-            if new_addr_array[3] != 0 && new_addr_array[3] != 255 {
-                break Some(new_addr);
-            }
-        }
-    }
-}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetError {
@@ -81,7 +48,8 @@ pub(crate) struct Emunet {
     state: RefCell<EmunetState>,
     dev_count: Cell<u64>,
     servers: RefCell<HashMap<String, ContainerServer>>,
-    devices: RefCell<HashMap<u64, Device<String, String>>>,
+    devices: RefCell<HashMap<u64, Device<DeviceMeta, LinkMeta>>>,
+    addr_allocator: RefCell<Ipv4AddrAllocator>,
 }
 
 impl Emunet {
@@ -114,6 +82,7 @@ impl Emunet {
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
             devices: RefCell::new(HashMap::new()),
+            addr_allocator: RefCell::new(Ipv4AddrAllocator::new()),
         }
     }
 }
@@ -156,32 +125,6 @@ impl Emunet {
 }
 
 impl Emunet {
-    pub(crate) fn build_emunet_graph_new(
-        &self,
-        graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
-    ) {
-        assert_eq!(self.dev_count.get(), 0);
-        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
-        assert_eq!(self.devices.borrow().len(), 0);
-
-        let mut servers_ref = self.servers.borrow_mut();
-        let bins = servers_ref.values_mut();
-        let assignment = graph
-            .partition(bins)
-            .expect("FATAL: this should always succeed");
-
-        let total_devs = assignment.len();
-
-        let devices = HashMap::new();
-        for (dev_id, server_name) in assignment.iter() {
-            let dev_meta = DeviceMeta::new(*dev_id, &self.emunet_name, server_name.clone());
-            let device = Device::new(*dev_id, server_name.clone(), dev_meta);
-            devices.insert(*dev_id, device).unwrap();
-        }
-
-
-    }
-
     pub(crate) fn build_emunet_graph(
         &self,
         graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
@@ -189,6 +132,10 @@ impl Emunet {
         assert_eq!(self.dev_count.get(), 0);
         assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
         assert_eq!(self.devices.borrow().len(), 0);
+        assert_eq!(
+            self.addr_allocator.borrow().remaining_addrs() >= graph.edges_num() * 2,
+            true
+        );
 
         let mut servers_ref = self.servers.borrow_mut();
         let bins = servers_ref.values_mut();
@@ -198,20 +145,32 @@ impl Emunet {
 
         let total_devs = assignment.len();
 
-        for (dev_id, server_uuid) in assignment.into_iter() {
-            let dev_info = graph.get_node(dev_id).unwrap();
-            // let dev_meta = DeviceMeta::new(...);
-            let device = Device::new(dev_id, server_uuid, dev_info.meta().clone());
+        for (dev_id, server_name) in assignment.into_iter() {
+            let device = Device::new(
+                dev_id,
+                server_name.clone(),
+                DeviceMeta::new(dev_id, &self.emunet_name, &server_name),
+            );
 
             let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
             for (_, other) in out_edge_iter {
-                let link_info = graph.get_edge((dev_id, other)).unwrap();
-                let link = Link::new(dev_id, other, link_info.meta().clone());
+                let link_meta = LinkMeta::new(
+                    dev_id,
+                    other,
+                    device.meta().generate_intf_name(),
+                    self.addr_allocator.borrow_mut().try_alloc().unwrap(),
+                );
+                let link = Link::new(dev_id, other, link_meta);
                 assert_eq!(device.add_link(link), true);
             }
             for (other, _) in in_edge_iter {
-                let link_info = graph.get_edge((other, dev_id)).unwrap();
-                let link = Link::new(dev_id, other, link_info.meta().clone());
+                let link_meta = LinkMeta::new(
+                    dev_id,
+                    other,
+                    device.meta().generate_intf_name(),
+                    self.addr_allocator.borrow_mut().try_alloc().unwrap(),
+                );
+                let link = Link::new(dev_id, other, link_meta);
                 assert_eq!(device.add_link(link), true);
             }
 
@@ -224,14 +183,55 @@ impl Emunet {
         self.dev_count.set(total_devs as u64);
     }
 
+    // pub(crate) fn build_emunet_graph(
+    //     &self,
+    //     graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    // ) {
+    //     assert_eq!(self.dev_count.get(), 0);
+    //     assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
+    //     assert_eq!(self.devices.borrow().len(), 0);
+
+    //     let mut servers_ref = self.servers.borrow_mut();
+    //     let bins = servers_ref.values_mut();
+    //     let assignment = graph
+    //         .partition(bins)
+    //         .expect("FATAL: this should always succeed");
+
+    //     let total_devs = assignment.len();
+
+    //     for (dev_id, server_uuid) in assignment.into_iter() {
+    //         let dev_info = graph.get_node(dev_id).unwrap();
+    //         let device = Device::new(dev_id, server_uuid, dev_info.meta().clone());
+
+    //         let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
+    //         for (_, other) in out_edge_iter {
+    //             let link_info = graph.get_edge((dev_id, other)).unwrap();
+    //             let link = Link::new(dev_id, other, link_info.meta().clone());
+    //             assert_eq!(device.add_link(link), true);
+    //         }
+    //         for (other, _) in in_edge_iter {
+    //             let link_info = graph.get_edge((other, dev_id)).unwrap();
+    //             let link = Link::new(dev_id, other, link_info.meta().clone());
+    //             assert_eq!(device.add_link(link), true);
+    //         }
+
+    //         assert_eq!(
+    //             self.devices.borrow_mut().insert(dev_id, device).is_none(),
+    //             true
+    //         );
+    //     }
+
+    //     self.dev_count.set(total_devs as u64);
+    // }
+
     pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
         let mut nodes: Vec<(u64, String)> = Vec::new();
         let mut edges: Vec<((u64, u64), String)> = Vec::new();
 
         for (dev_id, dev) in self.devices.borrow().iter() {
-            nodes.push((*dev_id, dev.meta().clone()));
+            nodes.push((*dev_id, serde_json::to_string(dev.meta()).unwrap()));
             for link in dev.links().iter() {
-                edges.push((link.link_id(), link.meta().clone()))
+                edges.push((link.link_id(), serde_json::to_string(link.meta()).unwrap()))
             }
         }
 
@@ -252,28 +252,5 @@ impl Emunet {
         self.dev_count.set(0);
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn allocation_valid() {
-        let mut allocator = Ipv4AddrAllocator::new();
-        let mut prev_addr = allocator.try_alloc().unwrap();
-        assert_eq!(prev_addr.octets()[3] != 0, true);
-        assert_eq!(prev_addr.octets()[3] != 255, true);
-        assert_eq!(prev_addr.octets()[0] == 10, true);
-
-        while let Some(curr_addr) = allocator.try_alloc() {
-            assert_eq!(curr_addr.octets()[3] != 0, true);
-            assert_eq!(curr_addr.octets()[3] != 255, true);
-            assert_eq!(curr_addr.octets()[0] == 10, true);
-            assert_eq!(curr_addr > prev_addr, true);
-
-            prev_addr = curr_addr;
-        }
     }
 }

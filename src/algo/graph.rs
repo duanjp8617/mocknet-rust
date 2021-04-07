@@ -68,6 +68,10 @@ where
         self.inner.nodes.len()
     }
 
+    pub(crate) fn edges_num(&self) -> usize {
+        self.inner.edges.len()
+    }
+
     pub(crate) fn get_node(&self, nid: Nid) -> Option<&Node> {
         self.inner.nodes.get(&nid)
     }

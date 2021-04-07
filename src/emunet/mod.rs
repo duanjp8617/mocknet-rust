@@ -12,3 +12,4 @@ pub(crate) use emunet::*;
 pub(crate) use user::User;
 
 pub(crate) mod device_metadata;
+mod utils;
