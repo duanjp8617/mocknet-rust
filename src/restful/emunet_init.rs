@@ -51,12 +51,41 @@ async fn background_task(
         };
 
     let grpc_req = tonic::Request::new(emunet.release_grpc_messages());
-    let _response = k8s_api_client.init(grpc_req).await;
+    let response = k8s_api_client.init(grpc_req).await.unwrap().into_inner();
+    if response.status != true {
+        emunet.set_state(EmunetState::Error(format!(
+            "k8s cluster can't initiate this emunet",
+        )));
+        {
+            let mut guarded_tran = client.guarded_tran().await?;
+            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+            assert!(fut.await.unwrap() == true);
+        }
+        return Ok(());
+    }
 
-    // emulate creation work
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    for _ in 0..300 {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-    emunet.set_state(EmunetState::Normal);
+        let pod_names = emunet.release_pod_names();
+        let query = tonic::Request::new(QueryReq {
+            is_init: true,
+            pod_names,
+        });
+        let response = k8s_api_client.query(query).await.unwrap().into_inner();
+
+        if response.status {
+            emunet.update_device_info(&response.device_infos);
+            emunet.set_state(EmunetState::Normal);
+            let mut guarded_tran = client.guarded_tran().await?;
+            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+            assert!(fut.await.unwrap() == true);
+
+            return Ok(());
+        }
+    }
+
+    emunet.set_state(EmunetState::Error("initialization timeout".to_string()));
     let mut guarded_tran = client.guarded_tran().await?;
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     assert!(fut.await.unwrap() == true);

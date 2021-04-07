@@ -7,9 +7,9 @@ use uuid::Uuid;
 use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
 use super::device_metadata::*;
-use super::utils::Ipv4AddrAllocator;
+use super::utils::SubnetAllocator;
 use crate::algo::*;
-use crate::k8s_api::{EmunetReq, Topology, TopologyLinks, TopologyMeta};
+use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
 
@@ -44,7 +44,7 @@ pub(crate) struct Emunet {
     dev_count: Cell<u64>,
     servers: RefCell<HashMap<String, ContainerServer>>,
     devices: RefCell<HashMap<u64, Device<DeviceMeta, LinkMeta>>>,
-    addr_allocator: RefCell<Ipv4AddrAllocator>,
+    subnet_allocator: RefCell<SubnetAllocator>,
 }
 
 impl Emunet {
@@ -77,7 +77,7 @@ impl Emunet {
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
             devices: RefCell::new(HashMap::new()),
-            addr_allocator: RefCell::new(Ipv4AddrAllocator::new()),
+            subnet_allocator: RefCell::new(SubnetAllocator::new([10, 0, 0, 0], 24)),
         }
     }
 }
@@ -132,7 +132,7 @@ impl Emunet {
         assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
         assert_eq!(self.devices.borrow().len(), 0);
         assert_eq!(
-            self.addr_allocator.borrow().remaining_addrs() >= graph.edges_num() * 2,
+            self.subnet_allocator.borrow().remaining_subnets() >= graph.edges_num() * 2,
             true
         );
 
@@ -151,30 +151,48 @@ impl Emunet {
                 DeviceMeta::new(dev_id, &self.emunet_name, &server_name),
             );
 
-            let (out_edge_iter, in_edge_iter) = graph.edges_by_nid(dev_id);
-            for (_, other) in out_edge_iter {
-                let link_meta = LinkMeta::new(
-                    dev_id,
-                    other,
-                    device.meta().generate_intf_name(),
-                    self.addr_allocator.borrow_mut().try_alloc().unwrap(),
-                );
-                let link = Link::new(dev_id, other, link_meta);
-                assert_eq!(device.add_link(link), true);
-            }
-            for (other, _) in in_edge_iter {
-                let link_meta = LinkMeta::new(
-                    dev_id,
-                    other,
-                    device.meta().generate_intf_name(),
-                    self.addr_allocator.borrow_mut().try_alloc().unwrap(),
-                );
-                let link = Link::new(dev_id, other, link_meta);
-                assert_eq!(device.add_link(link), true);
-            }
-
             assert_eq!(
                 self.devices.borrow_mut().insert(dev_id, device).is_none(),
+                true
+            );
+        }
+
+        for ((s, d), _) in graph.edges() {
+            let subnet = self.subnet_allocator.borrow_mut().try_alloc().unwrap();
+
+            let s_link_meta = LinkMeta::new(
+                *s,
+                *d,
+                self.devices
+                    .borrow()
+                    .get(s)
+                    .unwrap()
+                    .meta()
+                    .generate_intf_name(),
+                (subnet.0 + 1).into(),
+                subnet.1,
+            );
+            let s_link = Link::new(*s, *d, s_link_meta);
+            assert_eq!(
+                self.devices.borrow_mut().get(s).unwrap().add_link(s_link),
+                true
+            );
+
+            let d_link_meta = LinkMeta::new(
+                *d,
+                *s,
+                self.devices
+                    .borrow()
+                    .get(d)
+                    .unwrap()
+                    .meta()
+                    .generate_intf_name(),
+                (subnet.0 + 2).into(),
+                subnet.1,
+            );
+            let d_link = Link::new(*d, *s, d_link_meta);
+            assert_eq!(
+                self.devices.borrow_mut().get(d).unwrap().add_link(d_link),
                 true
             );
         }
@@ -249,5 +267,30 @@ impl Emunet {
         }
 
         EmunetReq { pods, topologies }
+    }
+
+    pub(crate) fn release_pod_names(&self) -> Vec<String> {
+        let mut pod_names = Vec::new();
+
+        for (_, dev) in self.devices.borrow().iter() {
+            pod_names.push(dev.meta().pod_name());
+        }
+
+        pod_names
+    }
+
+    pub(crate) fn update_device_info(&self, device_infos: &Vec<k8s_api::DeviceInfo>) {
+        let mut podname_map = HashMap::new();
+        let devices_borrow = self.devices.borrow();
+        for (_, dev) in devices_borrow.iter() {
+            podname_map.insert(dev.meta().pod_name(), dev);
+        }
+
+        for dev_info in device_infos {
+            let dev = podname_map.get(&dev_info.pod_name).unwrap();
+            (*dev)
+                .meta()
+                .udpate_info(&dev_info.login_ip, &dev_info.username, &dev_info.password);
+        }
     }
 }

@@ -1,4 +1,4 @@
-use std::cell::{Cell, Ref};
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 
@@ -12,6 +12,9 @@ pub(crate) struct DeviceMeta {
     pod: String,
     k8s_node: String,
     int_id_idx: Cell<u64>,
+    login_ip: RefCell<Option<String>>,
+    username: RefCell<Option<String>>,
+    password: RefCell<Option<String>>,
 }
 
 impl DeviceMeta {
@@ -20,6 +23,9 @@ impl DeviceMeta {
             pod: format!("{}-dev-{}", emunet_name, dev_id),
             k8s_node: k8s_node.to_string(),
             int_id_idx: Cell::new(0),
+            login_ip: RefCell::new(None),
+            username: RefCell::new(None),
+            password: RefCell::new(None),
         }
     }
 
@@ -48,6 +54,14 @@ impl DeviceMeta {
     }
 }
 
+impl DeviceMeta {
+    pub(crate) fn udpate_info(&self, login_ip: &str, username: &str, password: &str) {
+        *self.login_ip.borrow_mut() = Some(login_ip.to_string());
+        *self.username.borrow_mut() = Some(username.to_string());
+        *self.password.borrow_mut() = Some(password.to_string());
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub(crate) struct LinkMeta {
     link_id: (u64, u64),
@@ -56,11 +70,17 @@ pub(crate) struct LinkMeta {
 }
 
 impl LinkMeta {
-    pub(crate) fn new(source: u64, destination: u64, intf: String, ip: Ipv4Addr) -> Self {
+    pub(crate) fn new(
+        source: u64,
+        destination: u64,
+        intf: String,
+        ip: Ipv4Addr,
+        subnet_len: u32,
+    ) -> Self {
         LinkMeta {
             link_id: (source, destination),
             intf,
-            ip: ip.to_string(),
+            ip: format!("{}/{}", ip, subnet_len),
         }
     }
 
