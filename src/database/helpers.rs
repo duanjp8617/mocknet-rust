@@ -7,7 +7,7 @@ use indradb::{Vertex, VertexQuery};
 use indradb_proto::{ClientError, Transaction};
 use uuid::Uuid;
 
-use crate::emunet::{self, ClusterInfo, Emunet, User};
+use crate::emunet::{self, ClusterInfo, Emunet, IdAllocator, User};
 
 pub(crate) async fn create_vertex(tran: &mut Transaction, id: Uuid) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();
@@ -96,6 +96,35 @@ pub(crate) async fn set_user_map(
 ) -> Result<(), ClientError> {
     let jv = serde_json::to_value(user_map).unwrap();
     let res = set_vertex_json_value(tran, super::CORE_INFO_ID.clone(), "user_map", &jv).await?;
+    if !res {
+        panic!("database is not correctly initialized");
+    }
+    Ok(())
+}
+
+pub(crate) async fn get_emunet_id_allocator(
+    tran: &mut Transaction,
+) -> Result<IdAllocator, ClientError> {
+    let res =
+        get_vertex_json_value(tran, super::CORE_INFO_ID.clone(), "emunet_id_allocator").await?;
+    match res {
+        Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
+        None => panic!("database is not correctly initialized"),
+    }
+}
+
+pub(crate) async fn set_emunet_id_allocator(
+    tran: &mut Transaction,
+    id_allocator: IdAllocator,
+) -> Result<(), ClientError> {
+    let jv = serde_json::to_value(id_allocator).unwrap();
+    let res = set_vertex_json_value(
+        tran,
+        super::CORE_INFO_ID.clone(),
+        "emunet_id_allocator",
+        &jv,
+    )
+    .await?;
     if !res {
         panic!("database is not correctly initialized");
     }

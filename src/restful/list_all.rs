@@ -12,6 +12,7 @@ use crate::emunet::{Emunet, ServerInfo, User};
 struct Inner {
     users: HashMap<String, HashMap<String, Emunet>>,
     usable_servers: HashMap<String, ServerInfo>,
+    usable_ids: usize,
 }
 
 async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
@@ -30,7 +31,8 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
         let mut emunets = HashMap::new();
         for (emunet_name, emunet_uuid) in emunet_map.into_iter() {
             let emunet = helpers::get_emunet(&mut guarded_tran, emunet_uuid.clone())
-                .await?.unwrap();
+                .await?
+                .unwrap();
 
             emunets.insert(emunet_name, emunet);
         }
@@ -45,9 +47,12 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
         assert!(usable_servers.insert(si.node_name.clone(), si).is_none() == true);
     }
 
+    let id_allocator = helpers::get_emunet_id_allocator(&mut guarded_tran).await?;
+
     Ok(Response::success(Inner {
         users,
         usable_servers,
+        usable_ids: id_allocator.remaining(),
     }))
 }
 

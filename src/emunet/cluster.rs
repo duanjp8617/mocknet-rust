@@ -214,3 +214,32 @@ where
         Some(res)
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct IdAllocator {
+    ids: HashSet<u8>,
+}
+
+impl IdAllocator {
+    pub(crate) fn new() -> Self {
+        let mut ids = HashSet::new();
+        for i in 0..u8::MAX {
+            ids.insert(i);
+        }
+        Self { ids }
+    }
+
+    pub(crate) fn alloc(&mut self) -> Option<u8> {
+        let id_to_pop = self.ids.iter().next().map(|id| *id)?;
+        assert!(self.ids.remove(&id_to_pop) == true);
+        Some(id_to_pop)
+    }
+
+    pub(crate) fn realloc(&mut self, id: u8) -> bool {
+        self.ids.insert(id)
+    }
+
+    pub(crate) fn remaining(&self) -> usize {
+        self.ids.len()
+    }
+}

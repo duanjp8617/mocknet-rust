@@ -25,6 +25,7 @@ fn delete_emunet_from_db<'a>(
     let emunet_uuid = emunet.emunet_uuid();
     let emunet_user = emunet.emunet_user().to_string();
     let emunet_name = emunet.emunet_name().to_string();
+    let emunet_id = emunet.emunet_id();
 
     async move {
         match servers_opt {
@@ -52,6 +53,10 @@ fn delete_emunet_from_db<'a>(
                 == true
         );
         helpers::set_user_map(guarded_tran, user_map).await.unwrap();
+
+        let mut id_allocator = helpers::get_emunet_id_allocator(guarded_tran).await.unwrap();
+        assert!(id_allocator.realloc(emunet_id) == true);
+        helpers::set_emunet_id_allocator(guarded_tran, id_allocator).await.unwrap();
     }
 }
 

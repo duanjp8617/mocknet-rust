@@ -34,6 +34,7 @@ impl std::convert::From<EmunetState> for String {
 
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Emunet {
+    emunet_id: u8,
     emunet_name: String,
     emunet_uuid: uuid::Uuid,
     max_capacity: u64,
@@ -49,6 +50,7 @@ pub(crate) struct Emunet {
 
 impl Emunet {
     pub(crate) fn new(
+        emunet_id: u8,
         emunet_name: String,
         emunet_uuid: Uuid,
         user_name: String,
@@ -67,6 +69,7 @@ impl Emunet {
                 });
 
         Self {
+            emunet_id,
             emunet_name,
             emunet_uuid,
             max_capacity,
@@ -83,6 +86,10 @@ impl Emunet {
 }
 
 impl Emunet {
+    pub(crate) fn emunet_id(&self) -> u8 {
+        self.emunet_id
+    }
+
     pub(crate) fn max_capacity(&self) -> u64 {
         self.max_capacity
     }

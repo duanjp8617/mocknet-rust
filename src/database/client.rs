@@ -4,7 +4,7 @@ use super::errors::ConnectorError;
 use super::helpers;
 use super::message_queue;
 use super::message_queue::{Queue, Sender};
-use crate::emunet::{ClusterInfo, User};
+use crate::emunet::{ClusterInfo, IdAllocator, User};
 
 use indradb_proto as proto;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
@@ -182,6 +182,7 @@ pub async fn init(
         true => {
             helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
             helpers::set_cluster_info(&mut tran, cluster_info).await?;
+            helpers::set_emunet_id_allocator(&mut tran, IdAllocator::new()).await?;
 
             Ok(Ok(()))
         }

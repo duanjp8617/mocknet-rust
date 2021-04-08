@@ -35,6 +35,14 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
         }
     };
 
+    let mut id_allocator = helpers::get_emunet_id_allocator(&mut tran).await?;
+    let emunet_id = match id_allocator.alloc() {
+        Some(id) => id,
+        None => {
+            return Ok(Response::fail(format!("too many emunets are created")));
+        }
+    };
+
     let mut cluster_info = helpers::get_cluster_info(&mut tran).await?;
     let allocation = match cluster_info.allocate_servers(req.capacity) {
         Ok(alloc) => alloc,
@@ -52,6 +60,7 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
     }
 
     let emunet = Emunet::new(
+        emunet_id,
         req.emunet,
         emunet_uuid.clone(),
         req.user,
@@ -64,6 +73,9 @@ async fn create_emunet(req: Request, client: &mut Client) -> Result<Response<Uui
 
     helpers::set_user_map(&mut tran, user_map).await.unwrap();
     helpers::set_cluster_info(&mut tran, cluster_info)
+        .await
+        .unwrap();
+    helpers::set_emunet_id_allocator(&mut tran, id_allocator)
         .await
         .unwrap();
 
