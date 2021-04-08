@@ -14,8 +14,8 @@ fn least_sigbit_idx(n: u32) -> u32 {
     idx
 }
 
-// allocate a unique IPv4 subnet with at least 4 addresses
-// this means that the subnet mask should be 0-30
+// allocate an unique IPv4 subnet with at least 4 addresses
+// the length of the subnet mask is 8-30
 #[derive(Serialize, Deserialize)]
 pub(crate) struct SubnetAllocator {
     base: [u8; 4],
@@ -60,7 +60,7 @@ impl SubnetAllocator {
         (self.total_subnets - self.curr_idx) as usize
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn _reset(&mut self) {
         self.curr_idx = 0
     }
 }

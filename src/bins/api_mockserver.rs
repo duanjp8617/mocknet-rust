@@ -22,6 +22,8 @@ impl MockServer {
 impl Mocknet for MockServer {
     async fn init(&self, request: Request<EmunetReq>) -> Result<Response<EmunetResp>, Status> {
         let inner = request.into_inner();
+        println!("---------Got a new init request---------");
+        println!("{:?}", &inner);
 
         let mut guard = self.pods.lock().unwrap();
         let reply = if guard.len() > 0 {
@@ -83,6 +85,9 @@ impl Mocknet for MockServer {
 
     async fn query(&self, request: Request<QueryReq>) -> Result<Response<QueryResp>, Status> {
         let inner = request.into_inner();
+        println!("---------Got a new query request---------");
+        println!("{:?}", &inner);
+
         let is_init = inner.is_init;
 
         let reply = match is_init {

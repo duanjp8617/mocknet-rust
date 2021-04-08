@@ -88,10 +88,10 @@ async fn get_emunet_info(
     }
 
     let emunet_info = EmunetInfo {
-        emunet_name: emunet.emunet_name().clone(),
+        emunet_name: emunet.emunet_name().to_string(),
         emunet_uuid: emunet.emunet_uuid().clone(),
         max_capacity: emunet.max_capacity(),
-        user_name: emunet.emunet_user().clone(),
+        user_name: emunet.emunet_user().to_string(),
         state: emunet.state().into(),
         dev_count: emunet.dev_count(),
     };

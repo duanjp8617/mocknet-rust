@@ -91,12 +91,12 @@ impl Emunet {
         self.emunet_uuid.clone()
     }
 
-    pub(crate) fn emunet_user(&self) -> String {
-        self.user_name.clone()
+    pub(crate) fn emunet_user(&self) -> &str {
+        &self.user_name
     }
 
-    pub(crate) fn emunet_name(&self) -> String {
-        self.emunet_name.clone()
+    pub(crate) fn emunet_name(&self) -> &str {
+        &self.emunet_name
     }
 
     pub(crate) fn dev_count(&self) -> u64 {
@@ -107,8 +107,12 @@ impl Emunet {
         self.servers.borrow()
     }
 
-    pub(crate) fn api_server_addr(&self) -> String {
-        self.api_server_addr.clone()
+    pub(crate) fn api_server_addr(&self) -> &str {
+        &self.api_server_addr
+    }
+
+    pub(crate) fn remainig_subnets(&self) -> usize {
+        self.subnet_allocator.borrow().remaining_subnets()
     }
 }
 
@@ -129,8 +133,8 @@ impl Emunet {
         graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     ) {
         assert_eq!(self.dev_count.get(), 0);
-        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
         assert_eq!(self.devices.borrow().len(), 0);
+        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
         assert_eq!(
             self.subnet_allocator.borrow().remaining_subnets() >= graph.edges_num() * 2,
             true
@@ -148,13 +152,10 @@ impl Emunet {
             let device = Device::new(
                 dev_id,
                 server_name.clone(),
-                DeviceMeta::new(dev_id, &self.emunet_name, &server_name),
+                DeviceMeta::new(&server_name, &self.user_name, &self.emunet_name, dev_id),
             );
 
-            assert_eq!(
-                self.devices.borrow_mut().insert(dev_id, device).is_none(),
-                true
-            );
+            assert!(self.devices.borrow_mut().insert(dev_id, device).is_none() == true);
         }
 
         for ((s, d), _) in graph.edges() {
@@ -163,38 +164,22 @@ impl Emunet {
             let s_link_meta = LinkMeta::new(
                 *s,
                 *d,
-                self.devices
-                    .borrow()
-                    .get(s)
-                    .unwrap()
-                    .meta()
-                    .generate_intf_name(),
+                self.devices.borrow().get(s).unwrap().meta().get_intf_name(),
                 (subnet.0 + 1).into(),
                 subnet.1,
             );
             let s_link = Link::new(*s, *d, s_link_meta);
-            assert_eq!(
-                self.devices.borrow_mut().get(s).unwrap().add_link(s_link),
-                true
-            );
+            assert!(self.devices.borrow_mut().get(s).unwrap().add_link(s_link) == true);
 
             let d_link_meta = LinkMeta::new(
                 *d,
                 *s,
-                self.devices
-                    .borrow()
-                    .get(d)
-                    .unwrap()
-                    .meta()
-                    .generate_intf_name(),
+                self.devices.borrow().get(d).unwrap().meta().get_intf_name(),
                 (subnet.0 + 2).into(),
                 subnet.1,
             );
             let d_link = Link::new(*d, *s, d_link_meta);
-            assert_eq!(
-                self.devices.borrow_mut().get(d).unwrap().add_link(d_link),
-                true
-            );
+            assert!(self.devices.borrow_mut().get(d).unwrap().add_link(d_link) == true);
         }
 
         self.dev_count.set(total_devs as u64);
@@ -230,7 +215,7 @@ impl Emunet {
         server_map.into_iter().map(|(_, cs)| cs).collect()
     }
 
-    pub(crate) fn release_grpc_messages(&self) -> EmunetReq {
+    pub(crate) fn release_init_grpc_request(&self) -> EmunetReq {
         let mut pods = Vec::new();
         let mut topologies = Vec::new();
 
@@ -240,25 +225,19 @@ impl Emunet {
             let mut topology_links = Vec::new();
             for link in dev.links().iter() {
                 let link_id = link.link_id();
-                let peer_pod = self
-                    .devices
-                    .borrow()
-                    .get(&link_id.1)
-                    .unwrap()
-                    .meta()
-                    .pod_name();
-
                 let devices_ref = self.devices.borrow();
+                let peer_pod = devices_ref.get(&link_id.1).unwrap().meta().pod_name();
+
                 let peer_links_ref = devices_ref.get(&link_id.1).unwrap().links();
                 let peer_link = peer_links_ref.get(&(link_id.1, link_id.0)).unwrap().meta();
 
-                let topo_link = link.meta().gen_topology_link(&peer_pod, peer_link);
+                let topo_link = link.meta().gen_topology_link(peer_pod, peer_link);
                 topology_links.push(topo_link);
             }
 
             topologies.push(Topology {
                 metadata: Some(TopologyMeta {
-                    name: dev.meta().pod_name(),
+                    name: dev.meta().pod_name().to_string(),
                 }),
                 spec: Some(TopologyLinks {
                     links: topology_links,
@@ -273,13 +252,13 @@ impl Emunet {
         let mut pod_names = Vec::new();
 
         for (_, dev) in self.devices.borrow().iter() {
-            pod_names.push(dev.meta().pod_name());
+            pod_names.push(dev.meta().pod_name().to_string());
         }
 
         pod_names
     }
 
-    pub(crate) fn update_device_info(&self, device_infos: &Vec<k8s_api::DeviceInfo>) {
+    pub(crate) fn update_device_login_info(&self, device_infos: &Vec<k8s_api::DeviceInfo>) {
         let mut podname_map = HashMap::new();
         let devices_borrow = self.devices.borrow();
         for (_, dev) in devices_borrow.iter() {
@@ -287,10 +266,12 @@ impl Emunet {
         }
 
         for dev_info in device_infos {
-            let dev = podname_map.get(&dev_info.pod_name).unwrap();
-            (*dev)
-                .meta()
-                .udpate_info(&dev_info.login_ip, &dev_info.username, &dev_info.password);
+            let dev = podname_map.get(&dev_info.pod_name[..]).unwrap();
+            (*dev).meta().udpate_login_info(
+                &dev_info.login_ip,
+                &dev_info.username,
+                &dev_info.password,
+            );
         }
     }
 }

@@ -49,7 +49,7 @@ async fn emunet_deletion(req: Request, client: &mut Client) -> Result<Response<(
     let mut user_map = helpers::get_user_map(&mut guarded_tran).await.unwrap();
     assert!(
         user_map
-            .get_mut(&emunet.emunet_user())
+            .get_mut(emunet.emunet_user())
             .unwrap()
             .delete_emunet(&emunet.emunet_name())
             .is_some()

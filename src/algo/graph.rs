@@ -7,13 +7,14 @@ use super::traits::{Max, Min};
 struct InMemoryGraph<Nid, Node, Edge> {
     nodes: HashMap<Nid, Node>,
     edges: BTreeMap<(Nid, Nid), Edge>,
-    _reverse_edges: BTreeMap<(Nid, Nid), ()>,
+    reverse_edges: BTreeMap<(Nid, Nid), ()>,
 }
 
 pub(crate) struct UndirectedGraph<Nid, Node, Edge> {
     inner: InMemoryGraph<Nid, Node, Edge>,
 }
 
+#[allow(dead_code)]
 impl<Nid, Node, Edge> UndirectedGraph<Nid, Node, Edge>
 where
     Nid: Ord + Hash + Copy,
@@ -51,7 +52,7 @@ where
             inner: InMemoryGraph {
                 nodes: node_map,
                 edges: edge_map,
-                _reverse_edges: reverse_edge_map,
+                reverse_edges: reverse_edge_map,
             },
         })
     }
@@ -76,16 +77,17 @@ where
         self.inner.nodes.get(&nid)
     }
 
-    pub(crate) fn _get_edge(&self, eid: (Nid, Nid)) -> Option<&Edge> {
+    pub(crate) fn get_edge(&self, eid: (Nid, Nid)) -> Option<&Edge> {
         self.inner.edges.get(&eid)
     }
 }
 
+#[allow(dead_code)]
 impl<Nid, Node, Edge> UndirectedGraph<Nid, Node, Edge>
 where
     Nid: Min + Max + Ord + Hash + Copy,
 {
-    pub(crate) fn _edges_by_nid<'a>(
+    pub(crate) fn edges_by_nid<'a>(
         &'a self,
         nid: Nid,
     ) -> (
@@ -101,7 +103,7 @@ where
             (*s, *d)
         });
 
-        let incoming = self.inner._reverse_edges.range(RangeInclusive::new(
+        let incoming = self.inner.reverse_edges.range(RangeInclusive::new(
             (nid, Nid::minimum()),
             (nid, Nid::maximum()),
         ));

@@ -6,7 +6,7 @@ use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{DeviceInfo, Emunet, EmunetState, LinkInfo};
-use crate::k8s_api::*;
+use crate::k8s_api::{self, mocknet_client, EmunetReq, QueryReq};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -20,77 +20,58 @@ struct ResponseData {
     status: String,
 }
 
-async fn background_task(
-    emunet: Emunet,
-    graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
-    client: &mut Client,
-) -> Result<(), ClientError> {
-    emunet.build_emunet_graph(&graph);
-    {
-        let mut guarded_tran = client.guarded_tran().await?;
-        let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-        assert!(fut.await.unwrap() == true);
-    }
+async fn init_background_task(
+    api_server_addr: String,
+    emunet_req: EmunetReq,
+    pod_names: Vec<String>,
+) -> Result<Vec<k8s_api::DeviceInfo>, String> {
+    let mut k8s_api_client = mocknet_client::MocknetClient::connect(api_server_addr.clone())
+        .await
+        .map_err(|_| format!("can't connect to k8s api server at {}", api_server_addr))?;
 
-    let api_server_addr = emunet.api_server_addr();
-    let mut k8s_api_client =
-        match mocknet_client::MocknetClient::connect(api_server_addr.clone()).await {
-            Ok(inner) => inner,
-            Err(_) => {
-                emunet.set_state(EmunetState::Error(format!(
-                    "can't connect to k8s api server at {}",
-                    api_server_addr
-                )));
-                {
-                    let mut guarded_tran = client.guarded_tran().await?;
-                    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-                    assert!(fut.await.unwrap() == true);
-                }
-                return Ok(());
-            }
-        };
-
-    let grpc_req = tonic::Request::new(emunet.release_grpc_messages());
-    let response = k8s_api_client.init(grpc_req).await.unwrap().into_inner();
+    let grpc_req = tonic::Request::new(emunet_req);
+    let response = k8s_api_client
+        .init(grpc_req)
+        .await
+        .map_err(|_| {
+            format!(
+                "can't finish init grpc call at api server {}",
+                api_server_addr
+            )
+        })?
+        .into_inner();
     if response.status != true {
-        emunet.set_state(EmunetState::Error(format!(
-            "k8s cluster can't initiate this emunet",
-        )));
-        {
-            let mut guarded_tran = client.guarded_tran().await?;
-            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-            assert!(fut.await.unwrap() == true);
-        }
-        return Ok(());
+        return Err("k8s cluster can't initialize this emunet".to_string());
     }
 
-    for _ in 0..300 {
+    let total_query_attemps = 300;
+    for i in 0..total_query_attemps {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-        let pod_names = emunet.release_pod_names();
         let query = tonic::Request::new(QueryReq {
             is_init: true,
-            pod_names,
+            pod_names: pod_names.clone(),
         });
-        let response = k8s_api_client.query(query).await.unwrap().into_inner();
+        let response = k8s_api_client
+            .query(query)
+            .await
+            .map_err(|_| {
+                format!(
+                    "can't finish the {}-th query call at api server {}",
+                    i, api_server_addr
+                )
+            })?
+            .into_inner();
 
         if response.status {
-            emunet.update_device_info(&response.device_infos);
-            emunet.set_state(EmunetState::Normal);
-            let mut guarded_tran = client.guarded_tran().await?;
-            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-            assert!(fut.await.unwrap() == true);
-
-            return Ok(());
+            return Ok(response.device_infos);
         }
     }
 
-    emunet.set_state(EmunetState::Error("initialization timeout".to_string()));
-    let mut guarded_tran = client.guarded_tran().await?;
-    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    assert!(fut.await.unwrap() == true);
-
-    Ok(())
+    Err(format!(
+        "k8s cluster can't finish initialize this emunet querying {} times",
+        total_query_attemps
+    ))
 }
 
 async fn background_task_guard(
@@ -98,16 +79,33 @@ async fn background_task_guard(
     graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
     mut client: Client,
 ) {
-    let res = background_task(emunet, graph, &mut client).await;
+    emunet.build_emunet_graph(&graph);
+    {
+        let mut guarded_tran = client.guarded_tran().await.unwrap();
+        let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+        assert!(fut.await.unwrap() == true);
+    }
+
+    let api_server_addr = emunet.api_server_addr().to_string();
+    let emunet_req = emunet.release_init_grpc_request();
+    let pod_names = emunet.release_pod_names();
+    let res = init_background_task(api_server_addr, emunet_req, pod_names).await;
     match res {
-        Ok(_) => {}
-        Err(_) => {
-            client.notify_failure();
+        Ok(device_infos) => {
+            emunet.update_device_login_info(&device_infos);
+            emunet.set_state(EmunetState::Normal);
+        }
+        Err(err_str) => {
+            emunet.set_state(EmunetState::Error(err_str));
         }
     }
+
+    let mut guarded_tran = client.guarded_tran().await.unwrap();
+    let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+    assert!(fut.await.unwrap() == true);
 }
 
-async fn emunet_init(
+async fn init_check(
     req: Request<String>,
     client: &mut Client,
 ) -> Result<
@@ -137,12 +135,6 @@ async fn emunet_init(
             )))
         }
     };
-    // this check is not necessary? consider delete it
-    if emunet.dev_count() > 0 {
-        return Ok(Err(
-            "FATAL: emunet has active devices, this should never happen".to_string(),
-        ));
-    }
 
     let filter_dev_id: Option<Vec<DeviceInfo<String>>> = req
         .devs
@@ -173,10 +165,13 @@ async fn emunet_init(
     if graph.nodes_num() > emunet.max_capacity() as usize {
         return Ok(Err("input graph exceeds capacity limitation".to_string()));
     }
+    if graph.edges_num() * 2 > emunet.remainig_subnets() {
+        return Ok(Err("input graph has too many edges".to_string()));
+    }
 
     emunet.set_state(EmunetState::Working);
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-    assert!(fut.await.unwrap() == true);
+    assert!(fut.await? == true);
 
     Ok(Ok((emunet, graph)))
 }
@@ -185,7 +180,7 @@ async fn guard(
     req: Request<String>,
     mut client: Client,
 ) -> Result<warp::reply::Json, warp::Rejection> {
-    let res = emunet_init(req, &mut client).await;
+    let res = init_check(req, &mut client).await;
     match res {
         Ok(res) => match res {
             Ok((emunet, graph)) => {

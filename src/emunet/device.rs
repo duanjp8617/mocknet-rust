@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 // LinkInfo represents an undirected edge connecting one node to another
 // LinkInfo is deserialized from the incoming HTTP message
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub(crate) struct LinkInfo<T> {
     edge_id: (u64, u64),
     description: T,
@@ -71,6 +72,7 @@ impl<L> Hash for Link<L> {
 
 // DeviceInfo is deserialized from the incoming HTTP message
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub(crate) struct DeviceInfo<T> {
     id: u64,
     description: T,
