@@ -2,6 +2,12 @@ use std::net::Ipv4Addr;
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) struct AllocResult {
+    pub(crate) subnet_addr: u32,
+    pub(crate) subnet_len: u32,
+    pub(crate) subnet_idx: u32,
+}
+
 fn least_sigbit_idx(n: u32) -> u32 {
     let mut idx = 0;
     let mut mask = 1;
@@ -43,16 +49,21 @@ impl SubnetAllocator {
         }
     }
 
-    pub(crate) fn try_alloc(&mut self) -> Option<(u32, u32)> {
+    pub(crate) fn try_alloc(&mut self) -> Option<AllocResult> {
         if self.curr_idx == self.total_subnets {
             None
         } else {
+            let subnet_idx = self.curr_idx;
             let base_u32: u32 = Ipv4Addr::from(self.base).into();
             let subnet = base_u32 + (self.curr_idx << (32 - self.subnet_len));
 
             self.curr_idx += 1;
 
-            Some((subnet, self.subnet_len))
+            Some(AllocResult {
+                subnet_addr: subnet,
+                subnet_len: self.subnet_len,
+                subnet_idx,
+            })
         }
     }
 
@@ -113,8 +124,8 @@ mod tests {
         let mut a = SubnetAllocator::new([10, 1, 0, 0], 24);
 
         while let Some(res) = a.try_alloc() {
-            let ipv4 = Ipv4Addr::from(res.0);
-            println!("{}/{}", ipv4, res.1);
+            let ipv4 = Ipv4Addr::from(res.subnet_addr);
+            println!("{}/{}", ipv4, res.subnet_len);
         }
     }
 }

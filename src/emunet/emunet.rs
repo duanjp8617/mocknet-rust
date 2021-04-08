@@ -172,8 +172,8 @@ impl Emunet {
                 *s,
                 *d,
                 self.devices.borrow().get(s).unwrap().meta().get_intf_name(),
-                (subnet.0 + 1).into(),
-                subnet.1,
+                (subnet.subnet_addr + 1).into(),
+                subnet.subnet_len,
             );
             let s_link = Link::new(*s, *d, s_link_meta);
             assert!(self.devices.borrow_mut().get(s).unwrap().add_link(s_link) == true);
@@ -182,8 +182,8 @@ impl Emunet {
                 *d,
                 *s,
                 self.devices.borrow().get(d).unwrap().meta().get_intf_name(),
-                (subnet.0 + 2).into(),
-                subnet.1,
+                (subnet.subnet_addr + 2).into(),
+                subnet.subnet_len,
             );
             let d_link = Link::new(*d, *s, d_link_meta);
             assert!(self.devices.borrow_mut().get(d).unwrap().add_link(d_link) == true);
