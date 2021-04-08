@@ -60,7 +60,7 @@ impl SubnetAllocator {
         (self.total_subnets - self.curr_idx) as usize
     }
 
-    pub(crate) fn _reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.curr_idx = 0
     }
 }

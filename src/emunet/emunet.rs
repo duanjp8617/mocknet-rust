@@ -185,36 +185,6 @@ impl Emunet {
         self.dev_count.set(total_devs as u64);
     }
 
-    pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
-        let mut nodes: Vec<(u64, String)> = Vec::new();
-        let mut edges: Vec<((u64, u64), String)> = Vec::new();
-
-        for (dev_id, dev) in self.devices.borrow().iter() {
-            nodes.push((*dev_id, serde_json::to_string(dev.meta()).unwrap()));
-            for link in dev.links().iter() {
-                edges.push((link.link_id(), serde_json::to_string(link.meta()).unwrap()))
-            }
-        }
-
-        UndirectedGraph::new(nodes, edges).unwrap()
-    }
-
-    pub(crate) fn release_emunet_resource(&self) -> Vec<ContainerServer> {
-        let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
-        for (dev_id, dev) in device_map.into_iter() {
-            self.servers
-                .borrow_mut()
-                .get_mut(&dev.server_name())
-                .map(|cs| {
-                    assert!(cs.release(&dev_id) == true);
-                })
-                .unwrap();
-        }
-        self.dev_count.set(0);
-        let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
-        server_map.into_iter().map(|(_, cs)| cs).collect()
-    }
-
     pub(crate) fn release_init_grpc_request(&self) -> EmunetReq {
         let mut pods = Vec::new();
         let mut topologies = Vec::new();
@@ -273,5 +243,36 @@ impl Emunet {
                 &dev_info.password,
             );
         }
+    }
+
+    pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
+        let mut nodes: Vec<(u64, String)> = Vec::new();
+        let mut edges: Vec<((u64, u64), String)> = Vec::new();
+
+        for (dev_id, dev) in self.devices.borrow().iter() {
+            nodes.push((*dev_id, serde_json::to_string(dev.meta()).unwrap()));
+            for link in dev.links().iter() {
+                edges.push((link.link_id(), serde_json::to_string(link.meta()).unwrap()))
+            }
+        }
+
+        UndirectedGraph::new(nodes, edges).unwrap()
+    }
+
+    pub(crate) fn clear_emunet_resource(&self) -> Vec<ContainerServer> {
+        let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
+        for (dev_id, dev) in device_map.into_iter() {
+            self.servers
+                .borrow_mut()
+                .get_mut(&dev.server_name())
+                .map(|cs| {
+                    assert!(cs.release(&dev_id) == true);
+                })
+                .unwrap();
+        }
+        self.dev_count.set(0);
+        self.subnet_allocator.borrow_mut().reset();
+        let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
+        server_map.into_iter().map(|(_, cs)| cs).collect()
     }
 }

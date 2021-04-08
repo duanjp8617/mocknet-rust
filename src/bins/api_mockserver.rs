@@ -47,6 +47,8 @@ impl Mocknet for MockServer {
 
     async fn delete(&self, request: Request<EmunetReq>) -> Result<Response<EmunetResp>, Status> {
         let inner = request.into_inner();
+        println!("---------Got a new delete request---------");
+        println!("{:?}", &inner);
 
         let mut guard = self.pods.lock().unwrap();
         let reply = if guard.len() == 0 {

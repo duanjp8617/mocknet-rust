@@ -10,6 +10,7 @@ mod message_queue;
 
 pub(crate) mod helpers;
 pub(crate) use client::Client;
+pub(crate) use client::GuardedTransaction;
 
 pub mod errors;
 pub use client::{init, init_ok, new_connector, Connector};
