@@ -5,42 +5,6 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet;
-
-#[derive(Serialize)]
-struct DeviceInfo {
-    id: u64,
-    meta: String,
-}
-
-#[derive(Serialize)]
-struct ServerInfo {
-    dev_infos: Vec<DeviceInfo>,
-    server_info: emunet::ServerInfo,
-}
-
-#[derive(Serialize)]
-struct LinkInfo {
-    link_id: (u64, u64),
-    meta: String,
-}
-
-#[derive(Serialize)]
-struct EmunetInfo {
-    emunet_name: String,
-    emunet_uuid: Uuid,
-    max_capacity: u64,
-    user_name: String,
-    state: String,
-    dev_count: u64,
-}
-
-#[derive(Serialize)]
-struct ResponseData {
-    emunet_info: EmunetInfo,
-    server_infos: Vec<ServerInfo>,
-    link_infos: Vec<LinkInfo>,
-}
 
 #[derive(Deserialize)]
 struct Request {
