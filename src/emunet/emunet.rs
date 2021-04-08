@@ -13,6 +13,9 @@ use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
 
 pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
 
+pub(crate) static EDGES_POWER: u32 = 18;
+pub(crate) static EMUNET_NUM_POWER: u32 = 8;
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetState {
     Uninit,
@@ -68,6 +71,9 @@ impl Emunet {
                     (hm, max_capacity)
                 });
 
+        let allocator = SubnetAllocator::new([10, 0, 0, 0], 24);
+        assert!(allocator.remaining_subnets() < (2 as usize).pow(EDGES_POWER - 1));
+
         Self {
             emunet_id,
             emunet_name,
@@ -80,7 +86,7 @@ impl Emunet {
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
             devices: RefCell::new(HashMap::new()),
-            subnet_allocator: RefCell::new(SubnetAllocator::new([10, 0, 0, 0], 24)),
+            subnet_allocator: RefCell::new(allocator),
         }
     }
 }
@@ -167,7 +173,7 @@ impl Emunet {
 
         for ((s, d), _) in graph.edges() {
             let subnet = self.subnet_allocator.borrow_mut().try_alloc().unwrap();
-            assert!(subnet.subnet_idx < (2 as u32).pow(23));
+            assert!(subnet.subnet_idx < (2 as u32).pow(EDGES_POWER - 1));
 
             let s_link_meta = LinkMeta::new(
                 (*s, *d),

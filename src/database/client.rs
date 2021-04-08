@@ -4,7 +4,7 @@ use super::errors::ConnectorError;
 use super::helpers;
 use super::message_queue;
 use super::message_queue::{Queue, Sender};
-use crate::emunet::{ClusterInfo, IdAllocator, User};
+use crate::emunet::{ClusterInfo, IdAllocator, User, EMUNET_NUM_POWER};
 
 use indradb_proto as proto;
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
@@ -182,7 +182,10 @@ pub async fn init(
         true => {
             helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
             helpers::set_cluster_info(&mut tran, cluster_info).await?;
-            helpers::set_emunet_id_allocator(&mut tran, IdAllocator::new()).await?;
+
+            let allocator = IdAllocator::new();
+            assert!(allocator.remaining() <= (2 as usize).pow(EMUNET_NUM_POWER));
+            helpers::set_emunet_id_allocator(&mut tran, allocator).await?;
 
             Ok(Ok(()))
         }

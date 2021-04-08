@@ -96,7 +96,7 @@ impl LinkMeta {
         assert!(self.link_id.1 == peer_link.link_id.0);
 
         TopologyLink {
-            uid: (((emunet_id as u32) << 24) | self.link_uid) as u64,
+            uid: (((emunet_id as u32) << super::EDGES_POWER) | self.link_uid) as u64,
             peer_pod: peer_pod_name.to_string(),
             local_intf: self.intf.clone(),
             peer_intf: peer_link.intf.clone(),
