@@ -118,7 +118,7 @@ impl Emunet {
         &self.api_server_addr
     }
 
-    pub(crate) fn remainig_subnets(&self) -> usize {
+    pub(crate) fn _remainig_subnets(&self) -> usize {
         self.subnet_allocator.borrow().remaining_subnets()
     }
 }
@@ -167,10 +167,11 @@ impl Emunet {
 
         for ((s, d), _) in graph.edges() {
             let subnet = self.subnet_allocator.borrow_mut().try_alloc().unwrap();
+            assert!(subnet.subnet_idx < (2 as u32).pow(23));
 
             let s_link_meta = LinkMeta::new(
-                *s,
-                *d,
+                (*s, *d),
+                subnet.subnet_idx << 1,
                 self.devices.borrow().get(s).unwrap().meta().get_intf_name(),
                 (subnet.subnet_addr + 1).into(),
                 subnet.subnet_len,
@@ -179,8 +180,8 @@ impl Emunet {
             assert!(self.devices.borrow_mut().get(s).unwrap().add_link(s_link) == true);
 
             let d_link_meta = LinkMeta::new(
-                *d,
-                *s,
+                (*d, *s),
+                (subnet.subnet_idx << 1) + 1,
                 self.devices.borrow().get(d).unwrap().meta().get_intf_name(),
                 (subnet.subnet_addr + 2).into(),
                 subnet.subnet_len,
@@ -208,7 +209,9 @@ impl Emunet {
                 let peer_links_ref = devices_ref.get(&link_id.1).unwrap().links();
                 let peer_link = peer_links_ref.get(&(link_id.1, link_id.0)).unwrap().meta();
 
-                let topo_link = link.meta().gen_topology_link(peer_pod, peer_link);
+                let topo_link = link
+                    .meta()
+                    .gen_topology_link(self.emunet_id, peer_pod, peer_link);
                 topology_links.push(topo_link);
             }
 

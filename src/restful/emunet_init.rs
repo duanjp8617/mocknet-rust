@@ -136,27 +136,8 @@ async fn init_check(
         }
     };
 
-    let filter_dev_id: Option<Vec<DeviceInfo<String>>> = req
-        .devs
-        .into_iter()
-        .map(|dinfo| {
-            if dinfo.id() < (2 as u64).pow(32) {
-                Some(dinfo)
-            } else {
-                None
-            }
-        })
-        .collect();
-    if filter_dev_id.is_none() {
-        return Ok(Err("invalid device id".to_string()));
-    }
-
     let graph = match UndirectedGraph::new(
-        filter_dev_id
-            .unwrap()
-            .into_iter()
-            .map(|v| (v.id(), v))
-            .collect(),
+        req.devs.into_iter().map(|v| (v.id(), v)).collect(),
         req.links.into_iter().map(|e| (e.link_id(), e)).collect(),
     ) {
         None => return Ok(Err("invalid input graph".to_string())),
@@ -165,7 +146,7 @@ async fn init_check(
     if graph.nodes_num() > emunet.max_capacity() as usize {
         return Ok(Err("input graph exceeds capacity limitation".to_string()));
     }
-    if graph.edges_num() * 2 > emunet.remainig_subnets() {
+    if graph.edges_num() > (2 as usize).pow(23) {
         return Ok(Err("input graph has too many edges".to_string()));
     }
 

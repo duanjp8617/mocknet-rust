@@ -63,20 +63,22 @@ impl DeviceMeta {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct LinkMeta {
     link_id: (u64, u64),
+    link_uid: u32,
     intf: String,
     ip: String,
 }
 
 impl LinkMeta {
     pub(crate) fn new(
-        source: u64,
-        destination: u64,
+        link_id: (u64, u64),
+        link_uid: u32,
         intf: String,
         ip: Ipv4Addr,
         subnet_len: u32,
     ) -> Self {
         LinkMeta {
-            link_id: (source, destination),
+            link_id,
+            link_uid,
             intf,
             ip: format!("{}/{}", ip, subnet_len),
         }
@@ -84,6 +86,7 @@ impl LinkMeta {
 
     pub(crate) fn gen_topology_link(
         &self,
+        emunet_id: u8,
         peer_pod_name: &str,
         peer_link: &LinkMeta,
     ) -> TopologyLink {
@@ -93,7 +96,7 @@ impl LinkMeta {
         assert!(self.link_id.1 == peer_link.link_id.0);
 
         TopologyLink {
-            uid: (self.link_id.0 << 32) | self.link_id.1,
+            uid: (((emunet_id as u32) << 24) | self.link_uid) as u64,
             peer_pod: peer_pod_name.to_string(),
             local_intf: self.intf.clone(),
             peer_intf: peer_link.intf.clone(),
