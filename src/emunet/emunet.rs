@@ -271,12 +271,12 @@ impl Emunet {
         }
     }
 
-    pub(crate) fn release_output_emunet(&self) -> (Vec<(u64, OutputDevice)>, Vec<OutputLink>) {
+    pub(crate) fn release_output_emunet(&self) -> (Vec<OutputDevice>, Vec<OutputLink>) {
         let mut nodes = Vec::new();
-        for (dev_id, dev) in self.devices.borrow().iter() {
-            nodes.push((*dev_id, dev.get_output_device()))
+        for (_, dev) in self.devices.borrow().iter() {
+            nodes.push(dev.get_output_device())
         }
-        nodes.sort_by(|(id0, _), (id1, _)| id0.cmp(id1));
+        nodes.sort_by(|od0, od1| od0.id.cmp(&od1.id));
 
         let mut edges = Vec::new();
         for (s, d) in self.links.borrow().iter() {

@@ -21,7 +21,7 @@ struct EmunetInfo {
 #[derive(Serialize)]
 struct ResponseData {
     emunet_info: EmunetInfo,
-    devices: Vec<(u64, OutputDevice)>,
+    devices: Vec<OutputDevice>,
     links: Vec<OutputLink>,
 }
 
