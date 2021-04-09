@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use super::input_graph_format::{InputDevice, InputLink};
+use super::graph_io_format::{InputDevice, InputLink};
 use crate::algo::*;
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -5,25 +5,7 @@ use warp::Filter;
 
 use super::Response;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet;
-
-#[derive(Serialize)]
-struct DeviceInfo {
-    id: u64,
-    meta: String,
-}
-
-#[derive(Serialize)]
-struct ServerInfo {
-    dev_infos: Vec<DeviceInfo>,
-    server_info: emunet::ServerInfo,
-}
-
-#[derive(Serialize)]
-struct LinkInfo {
-    link_id: (u64, u64),
-    meta: String,
-}
+use crate::emunet::{EmunetAccessInfo, OutputDevice, OutputLink};
 
 #[derive(Serialize)]
 struct EmunetInfo {
@@ -31,6 +13,7 @@ struct EmunetInfo {
     emunet_uuid: Uuid,
     max_capacity: u64,
     user_name: String,
+    access_info: EmunetAccessInfo,
     state: String,
     dev_count: u64,
 }
@@ -38,8 +21,8 @@ struct EmunetInfo {
 #[derive(Serialize)]
 struct ResponseData {
     emunet_info: EmunetInfo,
-    server_infos: Vec<ServerInfo>,
-    link_infos: Vec<LinkInfo>,
+    devices: Vec<(u64, OutputDevice)>,
+    links: Vec<OutputLink>,
 }
 
 #[derive(Deserialize)]
@@ -62,44 +45,27 @@ async fn get_emunet_info(
         }
         Some(emunet) => emunet,
     };
-    let graph = emunet.release_emunet_graph();
+    let (devices, links) = emunet.release_output_emunet();
 
-    let mut link_infos = Vec::new();
-    for ((s, d), edge) in graph.edges() {
-        link_infos.push(LinkInfo {
-            link_id: (*s, *d),
-            meta: edge.clone(),
-        });
-    }
-
-    let mut server_infos = Vec::new();
-    for (_, cs) in emunet.servers().iter() {
-        let mut dev_infos = Vec::new();
-        for dev_id in cs.devs().iter() {
-            dev_infos.push(DeviceInfo {
-                id: *dev_id,
-                meta: graph.get_node(*dev_id).unwrap().clone(),
-            });
-        }
-        server_infos.push(ServerInfo {
-            dev_infos,
-            server_info: cs.server_info().clone(),
-        });
-    }
-
+    let access_info = emunet.access_info();
     let emunet_info = EmunetInfo {
         emunet_name: emunet.emunet_name().to_string(),
         emunet_uuid: emunet.emunet_uuid().clone(),
         max_capacity: emunet.max_capacity(),
         user_name: emunet.emunet_user().to_string(),
+        access_info: EmunetAccessInfo {
+            login_server_addr: access_info.login_server_addr.clone(),
+            login_server_user: access_info.login_server_user.clone(),
+            login_server_pwd: access_info.login_server_pwd.clone(),
+        },
         state: emunet.state().into(),
         dev_count: emunet.dev_count(),
     };
 
     Ok(Response::success(ResponseData {
         emunet_info,
-        server_infos,
-        link_infos,
+        devices,
+        links,
     }))
 }
 

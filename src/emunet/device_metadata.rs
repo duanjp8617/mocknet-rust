@@ -7,12 +7,12 @@ use crate::k8s_api::{Pod, PodMeta, PodSpec, TopologyLink};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct DeviceMeta {
-    pod_name: String,
-    k8s_node: String,
-    intf_idx: Cell<u64>,
-    login_ip: RefCell<Option<String>>,
-    username: RefCell<Option<String>>,
-    password: RefCell<Option<String>>,
+    pub(crate) pod_name: String,
+    pub(crate) k8s_node: String,
+    pub(crate) intf_idx: Cell<u64>,
+    pub(crate) login_ip: RefCell<Option<String>>,
+    pub(crate) username: RefCell<Option<String>>,
+    pub(crate) password: RefCell<Option<String>>,
 }
 
 impl DeviceMeta {
@@ -62,10 +62,10 @@ impl DeviceMeta {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct LinkMeta {
-    link_id: (u64, u64),
-    link_uid: u32,
-    intf: String,
-    ip: String,
+    pub(crate) link_id: (u64, u64),
+    pub(crate) link_uid: u32,
+    pub(crate) intf: String,
+    pub(crate) ip: String,
 }
 
 impl LinkMeta {

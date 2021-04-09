@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
 use super::device_metadata::*;
-use super::input_graph_format::{InputDevice, InputLink};
+use super::graph_io_format::{InputDevice, InputLink, OutputDevice, OutputLink};
 use super::utils::SubnetAllocator;
 use crate::algo::*;
 use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
@@ -92,6 +92,7 @@ impl Emunet {
     }
 }
 
+#[allow(dead_code)]
 impl Emunet {
     pub(crate) fn emunet_id(&self) -> u8 {
         self.emunet_id
@@ -125,6 +126,10 @@ impl Emunet {
         &self.api_server_addr
     }
 
+    pub(crate) fn access_info(&self) -> &EmunetAccessInfo {
+        &self.access_info
+    }
+
     pub(crate) fn _remainig_subnets(&self) -> usize {
         self.subnet_allocator.borrow().remaining_subnets()
     }
@@ -142,6 +147,20 @@ impl Emunet {
 }
 
 impl Emunet {
+    fn release_graph(&self) -> UndirectedGraph<u64, (), ()> {
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+        for (dev_id, dev) in self.devices.borrow().iter() {
+            nodes.push((*dev_id, ()));
+            for link in dev.links().iter() {
+                edges.push((link.link_id(), ()));
+            }
+        }
+
+        let graph = UndirectedGraph::new(nodes, edges);
+        graph.unwrap()
+    }
+
     pub(crate) fn build_emunet_graph(
         &self,
         graph: &UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
@@ -262,20 +281,6 @@ impl Emunet {
         }
     }
 
-    pub(crate) fn release_emunet_graph(&self) -> UndirectedGraph<u64, String, String> {
-        let mut nodes: Vec<(u64, String)> = Vec::new();
-        let mut edges: Vec<((u64, u64), String)> = Vec::new();
-
-        for (dev_id, dev) in self.devices.borrow().iter() {
-            nodes.push((*dev_id, serde_json::to_string(dev.meta()).unwrap()));
-            for link in dev.links().iter() {
-                edges.push((link.link_id(), serde_json::to_string(link.meta()).unwrap()))
-            }
-        }
-
-        UndirectedGraph::new(nodes, edges).unwrap()
-    }
-
     pub(crate) fn clear_emunet_resource(&self) -> Vec<ContainerServer> {
         let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
         for (dev_id, dev) in device_map.into_iter() {
@@ -291,5 +296,37 @@ impl Emunet {
         self.subnet_allocator.borrow_mut().reset();
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()
+    }
+
+    pub(crate) fn release_output_emunet(&self) -> (Vec<(u64, OutputDevice)>, Vec<OutputLink>) {
+        let mut nodes = Vec::new();
+        let mut edges = Vec::new();
+
+        for (dev_id, dev) in self.devices.borrow().iter() {
+            nodes.push((*dev_id, dev.get_output_device()))
+        }
+
+        nodes.sort_by(|(id0, _), (id1, _)| id0.cmp(id1));
+        let graph = self.release_graph();
+        for ((s, d), _) in graph.edges() {
+            let devices_ref = self.devices.borrow();
+
+            let sdev = devices_ref.get(s).unwrap();
+            let slink = sdev.get_inner_link(*d).unwrap();
+
+            let ddev = devices_ref.get(d).unwrap();
+            let dlink = ddev.get_inner_link(*s).unwrap();
+
+            let mut details = HashMap::new();
+            details.insert(*s, slink);
+            details.insert(*d, dlink);
+
+            edges.push(OutputLink {
+                link_id: (*s, *d),
+                details,
+            })
+        }
+
+        (nodes, edges)
     }
 }
