@@ -15,10 +15,6 @@ impl<T> InputLink<T> {
     pub(crate) fn link_id(&self) -> (u64, u64) {
         self.edge_id
     }
-
-    pub(crate) fn _meta(&self) -> &T {
-        &self.description
-    }
 }
 
 // DeviceInfo is deserialized from the incoming HTTP message
@@ -32,10 +28,6 @@ pub(crate) struct InputDevice<T> {
 impl<T> InputDevice<T> {
     pub(crate) fn id(&self) -> u64 {
         return self.id;
-    }
-
-    pub(crate) fn _meta(&self) -> &T {
-        &self.description
     }
 }
 

@@ -20,7 +20,10 @@ fn delete_emunet_from_db<'a>(
 ) -> impl Future<Output = ()> + Send + 'a {
     let servers_opt = match emunet.state() {
         EmunetState::Error(_) => None,
-        _ => Some(emunet.clear_emunet_resource()),
+        _ => {
+            emunet.clear_emunet_resource();
+            Some(emunet.release_emunet_servers())
+        }
     };
     let emunet_uuid = emunet.emunet_uuid();
     let emunet_user = emunet.emunet_user().to_string();
@@ -54,9 +57,13 @@ fn delete_emunet_from_db<'a>(
         );
         helpers::set_user_map(guarded_tran, user_map).await.unwrap();
 
-        let mut id_allocator = helpers::get_emunet_id_allocator(guarded_tran).await.unwrap();
+        let mut id_allocator = helpers::get_emunet_id_allocator(guarded_tran)
+            .await
+            .unwrap();
         assert!(id_allocator.realloc(emunet_id) == true);
-        helpers::set_emunet_id_allocator(guarded_tran, id_allocator).await.unwrap();
+        helpers::set_emunet_id_allocator(guarded_tran, id_allocator)
+            .await
+            .unwrap();
     }
 }
 
@@ -152,7 +159,7 @@ async fn emunet_delete(req: Request, client: &mut Client) -> Result<Response<()>
             let res = delete_background_task(api_server_addr, emunet_req, pod_names).await;
             let mut guarded_tran = client.guarded_tran().await.unwrap();
             match res {
-                Ok(_) => {                    
+                Ok(_) => {
                     let fut = delete_emunet_from_db(&emunet, &mut guarded_tran);
                     fut.await;
                     return Ok(Response::success(()));

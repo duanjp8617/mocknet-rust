@@ -281,32 +281,14 @@ impl Emunet {
         }
     }
 
-    pub(crate) fn clear_emunet_resource(&self) -> Vec<ContainerServer> {
-        let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
-        for (dev_id, dev) in device_map.into_iter() {
-            self.servers
-                .borrow_mut()
-                .get_mut(&dev.server_name())
-                .map(|cs| {
-                    assert!(cs.release(&dev_id) == true);
-                })
-                .unwrap();
-        }
-        self.dev_count.set(0);
-        self.subnet_allocator.borrow_mut().reset();
-        let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
-        server_map.into_iter().map(|(_, cs)| cs).collect()
-    }
-
     pub(crate) fn release_output_emunet(&self) -> (Vec<(u64, OutputDevice)>, Vec<OutputLink>) {
         let mut nodes = Vec::new();
-        let mut edges = Vec::new();
-
         for (dev_id, dev) in self.devices.borrow().iter() {
             nodes.push((*dev_id, dev.get_output_device()))
         }
-
         nodes.sort_by(|(id0, _), (id1, _)| id0.cmp(id1));
+
+        let mut edges = Vec::new();
         let graph = self.release_graph();
         for ((s, d), _) in graph.edges() {
             let devices_ref = self.devices.borrow();
@@ -328,5 +310,28 @@ impl Emunet {
         }
 
         (nodes, edges)
+    }
+
+    pub(crate) fn clear_emunet_resource(&self) {
+        let device_map = std::mem::replace(&mut *self.devices.borrow_mut(), HashMap::new());
+        for (dev_id, dev) in device_map.into_iter() {
+            self.servers
+                .borrow_mut()
+                .get_mut(&dev.server_name())
+                .map(|cs| {
+                    assert!(cs.release(&dev_id) == true);
+                })
+                .unwrap();
+        }
+        self.dev_count.set(0);
+        self.subnet_allocator.borrow_mut().reset();
+    }
+
+    pub(crate) fn release_emunet_servers(&self) -> Vec<ContainerServer> {
+        assert!(self.dev_count.get() == 0);
+        assert!(self.devices.borrow().len() == 0);
+
+        let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
+        server_map.into_iter().map(|(_, cs)| cs).collect()
     }
 }
