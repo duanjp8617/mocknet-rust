@@ -33,9 +33,9 @@ impl<T> InputDevice<T> {
 
 #[derive(Serialize, Clone)]
 pub(crate) struct InnerLink {
-    pub(super) dest_dev_id: u64,
-    pub(super) intf_name: String,
-    pub(super) ip: String,
+    pub(crate) dest_dev_id: u64,
+    pub(crate) intf_name: String,
+    pub(crate) ip: String,
 }
 
 #[derive(Serialize)]

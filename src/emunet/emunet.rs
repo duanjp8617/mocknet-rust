@@ -149,20 +149,6 @@ impl Emunet {
 }
 
 impl Emunet {
-    fn release_graph(&self) -> UndirectedGraph<u64, (), ()> {
-        let mut nodes = Vec::new();
-        let mut edges = Vec::new();
-        for (dev_id, dev) in self.devices.borrow().iter() {
-            nodes.push((*dev_id, ()));
-            for link in dev.links().iter() {
-                edges.push((link.link_id(), ()));
-            }
-        }
-
-        let graph = UndirectedGraph::new(nodes, edges);
-        graph.unwrap()
-    }
-
     pub(crate) fn build_emunet_graph(
         &self,
         graph: &UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
@@ -293,8 +279,7 @@ impl Emunet {
         nodes.sort_by(|(id0, _), (id1, _)| id0.cmp(id1));
 
         let mut edges = Vec::new();
-        let graph = self.release_graph();
-        for ((s, d), _) in graph.edges() {
+        for (s, d) in self.links.borrow().iter() {
             let devices_ref = self.devices.borrow();
 
             let sdev = devices_ref.get(s).unwrap();
