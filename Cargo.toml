@@ -5,9 +5,9 @@ edition = "2018"
 authors = ["duanjp8617 <duanjp8617@gmail.com>"]
 description = "MockNet backend implementation"
 
-#[[bin]]
-#name = "server_check"
-#path = "src/bins/server_check.rs"
+[[bin]]
+name = "server_check"
+path = "src/bins/server_check.rs"
 
 [[bin]]
 name = "mocknet_server"
