@@ -5,14 +5,14 @@ use warp::Filter;
 use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::{DeviceInfo, Emunet, EmunetState, LinkInfo, EDGES_POWER};
+use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, EDGES_POWER};
 use crate::k8s_api::{self, mocknet_client, EmunetReq, QueryReq};
 
 #[derive(Deserialize)]
 struct Request<String> {
-    emunet_uuid: uuid::Uuid,       // uuid of the emunet object on the database
-    devs: Vec<DeviceInfo<String>>, // a list of devices to be created
-    links: Vec<LinkInfo<String>>,  // a list of links to be created
+    emunet_uuid: uuid::Uuid,        // uuid of the emunet object on the database
+    devs: Vec<InputDevice<String>>, // a list of devices to be created
+    links: Vec<InputLink<String>>,  // a list of links to be created
 }
 
 #[derive(Serialize)]
@@ -76,7 +76,7 @@ async fn init_background_task(
 
 async fn background_task_guard(
     emunet: Emunet,
-    graph: UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+    graph: UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
     mut client: Client,
 ) {
     emunet.build_emunet_graph(&graph);
@@ -112,7 +112,7 @@ async fn init_check(
     Result<
         (
             Emunet,
-            UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+            UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
         ),
         String,
     >,

@@ -4,7 +4,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use super::device::{DeviceInfo, LinkInfo};
+use super::input_graph_format::{InputDevice, InputLink};
 use crate::algo::*;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -185,7 +185,7 @@ impl Min for u64 {
 }
 
 impl<'a, T, I> Partition<'a, ContainerServer, I>
-    for UndirectedGraph<u64, DeviceInfo<T>, LinkInfo<T>>
+    for UndirectedGraph<u64, InputDevice<T>, InputLink<T>>
 where
     I: Iterator<Item = &'a mut ContainerServer>,
 {

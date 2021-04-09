@@ -7,6 +7,7 @@ use uuid::Uuid;
 use super::cluster::{ContainerServer, EmunetAccessInfo};
 use super::device::*;
 use super::device_metadata::*;
+use super::input_graph_format::{InputDevice, InputLink};
 use super::utils::SubnetAllocator;
 use crate::algo::*;
 use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
@@ -143,7 +144,7 @@ impl Emunet {
 impl Emunet {
     pub(crate) fn build_emunet_graph(
         &self,
-        graph: &UndirectedGraph<u64, DeviceInfo<String>, LinkInfo<String>>,
+        graph: &UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
     ) {
         assert_eq!(self.dev_count.get(), 0);
         assert_eq!(self.devices.borrow().len(), 0);

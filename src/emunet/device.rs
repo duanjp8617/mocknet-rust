@@ -6,25 +6,6 @@ use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
-// LinkInfo represents an undirected edge connecting one node to another
-// LinkInfo is deserialized from the incoming HTTP message
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub(crate) struct LinkInfo<T> {
-    edge_id: (u64, u64),
-    description: T,
-}
-
-impl<T> LinkInfo<T> {
-    pub(crate) fn link_id(&self) -> (u64, u64) {
-        self.edge_id
-    }
-
-    pub(crate) fn _meta(&self) -> &T {
-        &self.description
-    }
-}
-
 // Link represents an directed edge from link_id.0 to link_id.1
 #[derive(Deserialize, Serialize)]
 pub(crate) struct Link<L> {
@@ -67,24 +48,6 @@ impl<L> Eq for Link<L> {}
 impl<L> Hash for Link<L> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.link_id.hash(state);
-    }
-}
-
-// DeviceInfo is deserialized from the incoming HTTP message
-#[derive(Deserialize)]
-#[allow(dead_code)]
-pub(crate) struct DeviceInfo<T> {
-    id: u64,
-    description: T,
-}
-
-impl<T> DeviceInfo<T> {
-    pub(crate) fn id(&self) -> u64 {
-        return self.id;
-    }
-
-    pub(crate) fn _meta(&self) -> &T {
-        &self.description
     }
 }
 
