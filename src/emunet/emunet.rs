@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -49,6 +49,7 @@ pub(crate) struct Emunet {
     dev_count: Cell<u64>,
     servers: RefCell<HashMap<String, ContainerServer>>,
     devices: RefCell<HashMap<u64, Device<DeviceMeta, LinkMeta>>>,
+    links: RefCell<HashSet<(u64, u64)>>,
     subnet_allocator: RefCell<SubnetAllocator>,
 }
 
@@ -87,6 +88,7 @@ impl Emunet {
             dev_count: Cell::new(0),
             servers: RefCell::new(hm),
             devices: RefCell::new(HashMap::new()),
+            links: RefCell::new(HashSet::new()),
             subnet_allocator: RefCell::new(allocator),
         }
     }
@@ -165,12 +167,12 @@ impl Emunet {
         &self,
         graph: &UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
     ) {
-        assert_eq!(self.dev_count.get(), 0);
-        assert_eq!(self.devices.borrow().len(), 0);
-        assert_eq!(self.max_capacity >= graph.nodes_num() as u64, true);
-        assert_eq!(
-            self.subnet_allocator.borrow().remaining_subnets() >= graph.edges_num() * 2,
-            true
+        assert!(self.dev_count.get() == 0);
+        assert!(self.devices.borrow().len() == 0);
+        assert!(self.links.borrow().len() == 0);
+        assert!((self.max_capacity >= graph.nodes_num() as u64) == true);
+        assert!(
+            (self.subnet_allocator.borrow().remaining_subnets() >= graph.edges_num() * 2) == true
         );
 
         let mut servers_ref = self.servers.borrow_mut();
@@ -214,6 +216,8 @@ impl Emunet {
             );
             let d_link = Link::new(*d, *s, d_link_meta);
             assert!(self.devices.borrow_mut().get(d).unwrap().add_link(d_link) == true);
+
+            assert!(self.links.borrow_mut().insert((*s, *d)) == true);
         }
 
         self.dev_count.set(total_devs as u64);
@@ -324,6 +328,7 @@ impl Emunet {
                 .unwrap();
         }
         self.dev_count.set(0);
+        self.links.borrow_mut().clear();
         self.subnet_allocator.borrow_mut().reset();
     }
 
