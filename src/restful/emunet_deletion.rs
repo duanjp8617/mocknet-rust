@@ -67,7 +67,7 @@ fn delete_emunet_from_db<'a>(
     }
 }
 
-async fn delete_background_task(
+pub(crate) async fn delete_background_task(
     api_server_addr: String,
     emunet_req: EmunetReq,
     pod_names: Vec<String>,
@@ -121,13 +121,16 @@ async fn delete_background_task(
     ))
 }
 
-async fn emunet_delete(req: Request, client: &mut Client) -> Result<Response<()>, ClientError> {
+async fn emunet_delete(
+    emunet_uuid: uuid::Uuid,
+    client: &mut Client,
+) -> Result<Response<()>, ClientError> {
     let mut guarded_tran = client.guarded_tran().await?;
-    let emunet = match helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await? {
+    let emunet = match helpers::get_emunet(&mut guarded_tran, emunet_uuid.clone()).await? {
         None => {
             return Ok(Response::fail(format!(
                 "emunet {} does not exist",
-                req.emunet_uuid
+                emunet_uuid
             )))
         }
         Some(emunet) => emunet,
@@ -138,7 +141,7 @@ async fn emunet_delete(req: Request, client: &mut Client) -> Result<Response<()>
         EmunetState::Working => {
             return Ok(Response::fail(format!(
                 "emunet {} is in working state, can't be deleted",
-                req.emunet_uuid
+                emunet_uuid
             )))
         }
         EmunetState::Uninit | EmunetState::Error(_) => {
@@ -178,7 +181,7 @@ async fn emunet_delete(req: Request, client: &mut Client) -> Result<Response<()>
 }
 
 async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
-    let res = emunet_delete(req, &mut client).await;
+    let res = emunet_delete(req.emunet_uuid, &mut client).await;
     match res {
         Ok(resp) => Ok(resp.into()),
         Err(e) => {

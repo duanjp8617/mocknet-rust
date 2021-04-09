@@ -40,7 +40,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"user\": \"user\",\n    \"emunet\": \"emunet1\",\n    \"capacity\": 5\n}",
+					"raw": "{\n    \"user\": \"user\",\n    \"emunet\": \"emunet\",\n    \"capacity\": 5\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -68,7 +68,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"089cceda-97a4-11eb-8000-000000000000\"\n}",
+					"raw": "{\n    \"emunet_uuid\": \"53de6d75-98f2-11eb-8001-000000000000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -124,7 +124,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"089cceda-97a4-11eb-8000-000000000000\",\n    \"devs\": [\n        {\"id\": 1, \"description\": \"fuck\"}, \n        {\"id\": 2, \"description\": \"fuck\"}, \n        {\"id\": 3, \"description\": \"fuck\"}, \n        {\"id\": 0, \"description\": \"fuck\"}, \n        {\"id\": 4, \"description\": \"fuck\"}\n    ],\n    \"links\": [\n        {\"edge_id\": [0, 1], \"description\": \"fuck\"}, \n        {\"edge_id\": [0, 2], \"description\": \"fuck\"},\n        {\"edge_id\": [1, 3], \"description\": \"fuck\"},\n        {\"edge_id\": [2, 4], \"description\": \"fuck\"}\n    ]\n}",
+					"raw": "{\n    \"emunet_uuid\": \"53de6d75-98f2-11eb-8001-000000000000\",\n    \"devs\": [\n        {\"id\": 1, \"description\": \"fuck\"}, \n        {\"id\": 2, \"description\": \"fuck\"}, \n        {\"id\": 3, \"description\": \"fuck\"}, \n        {\"id\": 0, \"description\": \"fuck\"}, \n        {\"id\": 4, \"description\": \"fuck\"}\n    ],\n    \"links\": [\n        {\"edge_id\": [0, 1], \"description\": \"fuck\"}, \n        {\"edge_id\": [0, 2], \"description\": \"fuck\"},\n        {\"edge_id\": [1, 3], \"description\": \"fuck\"},\n        {\"edge_id\": [2, 4], \"description\": \"fuck\"}\n    ]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -152,7 +152,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"5e6c8231-92bd-11eb-8004-000000000000\"\n}",
+					"raw": "{\n    \"emunet_uuid\": \"53de6d75-98f2-11eb-8001-000000000000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -196,34 +196,6 @@
 					"path": [
 						"v1",
 						"delete_user"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "localhost:3030/v1/update_emunet",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"b7acf6de-7cc0-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 4, \"description\": \"fuck\"}, {\"id\": 5, \"description\": \"fuck\"}, {\"id\": 6, \"description\": \"fuck\"}, {\"id\":7, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [4, 5], \"description\": \"fuck\"}, {\"edge_id\": [4, 6], \"description\": \"fuck\"}, {\"edge_id\": [4, 7], \"description\": \"fuck\"}]\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "localhost:3030/v1/update_emunet",
-					"host": [
-						"localhost"
-					],
-					"port": "3030",
-					"path": [
-						"v1",
-						"update_emunet"
 					]
 				}
 			},
@@ -299,6 +271,34 @@
 					"path": [
 						"v1",
 						"get_emunet_state"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/emunet_update",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"emunet_uuid\": \"53de6d75-98f2-11eb-8001-000000000000\",\r\n    \"devs\": [\r\n        {\"id\": 1, \"description\": \"fuck\"}, \r\n        {\"id\": 2, \"description\": \"fuck\"}, \r\n        {\"id\": 3, \"description\": \"fuck\"}, \r\n        {\"id\": 0, \"description\": \"fuck\"}\r\n    ],\r\n    \"links\": [\r\n        {\"edge_id\": [0, 1], \"description\": \"fuck\"}, \r\n        {\"edge_id\": [0, 2], \"description\": \"fuck\"}\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/update_emunet",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"update_emunet"
 					]
 				}
 			},

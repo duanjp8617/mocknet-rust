@@ -81,6 +81,7 @@ where
 pub mod emunet_creation;
 pub mod emunet_deletion;
 pub mod emunet_init;
+pub mod emunet_update;
 pub mod get_emunet_info;
 pub mod get_emunet_state;
 pub mod list_all;

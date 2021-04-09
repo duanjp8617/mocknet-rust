@@ -5,7 +5,7 @@ use warp::Filter;
 
 use mocknet::cli::*;
 use mocknet::database::*;
-use mocknet::emunet::{ClusterInfo, ClusterConfig};
+use mocknet::emunet::{ClusterConfig, ClusterInfo};
 use mocknet::restful::*;
 
 #[tokio::main]
@@ -51,6 +51,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let routes = routes.or(emunet_deletion::build_filter(connector.clone()));
     let routes = routes.or(get_emunet_info::build_filter(connector.clone()));
     let routes = routes.or(get_emunet_state::build_filter(connector.clone()));
+    let routes = routes.or(emunet_update::build_filter(connector.clone()));
     warp::serve(routes).run(warp_socket_addr).await;
     Ok(())
 }

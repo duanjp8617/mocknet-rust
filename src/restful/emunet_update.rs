@@ -6,7 +6,6 @@ use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, EDGES_POWER};
-use crate::k8s_api::{self, mocknet_client, EmunetReq, QueryReq};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -20,76 +19,46 @@ struct ResponseData {
     status: String,
 }
 
-pub(crate) async fn init_background_task(
-    api_server_addr: String,
-    emunet_req: EmunetReq,
-    pod_names: Vec<String>,
-) -> Result<Vec<k8s_api::DeviceInfo>, String> {
-    let mut k8s_api_client = mocknet_client::MocknetClient::connect(api_server_addr.clone())
-        .await
-        .map_err(|_| format!("can't connect to k8s api server at {}", api_server_addr))?;
-
-    let grpc_req = tonic::Request::new(emunet_req);
-    let response = k8s_api_client
-        .init(grpc_req)
-        .await
-        .map_err(|_| {
-            format!(
-                "can't finish init grpc call at api server {}",
-                api_server_addr
-            )
-        })?
-        .into_inner();
-    if response.status != true {
-        return Err("k8s cluster can't initialize this emunet".to_string());
-    }
-
-    let total_query_attemps = 300;
-    for i in 0..total_query_attemps {
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-
-        let query = tonic::Request::new(QueryReq {
-            is_init: true,
-            pod_names: pod_names.clone(),
-        });
-        let response = k8s_api_client
-            .query(query)
-            .await
-            .map_err(|_| {
-                format!(
-                    "can't finish the {}-th query call at api server {}",
-                    i, api_server_addr
-                )
-            })?
-            .into_inner();
-
-        if response.status {
-            return Ok(response.device_infos);
-        }
-    }
-
-    Err(format!(
-        "k8s cluster can't finish initialize this emunet querying {} times",
-        total_query_attemps
-    ))
-}
-
 async fn background_task_guard(
     emunet: Emunet,
-    graph: UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
+    input_graph: UndirectedGraph<u64, InputDevice<String>, InputLink<String>>,
     mut client: Client,
 ) {
-    emunet.build_emunet_graph(&graph);
+    let api_server_addr = emunet.api_server_addr().to_string();
+    let emunet_req = emunet.release_init_grpc_request();
+    let pod_names = emunet.release_pod_names();
+
+    let res = super::emunet_deletion::delete_background_task(
+        api_server_addr.clone(),
+        emunet_req,
+        pod_names,
+    )
+    .await;
+    match res {
+        Err(err_str) => {
+            emunet.set_state(EmunetState::Error(err_str));
+
+            let mut guarded_tran = client.guarded_tran().await.unwrap();
+            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+            assert!(fut.await.unwrap() == true);
+            return;
+        }
+        _ => {}
+    };
+
+    emunet.clear_emunet_resource();
+    emunet.build_emunet_graph(&input_graph);
     {
         let mut guarded_tran = client.guarded_tran().await.unwrap();
         let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
         assert!(fut.await.unwrap() == true);
     }
 
-    let api_server_addr = emunet.api_server_addr().to_string();
     let emunet_req = emunet.release_init_grpc_request();
     let pod_names = emunet.release_pod_names();
-    let res = init_background_task(api_server_addr, emunet_req, pod_names).await;
+    let res =
+        super::emunet_init::init_background_task(api_server_addr, emunet_req, pod_names).await;
+
     match res {
         Ok(device_infos) => {
             emunet.update_device_login_info(&device_infos);
@@ -105,7 +74,7 @@ async fn background_task_guard(
     assert!(fut.await.unwrap() == true);
 }
 
-async fn init_check(
+async fn update_check(
     req: Request<String>,
     client: &mut Client,
 ) -> Result<
@@ -127,10 +96,10 @@ async fn init_check(
         };
 
     match emunet.state() {
-        EmunetState::Uninit => {}
+        EmunetState::Normal => {}
         _ => {
             return Ok(Err(format!(
-                "emunet {} is already initialized",
+                "emunet {} is not in normal state",
                 req.emunet_uuid
             )))
         }
@@ -164,7 +133,7 @@ async fn guard(
     req: Request<String>,
     mut client: Client,
 ) -> Result<warp::reply::Json, warp::Rejection> {
-    let res = init_check(req, &mut client).await;
+    let res = update_check(req, &mut client).await;
     match res {
         Ok(res) => match res {
             Ok((emunet, graph)) => {
@@ -189,5 +158,5 @@ async fn guard(
 pub fn build_filter(
     connector: Connector,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
-    super::filter_template("init_emunet".to_string(), connector, guard)
+    super::filter_template("update_emunet".to_string(), connector, guard)
 }

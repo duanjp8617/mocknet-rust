@@ -226,6 +226,7 @@ impl IdAllocator {
         for i in 0..u8::MAX {
             ids.insert(i);
         }
+        ids.insert(u8::MAX);
         Self { ids }
     }
 
