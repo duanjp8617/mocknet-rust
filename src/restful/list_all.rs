@@ -12,6 +12,7 @@ use crate::emunet::{Emunet, ServerInfo, User};
 struct Inner {
     users: HashMap<String, HashMap<String, Emunet>>,
     usable_servers: HashMap<String, ServerInfo>,
+    garbage_servers: Vec<ServerInfo>,
     usable_ids: usize,
 }
 
@@ -49,9 +50,12 @@ async fn list_all(client: &mut Client) -> Result<Response<Inner>, ClientError> {
 
     let id_allocator = helpers::get_emunet_id_allocator(&mut guarded_tran).await?;
 
+    let garbage_servers = helpers::get_garbage_servesr(&mut guarded_tran).await?;
+
     Ok(Response::success(Inner {
         users,
         usable_servers,
+        garbage_servers,
         usable_ids: id_allocator.remaining(),
     }))
 }

@@ -7,7 +7,7 @@ use indradb::{Vertex, VertexQuery};
 use indradb_proto::{ClientError, Transaction};
 use uuid::Uuid;
 
-use crate::emunet::{self, ClusterInfo, Emunet, IdAllocator, User};
+use crate::emunet::{self, ClusterInfo, Emunet, IdAllocator, User, ServerInfo};
 
 pub(crate) async fn create_vertex(tran: &mut Transaction, id: Uuid) -> Result<bool, ClientError> {
     let t = Type::new("t").unwrap();
@@ -157,4 +157,33 @@ pub(crate) fn set_emunet<'a>(
 
         Ok(res)
     }
+}
+
+pub(crate) async fn get_garbage_servesr(
+    tran: &mut Transaction,
+) -> Result<Vec<ServerInfo>, ClientError> {
+    let res =
+        get_vertex_json_value(tran, super::CORE_INFO_ID.clone(), "garbage_servers").await?;
+    match res {
+        Some(jv) => Ok(serde_json::from_value(jv).unwrap()),
+        None => panic!("database is not correctly initialized"),
+    }
+}
+
+pub(crate) async fn set_garbage_servesr(
+    tran: &mut Transaction,
+    garbage_servers: Vec<ServerInfo>,
+) -> Result<(), ClientError> {
+    let jv = serde_json::to_value(garbage_servers).unwrap();
+    let res = set_vertex_json_value(
+        tran,
+        super::CORE_INFO_ID.clone(),
+        "garbage_servers",
+        &jv,
+    )
+    .await?;
+    if !res {
+        panic!("database is not correctly initialized");
+    }
+    Ok(())
 }

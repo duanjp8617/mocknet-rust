@@ -315,8 +315,7 @@ impl Emunet {
     }
 
     pub(crate) fn release_emunet_servers(&self) -> Vec<ContainerServer> {
-        assert!(self.dev_count.get() == 0);
-        assert!(self.devices.borrow().len() == 0);
+        self.clear_emunet_resource();
 
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()

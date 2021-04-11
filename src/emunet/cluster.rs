@@ -42,16 +42,13 @@ impl ClusterInfo {
         sorted.binary_search(&node_name).is_ok()
     }
 
-    fn add_server_info<S: std::convert::AsRef<str>>(
+    pub(crate) fn add_server_info<S: std::convert::AsRef<str>>(
         &mut self,
         node_name: S,
         max_capacity: u64,
-    ) -> Result<(), String> {
+    ) -> bool {
         if self.node_name_exist(node_name.as_ref()) {
-            return Err(format!(
-                "Address {:?} is already stored in the list.",
-                node_name.as_ref()
-            ));
+            return false;
         }
 
         self.servers.push(ServerInfo {
@@ -59,10 +56,10 @@ impl ClusterInfo {
             max_capacity,
         });
 
-        Ok(())
+        true
     }
 
-    pub fn try_new(config: ClusterConfig) -> Result<Self, String> {
+    pub fn try_new(config: ClusterConfig) -> Option<Self> {
         let mut cluster_info = Self {
             api_server_addr: config.api_server_addr,
             access_info: config.access_info,
@@ -70,10 +67,13 @@ impl ClusterInfo {
         };
 
         for node_info in config.k8s_nodes {
-            cluster_info.add_server_info(node_info.node_name, node_info.max_capacity)?;
+            let res = cluster_info.add_server_info(node_info.node_name, node_info.max_capacity);
+            if res == false {
+                return None
+            }
         }
 
-        Ok(cluster_info)
+        Some(cluster_info)
     }
 
     pub(crate) fn rellocate_servers(

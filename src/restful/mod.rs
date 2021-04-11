@@ -90,3 +90,7 @@ pub mod user_deletion;
 pub mod user_registration;
 
 pub mod server_ping;
+
+// maintainance utilities
+pub mod add_nodes;
+pub mod clear_garbage_servers;

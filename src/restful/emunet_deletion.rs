@@ -18,28 +18,32 @@ fn delete_emunet_from_db<'a>(
     emunet: &Emunet,
     guarded_tran: &'a mut GuardedTransaction,
 ) -> impl Future<Output = ()> + Send + 'a {
-    let servers_opt = match emunet.state() {
-        EmunetState::Error(_) => None,
-        _ => {
-            emunet.clear_emunet_resource();
-            Some(emunet.release_emunet_servers())
-        }
-    };
+    let servers = emunet.release_emunet_servers();
     let emunet_uuid = emunet.emunet_uuid();
     let emunet_user = emunet.emunet_user().to_string();
     let emunet_name = emunet.emunet_name().to_string();
     let emunet_id = emunet.emunet_id();
+    let emunet_state = emunet.state();
 
     async move {
-        match servers_opt {
-            Some(servers) => {
+        match emunet_state {
+            EmunetState::Error(_) => {
+                let mut garbage_servers = helpers::get_garbage_servesr(guarded_tran).await.unwrap();
+                for server in servers.iter() {
+                    garbage_servers.push(server.server_info().clone());
+                }
+                helpers::set_garbage_servesr(guarded_tran, garbage_servers).await.unwrap();
+            }
+            EmunetState::Working | EmunetState::Uninit => {
                 let mut cluster_info = helpers::get_cluster_info(guarded_tran).await.unwrap();
                 cluster_info.rellocate_servers(servers);
                 helpers::set_cluster_info(guarded_tran, cluster_info)
                     .await
                     .unwrap();
             }
-            None => {}
+            EmunetState::Normal => {
+                panic!("this should never happen");
+            }
         }
 
         helpers::delete_vertex(guarded_tran, emunet_uuid)

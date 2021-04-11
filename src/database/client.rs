@@ -182,6 +182,7 @@ pub async fn init(
         true => {
             helpers::set_user_map(&mut tran, HashMap::<String, User>::new()).await?;
             helpers::set_cluster_info(&mut tran, cluster_info).await?;
+            helpers::set_garbage_servesr(&mut tran, Vec::new()).await?;
 
             let allocator = IdAllocator::new();
             assert!(allocator.remaining() <= (2 as usize).pow(EMUNET_NUM_POWER));
