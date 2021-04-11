@@ -16,9 +16,9 @@ pub(crate) struct DeviceMeta {
 }
 
 impl DeviceMeta {
-    pub(crate) fn new(k8s_node: &str, user_name: &str, emunet_name: &str, dev_id: u64) -> Self {
+    pub(crate) fn new(k8s_node: &str, emunet_id: u8, dev_id: u64) -> Self {
         Self {
-            pod_name: format!("{}-{}-dev-{}", user_name, emunet_name, dev_id),
+            pod_name: format!("n{}d{}", emunet_id, dev_id),
             k8s_node: k8s_node.to_string(),
             intf_idx: Cell::new(0),
             login_ip: RefCell::new(None),
@@ -42,7 +42,7 @@ impl DeviceMeta {
     }
 
     pub(crate) fn get_intf_name(&self) -> String {
-        let res = format!("intf-{}", self.intf_idx.get());
+        let res = format!("intf{}", self.intf_idx.get());
         self.intf_idx.set(self.intf_idx.get() + 1);
         res
     }
@@ -96,7 +96,8 @@ impl LinkMeta {
         assert!(self.link_id.1 == peer_link.link_id.0);
 
         TopologyLink {
-            uid: (((emunet_id as u32) << super::EDGES_POWER) | self.link_uid) as u64,
+            uid: (((emunet_id as u32) << super::MAX_DIRECTED_LINK_POWER) | self.link_uid)
+                as u64,
             peer_pod: peer_pod_name.to_string(),
             local_intf: self.intf.clone(),
             peer_intf: peer_link.intf.clone(),

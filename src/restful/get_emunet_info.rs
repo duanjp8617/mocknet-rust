@@ -9,6 +9,7 @@ use crate::emunet::{EmunetAccessInfo, OutputDevice, OutputLink};
 
 #[derive(Serialize)]
 struct EmunetInfo {
+    emunet_id: u8,
     emunet_name: String,
     emunet_uuid: Uuid,
     max_capacity: u64,
@@ -49,6 +50,7 @@ async fn get_emunet_info(
 
     let access_info = emunet.access_info();
     let emunet_info = EmunetInfo {
+        emunet_id: emunet.emunet_id(),
         emunet_name: emunet.emunet_name().to_string(),
         emunet_uuid: emunet.emunet_uuid().clone(),
         max_capacity: emunet.max_capacity(),

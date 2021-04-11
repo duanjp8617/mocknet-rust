@@ -5,7 +5,7 @@ use warp::Filter;
 use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
-use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, EDGES_POWER};
+use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, MAX_DIRECTED_LINK_POWER};
 use crate::k8s_api::{self, mocknet_client, EmunetReq, QueryReq};
 
 #[derive(Deserialize)]
@@ -146,10 +146,10 @@ async fn init_check(
     if graph.nodes_num() > emunet.max_capacity() as usize {
         return Ok(Err("input graph exceeds capacity limitation".to_string()));
     }
-    if graph.edges_num() * 2 > (2 as usize).pow(EDGES_POWER) {
+    if graph.edges_num() * 2 > (2 as usize).pow(MAX_DIRECTED_LINK_POWER) {
         return Ok(Err(format!(
             "input graph can only have at most {} edges",
-            (2 as usize).pow(EDGES_POWER)
+            (2 as usize).pow(MAX_DIRECTED_LINK_POWER-1)
         )));
     }
 

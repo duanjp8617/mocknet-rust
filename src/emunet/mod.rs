@@ -14,5 +14,6 @@ pub(crate) use emunet::*;
 pub(crate) use graph_io_format::{InputDevice, InputLink, OutputDevice, OutputLink};
 pub(crate) use user::User;
 
-pub(crate) use emunet::EDGES_POWER;
-pub(crate) use emunet::EMUNET_NUM_POWER;
+pub(crate) static MAX_DIRECTED_LINK_POWER: u32 = 14;
+pub(crate) static EMUNET_NUM_POWER: u32 = 8;
+pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";

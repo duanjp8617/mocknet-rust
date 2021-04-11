@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::graph_io_format::{InputDevice, InputLink};
 use crate::algo::*;
+use crate::emunet::EMUNET_NUM_POWER;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct EmunetAccessInfo {
@@ -223,10 +224,11 @@ pub(crate) struct IdAllocator {
 impl IdAllocator {
     pub(crate) fn new() -> Self {
         let mut ids = HashSet::new();
-        for i in 0..u8::MAX {
-            ids.insert(i);
+        let upper: u32 = (2 as u32).pow(EMUNET_NUM_POWER);
+
+        for i in 0..upper {
+            ids.insert(i as u8);
         }
-        ids.insert(u8::MAX);
         Self { ids }
     }
 

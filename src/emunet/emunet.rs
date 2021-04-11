@@ -12,11 +12,6 @@ use super::utils::SubnetAllocator;
 use crate::algo::*;
 use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
 
-pub(crate) static EMUNET_NODE_PROPERTY: &'static str = "default";
-
-pub(crate) static EDGES_POWER: u32 = 14;
-pub(crate) static EMUNET_NUM_POWER: u32 = 8;
-
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetState {
     Uninit,
@@ -74,7 +69,9 @@ impl Emunet {
                 });
 
         let allocator = SubnetAllocator::new([10, 0, 0, 0], 24);
-        assert!(allocator.remaining_subnets() >= (2 as usize).pow(EDGES_POWER - 1));
+        assert!(
+            allocator.remaining_subnets() >= (2 as usize).pow(super::MAX_DIRECTED_LINK_POWER - 1)
+        );
 
         Self {
             emunet_id,
@@ -173,7 +170,7 @@ impl Emunet {
             let device = Device::new(
                 dev_id,
                 server_name.clone(),
-                DeviceMeta::new(&server_name, &self.user_name, &self.emunet_name, dev_id),
+                DeviceMeta::new(&server_name, self.emunet_id, dev_id),
             );
 
             assert!(self.devices.borrow_mut().insert(dev_id, device).is_none() == true);
@@ -181,7 +178,7 @@ impl Emunet {
 
         for ((s, d), _) in graph.edges() {
             let subnet = self.subnet_allocator.borrow_mut().try_alloc().unwrap();
-            assert!(subnet.subnet_idx < (2 as u32).pow(EDGES_POWER - 1));
+            assert!(subnet.subnet_idx < (2 as u32).pow(super::MAX_DIRECTED_LINK_POWER - 1));
 
             let s_link_meta = LinkMeta::new(
                 (*s, *d),
