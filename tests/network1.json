@@ -1,0 +1,16 @@
+{
+    "emunet_uuid": "e2404f9e-9b5f-11eb-8002-000000000000",
+    "devs": [
+        {"id": 0, "description": "0"}, 
+        {"id": 1, "description": "1"}, 
+        {"id": 2, "description": "2"}, 
+        {"id": 3, "description": "3"}, 
+        {"id": 4, "description": "4"}
+    ],
+    "links": [
+        {"edge_id": [0, 1], "description": "1"}, 
+        {"edge_id": [0, 2], "description": "2"},
+        {"edge_id": [1, 3], "description": "3"},
+        {"edge_id": [2, 4], "description": "4"}
+    ]
+}

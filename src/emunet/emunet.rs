@@ -176,7 +176,13 @@ impl Emunet {
             assert!(self.devices.borrow_mut().insert(dev_id, device).is_none() == true);
         }
 
-        for ((s, d), _) in graph.edges() {
+        let mut edges: Vec<(u64, u64)> = graph
+            .edges()
+            .map(|((s, d), _)| if *s < *d { (*s, *d) } else { (*d, *s) })
+            .collect();
+        edges.sort();
+
+        for (s, d) in edges.iter() {
             let subnet = self.subnet_allocator.borrow_mut().try_alloc().unwrap();
             assert!(subnet.subnet_idx < (2 as u32).pow(super::MAX_DIRECTED_LINK_POWER - 1));
 
@@ -294,6 +300,7 @@ impl Emunet {
                 details,
             })
         }
+        edges.sort_by(|l0, l1| l0.link_id.cmp(&l1.link_id));
 
         (nodes, edges)
     }
