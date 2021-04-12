@@ -49,6 +49,7 @@ impl Mocknet for MockServer {
         let inner = request.into_inner();
         println!("---------Got a new delete request---------");
         println!("{:?}", &inner);
+        tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
         let mut guard = self.pods.lock().unwrap();
         let reply = if guard.len() == 0 {

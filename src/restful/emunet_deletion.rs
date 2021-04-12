@@ -1,7 +1,7 @@
 use std::future::Future;
 
-use indradb_proto::ClientError;
 use serde::Deserialize;
+use tokio::sync::oneshot;
 use warp::Filter;
 
 use super::Response;
@@ -32,7 +32,9 @@ fn delete_emunet_from_db<'a>(
                 for server in servers.iter() {
                     garbage_servers.push(server.server_info().clone());
                 }
-                helpers::set_garbage_servesr(guarded_tran, garbage_servers).await.unwrap();
+                helpers::set_garbage_servesr(guarded_tran, garbage_servers)
+                    .await
+                    .unwrap();
             }
             EmunetState::Working | EmunetState::Uninit => {
                 let mut cluster_info = helpers::get_cluster_info(guarded_tran).await.unwrap();
@@ -125,69 +127,74 @@ pub(crate) async fn delete_background_task(
     ))
 }
 
-async fn emunet_delete(
-    emunet_uuid: uuid::Uuid,
-    client: &mut Client,
-) -> Result<Response<()>, ClientError> {
-    let mut guarded_tran = client.guarded_tran().await?;
-    let emunet = match helpers::get_emunet(&mut guarded_tran, emunet_uuid.clone()).await? {
-        None => {
-            return Ok(Response::fail(format!(
-                "emunet {} does not exist",
-                emunet_uuid
-            )))
+async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
+    let mut guarded_tran = match client.guarded_tran().await {
+        Ok(inner) => inner,
+        Err(e) => {
+            client.notify_failure();
+            let resp: Response<_> = e.into();
+            return Ok(resp.into());
         }
-        Some(emunet) => emunet,
     };
 
-    let state = emunet.state();
-    match state {
-        EmunetState::Working => {
-            return Ok(Response::fail(format!(
-                "emunet {} is in working state, can't be deleted",
-                emunet_uuid
-            )))
-        }
-        EmunetState::Uninit | EmunetState::Error(_) => {
-            let fut = delete_emunet_from_db(&emunet, &mut guarded_tran);
-            fut.await;
-            return Ok(Response::success(()));
-        }
-        EmunetState::Normal => {
-            emunet.set_state(EmunetState::Working);
-            let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
-            assert!(fut.await? == true);
-            drop(guarded_tran);
-
-            let api_server_addr = emunet.api_server_addr().to_string();
-            let emunet_req = emunet.release_init_grpc_request();
-            let pod_names = emunet.release_pod_names();
-
-            let res = delete_background_task(api_server_addr, emunet_req, pod_names).await;
-            let mut guarded_tran = client.guarded_tran().await.unwrap();
-            match res {
-                Ok(_) => {
+    let res = helpers::get_emunet(&mut guarded_tran, req.emunet_uuid.clone()).await;
+    match res {
+        Ok(Some(emunet)) => {
+            let state = emunet.state();
+            match state {
+                EmunetState::Working => {
+                    return Ok(Response::<()>::fail(format!(
+                        "emunet {} is in working state, can't be deleted",
+                        req.emunet_uuid
+                    ))
+                    .into())
+                }
+                EmunetState::Uninit | EmunetState::Error(_) => {
                     let fut = delete_emunet_from_db(&emunet, &mut guarded_tran);
                     fut.await;
-                    return Ok(Response::success(()));
+                    return Ok(Response::success(()).into());
                 }
-                Err(err_str) => {
-                    emunet.set_state(EmunetState::Error(err_str.clone()));
-
+                EmunetState::Normal => {
+                    emunet.set_state(EmunetState::Working);
                     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
                     assert!(fut.await.unwrap() == true);
+                    drop(guarded_tran);
 
-                    return Ok(Response::fail(err_str));
+                    let api_server_addr = emunet.api_server_addr().to_string();
+                    let emunet_req = emunet.release_init_grpc_request();
+                    let pod_names = emunet.release_pod_names();
+
+                    let (sender, receiver) = oneshot::channel();
+
+                    tokio::spawn(async move {
+                        let res =
+                            delete_background_task(api_server_addr, emunet_req, pod_names).await;
+                        let mut guarded_tran = client.guarded_tran().await.unwrap();
+                        match &res {
+                            Ok(_) => {
+                                let fut = delete_emunet_from_db(&emunet, &mut guarded_tran);
+                                fut.await;
+                            }
+                            Err(err_str) => {
+                                emunet.set_state(EmunetState::Error(err_str.clone()));
+
+                                let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
+                                assert!(fut.await.unwrap() == true);
+                            }
+                        }
+                        let _ = sender.send(res);
+                    });
+
+                    match receiver.await.unwrap() {
+                        Ok(_) => Ok(Response::success(()).into()),
+                        Err(err_str) => Ok(Response::<()>::fail(err_str).into()),
+                    }
                 }
             }
         }
-    }
-}
-
-async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {
-    let res = emunet_delete(req.emunet_uuid, &mut client).await;
-    match res {
-        Ok(resp) => Ok(resp.into()),
+        Ok(None) => {
+            Ok(Response::<()>::fail(format!("emunet {} does not exist", req.emunet_uuid)).into())
+        }
         Err(e) => {
             client.notify_failure();
             let resp: Response<_> = e.into();
