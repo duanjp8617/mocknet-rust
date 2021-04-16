@@ -97,7 +97,7 @@ pub(crate) async fn delete_background_task(
         return Err("k8s cluster can't delete this emunet".to_string());
     }
 
-    let total_query_attemps = 300;
+    let total_query_attemps = 600;
     for i in 0..total_query_attemps {
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
