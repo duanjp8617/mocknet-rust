@@ -274,6 +274,13 @@ impl Emunet {
         }
     }
 
+    pub(crate) fn clear_device_login_info(&self) {
+        let devices_borrow = self.devices.borrow();
+        for (_, dev) in devices_borrow.iter() {
+            dev.meta().clear_login_info();
+        }
+    }
+
     pub(crate) fn release_output_emunet(&self) -> (Vec<OutputDevice>, Vec<OutputLink>) {
         let mut nodes = Vec::new();
         for (_, dev) in self.devices.borrow().iter() {

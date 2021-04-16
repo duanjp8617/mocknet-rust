@@ -123,6 +123,7 @@ async fn update_check(
     }
 
     emunet.set_state(EmunetState::Working);
+    emunet.clear_device_login_info();
     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
     assert!(fut.await? == true);
 

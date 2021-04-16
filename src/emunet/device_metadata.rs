@@ -58,6 +58,12 @@ impl DeviceMeta {
         *self.username.borrow_mut() = Some(username.to_string());
         *self.password.borrow_mut() = Some(password.to_string());
     }
+
+    pub(crate) fn clear_login_info(&self) {
+        *self.login_ip.borrow_mut() = None;
+        *self.username.borrow_mut() = None;
+        *self.password.borrow_mut() = None;
+    }
 }
 
 #[derive(Serialize, Deserialize)]

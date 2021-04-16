@@ -156,6 +156,7 @@ async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, wa
                 }
                 EmunetState::Normal => {
                     emunet.set_state(EmunetState::Working);
+                    emunet.clear_device_login_info();
                     let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
                     assert!(fut.await.unwrap() == true);
                     drop(guarded_tran);
