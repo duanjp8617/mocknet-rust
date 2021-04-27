@@ -7,7 +7,7 @@ use warp::Filter;
 use super::Response;
 use crate::database::{helpers, Client, Connector, GuardedTransaction};
 use crate::emunet::{Emunet, EmunetState};
-use crate::k8s_api::{mocknet_client, EmunetReq, QueryReq};
+use crate::k8s_api::{mocknet_client, EmunetReq, Pod, QueryReq};
 
 #[derive(Deserialize)]
 struct Request {
@@ -76,7 +76,7 @@ fn delete_emunet_from_db<'a>(
 pub(crate) async fn delete_background_task(
     api_server_addr: String,
     emunet_req: EmunetReq,
-    pod_names: Vec<String>,
+    pods: Vec<Pod>,
 ) -> Result<(), String> {
     let mut k8s_api_client = mocknet_client::MocknetClient::connect(api_server_addr.clone())
         .await
@@ -103,7 +103,7 @@ pub(crate) async fn delete_background_task(
 
         let query = tonic::Request::new(QueryReq {
             is_init: false,
-            pod_names: pod_names.clone(),
+            pods: pods.clone(),
         });
         let response = k8s_api_client
             .query(query)
@@ -163,13 +163,12 @@ async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, wa
 
                     let api_server_addr = emunet.api_server_addr().to_string();
                     let emunet_req = emunet.release_init_grpc_request();
-                    let pod_names = emunet.release_pod_names();
+                    let pods = emunet.release_pods();
 
                     let (sender, receiver) = oneshot::channel();
 
                     tokio::spawn(async move {
-                        let res =
-                            delete_background_task(api_server_addr, emunet_req, pod_names).await;
+                        let res = delete_background_task(api_server_addr, emunet_req, pods).await;
                         let mut guarded_tran = client.guarded_tran().await.unwrap();
                         match &res {
                             Ok(_) => {

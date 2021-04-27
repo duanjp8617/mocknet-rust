@@ -117,8 +117,8 @@ impl Mocknet for MockServer {
                     }
                 } else {
                     let mut hashset = std::collections::HashSet::new();
-                    for pod_name in inner.pod_names {
-                        hashset.insert(pod_name);
+                    for pod in inner.pods {
+                        hashset.insert(pod.metadata.map(|meta| meta.name).unwrap());
                     }
 
                     if guard.len() == hashset.len() {

@@ -26,14 +26,11 @@ async fn background_task_guard(
 ) {
     let api_server_addr = emunet.api_server_addr().to_string();
     let emunet_req = emunet.release_init_grpc_request();
-    let pod_names = emunet.release_pod_names();
+    let pods = emunet.release_pods();
 
-    let res = super::emunet_deletion::delete_background_task(
-        api_server_addr.clone(),
-        emunet_req,
-        pod_names,
-    )
-    .await;
+    let res =
+        super::emunet_deletion::delete_background_task(api_server_addr.clone(), emunet_req, pods)
+            .await;
     match res {
         Err(err_str) => {
             emunet.set_state(EmunetState::Error(err_str));
@@ -55,9 +52,8 @@ async fn background_task_guard(
     }
 
     let emunet_req = emunet.release_init_grpc_request();
-    let pod_names = emunet.release_pod_names();
-    let res =
-        super::emunet_init::init_background_task(api_server_addr, emunet_req, pod_names).await;
+    let pods = emunet.release_pods();
+    let res = super::emunet_init::init_background_task(api_server_addr, emunet_req, pods).await;
 
     match res {
         Ok(device_infos) => {
@@ -118,7 +114,7 @@ async fn update_check(
     if graph.edges_num() * 2 > (2 as usize).pow(MAX_DIRECTED_LINK_POWER) {
         return Ok(Err(format!(
             "input graph can only have at most {} edges",
-            (2 as usize).pow(MAX_DIRECTED_LINK_POWER-1)
+            (2 as usize).pow(MAX_DIRECTED_LINK_POWER - 1)
         )));
     }
 

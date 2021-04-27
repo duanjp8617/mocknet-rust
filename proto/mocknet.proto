@@ -47,7 +47,7 @@ message EmunetResp {
 
 message QueryReq {
     bool is_init = 1;
-    repeated string pod_names = 2;
+    repeated Pod pods = 2;
 }
 
 message DeviceInfo {

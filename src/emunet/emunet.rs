@@ -10,7 +10,7 @@ use super::device_metadata::*;
 use super::graph_io_format::{InputDevice, InputLink, OutputDevice, OutputLink};
 use super::utils::SubnetAllocator;
 use crate::algo::*;
-use crate::k8s_api::{self, EmunetReq, Topology, TopologyLinks, TopologyMeta};
+use crate::k8s_api::{self, EmunetReq, Pod, Topology, TopologyLinks, TopologyMeta};
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub(crate) enum EmunetState {
@@ -247,14 +247,14 @@ impl Emunet {
         EmunetReq { pods, topologies }
     }
 
-    pub(crate) fn release_pod_names(&self) -> Vec<String> {
-        let mut pod_names = Vec::new();
+    pub(crate) fn release_pods(&self) -> Vec<Pod> {
+        let mut pods = Vec::new();
 
         for (_, dev) in self.devices.borrow().iter() {
-            pod_names.push(dev.meta().pod_name().to_string());
+            pods.push(dev.meta().get_pod());
         }
 
-        pod_names
+        pods
     }
 
     pub(crate) fn update_device_login_info(&self, device_infos: &Vec<k8s_api::DeviceInfo>) {

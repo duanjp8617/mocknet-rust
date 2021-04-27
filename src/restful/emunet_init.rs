@@ -6,7 +6,7 @@ use super::Response;
 use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, MAX_DIRECTED_LINK_POWER};
-use crate::k8s_api::{self, mocknet_client, EmunetReq, QueryReq};
+use crate::k8s_api::{self, mocknet_client, EmunetReq, Pod, QueryReq};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -23,7 +23,7 @@ struct ResponseData {
 pub(crate) async fn init_background_task(
     api_server_addr: String,
     emunet_req: EmunetReq,
-    pod_names: Vec<String>,
+    pods: Vec<Pod>,
 ) -> Result<Vec<k8s_api::DeviceInfo>, String> {
     let mut k8s_api_client = mocknet_client::MocknetClient::connect(api_server_addr.clone())
         .await
@@ -50,7 +50,7 @@ pub(crate) async fn init_background_task(
 
         let query = tonic::Request::new(QueryReq {
             is_init: true,
-            pod_names: pod_names.clone(),
+            pods: pods.clone(),
         });
         let response = k8s_api_client
             .query(query)
@@ -88,8 +88,8 @@ async fn background_task_guard(
 
     let api_server_addr = emunet.api_server_addr().to_string();
     let emunet_req = emunet.release_init_grpc_request();
-    let pod_names = emunet.release_pod_names();
-    let res = init_background_task(api_server_addr, emunet_req, pod_names).await;
+    let pods = emunet.release_pods();
+    let res = init_background_task(api_server_addr, emunet_req, pods).await;
     match res {
         Ok(device_infos) => {
             emunet.update_device_login_info(&device_infos);
@@ -149,7 +149,7 @@ async fn init_check(
     if graph.edges_num() * 2 > (2 as usize).pow(MAX_DIRECTED_LINK_POWER) {
         return Ok(Err(format!(
             "input graph can only have at most {} edges",
-            (2 as usize).pow(MAX_DIRECTED_LINK_POWER-1)
+            (2 as usize).pow(MAX_DIRECTED_LINK_POWER - 1)
         )));
     }
 
