@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 use std::ops::RangeInclusive;
 
-use super::traits::{Max, Min, EdgeInfo};
+use super::traits::{Max, Min};
 
 struct InMemoryGraph<Nid, Node, Edge> {
     nodes: HashMap<Nid, Node>,
@@ -83,17 +83,17 @@ where
 
     // src: ID of source node
     // dst: ID of destination node
-    // return value: A vector containing all the node IDs along the shortest path 
-    //               from src to dst. 
-    // i.e. the return value of vec!(2,1,3,4,5) reprents a shortest path from 
-    // source node 2 to destination node 5. The edges that form the path include 
+    // return value: A vector containing all the node IDs along the shortest path
+    //               from src to dst.
+    // i.e. the return value of vec!(2,1,3,4,5) reprents a shortest path from
+    // source node 2 to destination node 5. The edges that form the path include
     // (2, 1), (1, 3), (3, 4), (4, 5)
     // Note1: this graph is an undirected graph, with edges stored in self.edges.
     // Note2: self.reverse_edges stores all the edges with reverse edge id.
-    //        i.e. if (1,3) is stored in self.edges, then (3,1) will be stored in 
+    //        i.e. if (1,3) is stored in self.edges, then (3,1) will be stored in
     //        self.reverse_edges
     pub(crate) fn shortest_path(&self, src: Nid, dst: Nid) -> Option<Vec<Nid>> {
-        let inf = 10000;
+        let inf = usize::MAX;
         let mut k = 0;
         let mut flag = Vec::<bool>::new();
         let mut dist = Vec::<usize>::new();
@@ -101,12 +101,12 @@ where
 
         let mut vexs = Vec::<&Nid>::new();
         let mut reverse_vexs = HashMap::<Nid, usize>::new();
-        for (nid, node) in self.nodes() {
+        for (nid, _node) in self.nodes() {
             reverse_vexs.insert(*nid, vexs.len());
             vexs.push(nid);
         }
 
-        let mut matrix = Vec::<Vec::<usize>>::new();
+        let mut matrix = Vec::<Vec<usize>>::new();
         for _ in 0..self.nodes_num() {
             flag.push(false);
             dist.push(inf);
@@ -119,11 +119,12 @@ where
             matrix.push(line);
         }
 
-        for ((start, end), edge) in self.edges() {
+        for ((start, end), _edge) in self.edges() {
             let s = *reverse_vexs.get(start).unwrap();
             let e = *reverse_vexs.get(end).unwrap();
-            matrix[s][e] = edge.weight();
-            matrix[e][s] = edge.weight();
+            // assume that the weight is 1
+            matrix[s][e] = 1;
+            matrix[e][s] = 1;
         }
 
         //initialize
@@ -137,7 +138,7 @@ where
 
         flag[src_p] = true;
 
-        for i in 0..self.nodes_num() {
+        for _i in 0..self.nodes_num() {
             let mut min = inf;
             for j in 0..self.nodes_num() {
                 if flag[j] == false && dist[j] < min {
