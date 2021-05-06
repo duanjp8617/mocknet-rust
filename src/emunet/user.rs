@@ -2,10 +2,21 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use super::emunet::Emunet;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub(crate) struct Retired {
+    version: u64,
+    name: String,
+    nodes: Vec<u64>,
+    edges: Vec<(u64, u64)>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub(crate) struct User {
     name: String,
     emunet_name_to_uuid: RefCell<HashMap<String, uuid::Uuid>>,
+    retired: RefCell<Vec<Retired>>,
 }
 
 impl User {
@@ -13,6 +24,7 @@ impl User {
         Self {
             name: name.into(),
             emunet_name_to_uuid: RefCell::new(HashMap::new()),
+            retired: RefCell::new(Vec::new()),
         }
     }
 
@@ -40,6 +52,16 @@ impl User {
     pub(crate) fn delete_emunet(&self, emunet_name: &str) -> Option<uuid::Uuid> {
         self.emunet_name_to_uuid.borrow_mut().remove(emunet_name)
     }
+
+    pub(crate) fn add_retired(&self, emunet: &Emunet) {
+        let history = emunet.release_history();
+        self.retired.borrow_mut().push(Retired {
+            version: history.0,
+            name: history.1,
+            nodes: history.2,
+            edges: history.3,
+        });
+    }
 }
 
 impl User {
@@ -49,5 +71,9 @@ impl User {
             HashMap::new(),
         );
         hm
+    }
+
+    pub(crate) fn get_retired_emunets(&self) -> Vec<Retired> {
+        self.retired.borrow().clone()
     }
 }

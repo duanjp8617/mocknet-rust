@@ -1,11 +1,13 @@
+use std::collections::HashMap;
+
 use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
 use warp::Filter;
 
 use super::Response;
-use crate::algo::*;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, MAX_DIRECTED_LINK_POWER};
+use crate::{algo::*, emunet::User};
 
 #[derive(Deserialize)]
 struct Request<String> {
@@ -43,10 +45,21 @@ async fn background_task_guard(
         _ => {}
     };
 
-    emunet.clear_emunet_resource();
-    emunet.build_emunet_graph(&input_graph);
     {
         let mut guarded_tran = client.guarded_tran().await.unwrap();
+        let user_map: HashMap<String, User> =
+            helpers::get_user_map(&mut guarded_tran).await.unwrap();
+        user_map
+            .get(emunet.emunet_user())
+            .unwrap()
+            .add_retired(&emunet);
+        helpers::set_user_map(&mut guarded_tran, user_map)
+            .await
+            .unwrap();
+
+        emunet.clear_emunet_resource();
+        emunet.build_emunet_graph(&input_graph);
+
         let fut = helpers::set_emunet(&mut guarded_tran, &emunet);
         assert!(fut.await.unwrap() == true);
     }

@@ -92,7 +92,8 @@ where
     // Note2: self.reverse_edges stores all the edges with reverse edge id.
     //        i.e. if (1,3) is stored in self.edges, then (3,1) will be stored in 
     //        self.reverse_edges
-    pub(crate) fn shortest_path(&self, src: Nid, dst: Nid) -> Option<Vec<Nid>> {
+    #[allow(dead_code)]
+    pub(crate) fn shortest_path(&self, _src: Nid, _dst: Nid) -> Option<Vec<Nid>> {
         todo!()
     }
 }

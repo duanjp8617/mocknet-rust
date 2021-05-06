@@ -88,6 +88,7 @@ pub mod list_all;
 pub mod list_emunet;
 pub mod user_deletion;
 pub mod user_registration;
+pub mod list_user_history;
 
 pub mod server_ping;
 
