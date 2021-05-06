@@ -40,3 +40,7 @@ pub(crate) trait Min {
 pub(crate) trait Max {
     fn maximum() -> Self;
 }
+
+pub(crate) trait EdgeInfo {
+    fn weight() -> usize;
+}

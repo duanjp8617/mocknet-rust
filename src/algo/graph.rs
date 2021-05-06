@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::hash::Hash;
 use std::ops::RangeInclusive;
 
-use super::traits::{Max, Min};
+use super::traits::{Max, Min, EdgeInfo};
 
 struct InMemoryGraph<Nid, Node, Edge> {
     nodes: HashMap<Nid, Node>,
@@ -93,7 +93,87 @@ where
     //        i.e. if (1,3) is stored in self.edges, then (3,1) will be stored in 
     //        self.reverse_edges
     pub(crate) fn shortest_path(&self, src: Nid, dst: Nid) -> Option<Vec<Nid>> {
-        todo!()
+        let inf = 10000;
+        let mut k = 0;
+        let mut flag = Vec::<bool>::new();
+        let mut dist = Vec::<usize>::new();
+        let mut path = Vec::<usize>::new();
+
+        let mut vexs = Vec::<&Nid>::new();
+        let mut reverse_vexs = HashMap::<Nid, usize>::new();
+        for (nid, node) in self.nodes() {
+            reverse_vexs.insert(*nid, vexs.len());
+            vexs.push(nid);
+        }
+
+        let mut matrix = Vec::<Vec::<usize>>::new();
+        for _ in 0..self.nodes_num() {
+            flag.push(false);
+            dist.push(inf);
+            path.push(self.nodes_num());
+
+            let mut line = Vec::<usize>::new();
+            for _ in 0..self.nodes_num() {
+                line.push(inf);
+            }
+            matrix.push(line);
+        }
+
+        for ((start, end), edge) in self.edges() {
+            let s = *reverse_vexs.get(start).unwrap();
+            let e = *reverse_vexs.get(end).unwrap();
+            matrix[s][e] = edge.weight();
+            matrix[e][s] = edge.weight();
+        }
+
+        //initialize
+        let src_p = *reverse_vexs.get(&src).unwrap();
+        let dst_p = *reverse_vexs.get(&dst).unwrap();
+        for i in 0..self.nodes_num() {
+            matrix[i][i] = 0;
+            dist[i] = matrix[src_p][i];
+        }
+        dist[src_p] = 0;
+
+        flag[src_p] = true;
+
+        for i in 0..self.nodes_num() {
+            let mut min = inf;
+            for j in 0..self.nodes_num() {
+                if flag[j] == false && dist[j] < min {
+                    min = dist[j];
+                    k = j;
+                }
+            }
+
+            flag[k] = true;
+
+            for j in 0..self.nodes_num() {
+                if flag[j] == false && dist[j] > min + matrix[k][j] {
+                    dist[j] = min + matrix[k][j];
+                    path[j] = k;
+                }
+            }
+        }
+
+        let mut pt = Vec::<usize>::new();
+        let mut shortest_path = Vec::<Nid>::new();
+        let mut temp = dst_p;
+        while temp != self.nodes_num() {
+            pt.push(path[temp]);
+            temp = path[temp];
+        }
+
+        pt.reverse();
+        for position in pt {
+            shortest_path.push(*vexs[position]);
+        }
+
+        if shortest_path.len() == 0 {
+            None
+        } else {
+            Some(shortest_path)
+        }
     }
 }
 
