@@ -46,6 +46,7 @@ pub(crate) struct Emunet {
     devices: RefCell<HashMap<u64, Device<DeviceMeta, LinkMeta>>>,
     links: RefCell<HashSet<(u64, u64)>>,
     subnet_allocator: RefCell<SubnetAllocator>,
+    version_num: Cell<u64>,
 }
 
 impl Emunet {
@@ -87,6 +88,7 @@ impl Emunet {
             devices: RefCell::new(HashMap::new()),
             links: RefCell::new(HashSet::new()),
             subnet_allocator: RefCell::new(allocator),
+            version_num: Cell::new(0),
         }
     }
 }
@@ -210,6 +212,36 @@ impl Emunet {
         }
 
         self.dev_count.set(total_devs as u64);
+        self.version_num.set(self.version_num.get() + 1);
+    }
+
+    pub(crate) fn release_history(&self) -> (u64, String, Vec<u64>, Vec<(u64, u64)>) {
+        let nodes: Vec<(u64, ())> = self
+            .devices
+            .borrow()
+            .iter()
+            .map(|(nid, _)| (*nid, ()))
+            .collect();
+
+        let edges = self
+            .devices
+            .borrow()
+            .iter()
+            .fold(Vec::new(), |edges, (_, dev)| {
+                dev.links().iter().fold(edges, |mut edges, link| {
+                    edges.push((link.link_id(), ()));
+                    edges
+                })
+            });
+
+        let graph = UndirectedGraph::new(nodes, edges).unwrap();
+
+        (
+            self.version_num.get(),
+            self.emunet_name.clone(),
+            graph.nodes().map(|(nid, _)| *nid).collect(),
+            graph.edges().map(|(eid, _)| *eid).collect(),
+        )
     }
 
     pub(crate) fn release_init_grpc_request(&self) -> EmunetReq {

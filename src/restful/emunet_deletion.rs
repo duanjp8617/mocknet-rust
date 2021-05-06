@@ -1,13 +1,16 @@
-use std::future::Future;
+use std::{collections::HashMap, future::Future};
 
 use serde::Deserialize;
 use tokio::sync::oneshot;
 use warp::Filter;
 
 use super::Response;
-use crate::database::{helpers, Client, Connector, GuardedTransaction};
 use crate::emunet::{Emunet, EmunetState};
 use crate::k8s_api::{mocknet_client, EmunetReq, Pod, QueryReq};
+use crate::{
+    database::{helpers, Client, Connector, GuardedTransaction},
+    emunet::User,
+};
 
 #[derive(Deserialize)]
 struct Request {
@@ -172,6 +175,16 @@ async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, wa
                         let mut guarded_tran = client.guarded_tran().await.unwrap();
                         match &res {
                             Ok(_) => {
+                                let user_map: HashMap<String, User> =
+                                    helpers::get_user_map(&mut guarded_tran).await.unwrap();
+                                user_map
+                                    .get(emunet.emunet_user())
+                                    .unwrap()
+                                    .add_retired(&emunet);
+                                helpers::set_user_map(&mut guarded_tran, user_map)
+                                    .await
+                                    .unwrap();
+
                                 let fut = delete_emunet_from_db(&emunet, &mut guarded_tran);
                                 fut.await;
                             }
