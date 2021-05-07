@@ -6,6 +6,7 @@ use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
+use crate::algo::UndirectedGraph;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{EmunetAccessInfo, OutputDevice, OutputLink};
 
@@ -242,6 +243,79 @@ pub async fn mnctl_network_dev(
                 "pair device id: {}, intface name: {}, IP address: {}",
                 link.dest_dev_id, link.intf_name, link.ip
             )
+        }
+
+        Ok(())
+    } else {
+        Err(response.message)
+    }
+}
+
+pub async fn mnctl_network_path(
+    user: &str,
+    emunet: &str,
+    src_id: u64,
+    dst_id: u64,
+    warp_addr: &str,
+) -> Result<(), String> {
+    // query emunet_uuid
+    let req = super::list_emunet::Request {
+        user: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<HashMap<String, Uuid>> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let map = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+    let emunet_uuid = map
+        .get(emunet)
+        .ok_or(format!("emunet {} does not exist", emunet))?;
+
+    // get the response data from get_emunet_info
+    let req = Request {
+        emunet_uuid: emunet_uuid.clone(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/get_emunet_info", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<ResponseData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success {
+        let data = response.data.unwrap();
+
+        let nodes: Vec<(u64, ())> = data.devices.iter().map(|odev| (odev.id, ())).collect();
+        let edges: Vec<((u64, u64), ())> =
+            data.links.iter().map(|olink| (olink.link_id, ())).collect();
+        let graph = UndirectedGraph::new(nodes, edges).unwrap();
+        let path = graph.shortest_path(src_id, dst_id);
+
+        match path {
+            None => println!("there is no path between {} and {}", src_id, dst_id),
+            Some(path) => {
+                for i in 0..path.len() {
+                    if i < path.len() - 1 {
+                        print!("{}, ", i);
+                    } else {
+                        print!("{}\n", i);
+                    }
+                }
+            }
         }
 
         Ok(())

@@ -51,6 +51,6 @@ pub(crate) struct OutputDevice {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct OutputLink {
-    pub(super) link_id: (u64, u64),
-    pub(super) details: HashMap<u64, InnerLink>,
+    pub(crate) link_id: (u64, u64),
+    pub(crate) details: HashMap<u64, InnerLink>,
 }

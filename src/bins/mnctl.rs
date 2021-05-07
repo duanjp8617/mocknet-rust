@@ -68,6 +68,25 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                     _ => {}
                 }
             }
+            NetworkSubcmd::Path(mut src_id, mut dst_id) => {
+                if src_id < dst_id {
+                    let temp = src_id;
+                    src_id = dst_id;
+                    dst_id = temp;
+                }
+                match get_emunet_info::mnctl_network_path(
+                    &arg.user,
+                    &emunet_name,
+                    src_id,
+                    dst_id,
+                    &arg.warp_addr,
+                )
+                .await
+                {
+                    Err(msg) => println!("{}", msg),
+                    _ => {}
+                }
+            }
             _ => {}
         },
     }

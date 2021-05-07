@@ -93,7 +93,7 @@ where
     //        i.e. if (1,3) is stored in self.edges, then (3,1) will be stored in
     //        self.reverse_edges
     pub(crate) fn shortest_path(&self, src: Nid, dst: Nid) -> Option<Vec<Nid>> {
-        let inf = usize::MAX;
+        let inf = 1000000;
         let mut k = 0;
         let mut flag = Vec::<bool>::new();
         let mut dist = Vec::<usize>::new();
@@ -161,10 +161,11 @@ where
         let mut shortest_path = Vec::<Nid>::new();
         let mut temp = dst_p;
         while temp != self.nodes_num() {
-            pt.push(path[temp]);
+            pt.push(temp);
             temp = path[temp];
         }
 
+        pt.push(src_p);
         pt.reverse();
         for position in pt {
             shortest_path.push(*vexs[position]);
