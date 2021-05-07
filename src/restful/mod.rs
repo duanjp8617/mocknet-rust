@@ -2,7 +2,7 @@ use std::convert::From;
 use std::future::Future;
 
 use indradb_proto::ClientError;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use warp::Filter;
 
 use crate::database::{Client, Connector};
@@ -12,14 +12,14 @@ fn parse_json_body<T: DeserializeOwned + Send>(
     warp::body::content_length_limit(1024 * 16).and(warp::body::json())
 }
 
-#[derive(Serialize)]
-pub struct Response<T: Serialize> {
-    success: bool,
-    data: Option<T>,
-    message: String,
+#[derive(Serialize, Deserialize)]
+pub struct Response<T> {
+    pub(crate) success: bool,
+    pub(crate) data: Option<T>,
+    pub(crate) message: String,
 }
 
-impl<T: Serialize> Response<T> {
+impl<T> Response<T> {
     fn success(data: T) -> Self {
         Self {
             success: true,
@@ -86,9 +86,9 @@ pub mod get_emunet_info;
 pub mod get_emunet_state;
 pub mod list_all;
 pub mod list_emunet;
+pub mod list_user_history;
 pub mod user_deletion;
 pub mod user_registration;
-pub mod list_user_history;
 
 pub mod server_ping;
 

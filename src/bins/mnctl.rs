@@ -1,21 +1,18 @@
 use std::error::Error as StdError;
 
 use mocknet::cli::*;
-use mocknet::emunet::Retired;
-use mocknet::restful::list_user_history::{Data, Request};
+use mocknet::restful::list_user_history;
 
-async fn user_history(username: &str, warp_addr: &str) -> Result<(), reqwest::Error> {
-    let req = Request { name: username.to_string() };
-    let response = reqwest::Client::new()
-        .post(format!("{}/v1/list_user_history", warp_addr))
-        .json(&req)
-        .send()
-        .await?;
+// async fn user_history(username: &str, warp_addr: &str) -> Result<(), reqwest::Error> {
+//     let req = Request { name: username.to_string() };
+//     let response = reqwest::Client::new()
+//         .post(format!("{}/v1/list_user_history", warp_addr))
+//         .json(&req)
+//         .send()
+//         .await?;
 
-    
-
-    Ok(())
-}
+//     Ok(())
+// }
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
@@ -29,7 +26,11 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     match arg.subcmd {
         UserSubcmd::History => {
-            user_history(&arg.user, &arg.warp_addr).await;
+            let res = list_user_history::manual_request(&arg.user, &arg.warp_addr).await;
+            match res {
+                Err(msg) => println!("{}", msg),
+                _ => {}
+            };
         }
         _ => {
             println!("wtf?");

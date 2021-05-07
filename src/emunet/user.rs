@@ -5,11 +5,11 @@ use std::collections::HashMap;
 use super::emunet::Emunet;
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Retired {
-    version: u64,
-    name: String,
-    nodes: Vec<u64>,
-    edges: Vec<(u64, u64)>,
+pub(crate) struct Retired {
+    pub(crate) version: u64,
+    pub(crate) name: String,
+    pub(crate) nodes: Vec<u64>,
+    pub(crate) edges: Vec<(u64, u64)>,
 }
 
 #[derive(Serialize, Deserialize)]

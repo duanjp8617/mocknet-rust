@@ -9,12 +9,12 @@ use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Retired, User};
 
 #[derive(Deserialize, Serialize)]
-pub struct Request {
-    pub name: String,
+struct Request {
+    name: String,
 }
 
-#[derive(Serialize)]
-pub struct Data {
+#[derive(Serialize, Deserialize)]
+struct Data {
     network_names: Vec<String>,
     retired_networks: Vec<Retired>,
 }
@@ -60,4 +60,44 @@ pub fn build_filter(
     connector: Connector,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
     super::filter_template("list_user_history".to_string(), connector, guard)
+}
+
+pub async fn manual_request(username: &str, warp_addr: &str) -> Result<(), String> {
+    let req = Request {
+        name: username.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_user_history", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+
+    let response: Response<Data> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success == false {
+        println!("{}", response.message);
+    } else {
+        let data = response.data.unwrap();
+        println!("Active networks:");
+        for name in data.network_names.iter() {
+            println!("{}", name);
+        }
+        println!("History networks:");
+        for (id, retired) in data.retired_networks.iter().enumerate() {
+            println!(
+                "id: {}, name: {}, version: {}, device number: {}, link number: {}",
+                id,
+                retired.name,
+                retired.version,
+                retired.nodes.len(),
+                retired.edges.len()
+            );
+        }
+    }
+
+    Ok(())
 }
