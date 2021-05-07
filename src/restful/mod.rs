@@ -89,6 +89,7 @@ pub mod list_emunet;
 pub mod list_user_history;
 pub mod user_deletion;
 pub mod user_registration;
+pub mod route_command;
 
 pub mod server_ping;
 

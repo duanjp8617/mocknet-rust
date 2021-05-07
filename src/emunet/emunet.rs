@@ -367,7 +367,7 @@ impl Emunet {
         server_map.into_iter().map(|(_, cs)| cs).collect()
     }
 
-    pub(crate) fn release_route_command(&self, path: Vec<u64>, is_add: bool) -> Vec<(u64, String)> {
+    pub(crate) fn release_route_command(&self, path: &[u64], is_add: bool) -> Vec<(u64, String)> {
         if path.len() < 3 {
             return Vec::new();
         }
@@ -380,6 +380,13 @@ impl Emunet {
         let hop_before_dest = path[path.len() - 2];
         let dest_links = devices_ref.get(&dest).unwrap().links();
         let dest_ip_with_mask = &(dest_links.get(&(dest, hop_before_dest)).unwrap().meta().ip)[..];
+        let slash_idx = dest_ip_with_mask.find("/").unwrap();
+        let last_dot_idx = dest_ip_with_mask[0..slash_idx].rfind(".").unwrap();
+        let dest_ip_with_mask = format!(
+            "{}.0/{}",
+            &dest_ip_with_mask[..last_dot_idx],
+            &dest_ip_with_mask[slash_idx + 1..]
+        );
 
         for i in 0..(path.len() - 2) {
             let curr = path[i];
