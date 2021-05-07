@@ -17,6 +17,11 @@ path = "src/bins/mocknet_server.rs"
 name = "api_mockserver"
 path = "src/bins/api_mockserver.rs"
 
+[[bin]]
+name = "mnctl"
+path = "src/bins/mnctl.rs"
+
+
 [dependencies]
 tonic = "0.4.0"
 prost = "0.7"
