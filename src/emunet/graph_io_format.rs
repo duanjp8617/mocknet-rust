@@ -31,25 +31,25 @@ impl<T> InputDevice<T> {
     }
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct InnerLink {
     pub(crate) dest_dev_id: u64,
     pub(crate) intf_name: String,
     pub(crate) ip: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct OutputDevice {
-    pub(super) id: u64,
-    pub(super) k8s_node_name: String,
-    pub(super) k8s_pod_name: String,
-    pub(super) pod_login_ip: Option<String>,
-    pub(super) pod_login_user: Option<String>,
-    pub(super) pod_login_pwd: Option<String>,
-    pub(super) links: Vec<InnerLink>,
+    pub(crate) id: u64,
+    pub(crate) k8s_node_name: String,
+    pub(crate) k8s_pod_name: String,
+    pub(crate) pod_login_ip: Option<String>,
+    pub(crate) pod_login_user: Option<String>,
+    pub(crate) pod_login_pwd: Option<String>,
+    pub(crate) links: Vec<InnerLink>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct OutputLink {
     pub(super) link_id: (u64, u64),
     pub(super) details: HashMap<u64, InnerLink>,

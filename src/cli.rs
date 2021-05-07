@@ -140,8 +140,6 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
                 .help("destination device ID")
                 .takes_value(true),
         );
-    let conn_history = SubCommand::with_name("conn-history")
-        .about("show connection history of this emulation network");
     let restore = SubCommand::with_name("restore")
         .about("restore the emulation network from a history index")
         .arg(
@@ -175,7 +173,6 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
         .subcommand(path)
         .subcommand(connect)
         .subcommand(disconnect)
-        .subcommand(conn_history)
         .subcommand(restore)
         .subcommand(update);
 

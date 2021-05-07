@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -7,7 +9,7 @@ use super::Response;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{EmunetAccessInfo, OutputDevice, OutputLink};
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct EmunetInfo {
     emunet_id: u8,
     emunet_name: String,
@@ -19,14 +21,14 @@ struct EmunetInfo {
     dev_count: u64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ResponseData {
     emunet_info: EmunetInfo,
     devices: Vec<OutputDevice>,
     links: Vec<OutputLink>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Request {
     emunet_uuid: Uuid,
 }
@@ -87,4 +89,163 @@ pub fn build_filter(
     connector: Connector,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
     super::filter_template("get_emunet_info".to_string(), connector, guard)
+}
+
+pub async fn mnctl_network_info(user: &str, emunet: &str, warp_addr: &str) -> Result<(), String> {
+    // query emunet_uuid
+    let req = super::list_emunet::Request {
+        user: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<HashMap<String, Uuid>> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let map = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+    let emunet_uuid = map
+        .get(emunet)
+        .ok_or(format!("emunet {} does not exist", emunet))?;
+
+    // get the response data from get_emunet_info
+    let req = Request {
+        emunet_uuid: emunet_uuid.clone(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/get_emunet_info", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<ResponseData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success {
+        let data = response.data.unwrap();
+
+        println!("emunet uuid: {}", &data.emunet_info.emunet_uuid);
+        println!("state: {}", &data.emunet_info.state);
+        println!("max capacity: {}", data.emunet_info.max_capacity);
+        println!("active devices: {}", data.emunet_info.dev_count);
+        println!(
+            "login server address: {}",
+            &data.emunet_info.access_info.login_server_addr
+        );
+        println!(
+            "login username: {}",
+            &data.emunet_info.access_info.login_server_user
+        );
+        println!(
+            "login password: {}",
+            &data.emunet_info.access_info.login_server_pwd
+        );
+
+        print!("device list: ");
+        for i in 0..data.devices.len() {
+            let dev = &data.devices[i];
+            if i < data.devices.len() - 1 {
+                print!("{}, ", dev.id);
+            } else {
+                print!("{}\n", dev.id);
+            }
+        }
+
+        Ok(())
+    } else {
+        Err(response.message)
+    }
+}
+
+pub async fn mnctl_network_dev(
+    user: &str,
+    emunet: &str,
+    dev_id: usize,
+    warp_addr: &str,
+) -> Result<(), String> {
+    // query emunet_uuid
+    let req = super::list_emunet::Request {
+        user: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<HashMap<String, Uuid>> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let map = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+    let emunet_uuid = map
+        .get(emunet)
+        .ok_or(format!("emunet {} does not exist", emunet))?;
+
+    // get the response data from get_emunet_info
+    let req = Request {
+        emunet_uuid: emunet_uuid.clone(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/get_emunet_info", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<ResponseData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success {
+        let data = response.data.unwrap();
+        let dev = &data.devices[dev_id];
+
+        println!(
+            "login ip: {}",
+            dev.pod_login_ip
+                .as_ref()
+                .map(|s| s.to_string())
+                .unwrap_or("null".to_string())
+        );
+        println!(
+            "login username: {}",
+            dev.pod_login_user
+                .as_ref()
+                .map(|s| s.to_string())
+                .unwrap_or("null".to_string())
+        );
+        println!(
+            "login password: {}",
+            dev.pod_login_pwd
+                .as_ref()
+                .map(|s| s.to_string())
+                .unwrap_or("null".to_string())
+        );
+
+        println!("link list: ");
+        for link in dev.links.iter() {
+            println!(
+                "pair device id: {}, intface name: {}, IP address: {}",
+                link.dest_dev_id, link.intf_name, link.ip
+            )
+        }
+
+        Ok(())
+    } else {
+        Err(response.message)
+    }
 }

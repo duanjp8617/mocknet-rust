@@ -3,17 +3,6 @@ use std::error::Error as StdError;
 use mocknet::cli::*;
 use mocknet::restful::*;
 
-// async fn user_history(username: &str, warp_addr: &str) -> Result<(), reqwest::Error> {
-//     let req = Request { name: username.to_string() };
-//     let response = reqwest::Client::new()
-//         .post(format!("{}/v1/list_user_history", warp_addr))
-//         .json(&req)
-//         .send()
-//         .await?;
-
-//     Ok(())
-// }
-
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn StdError>> {
     let arg = match parse_ctl_arg() {
@@ -50,6 +39,27 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                     &arg.user,
                     &emunet_name,
                     history_index as usize,
+                    &arg.warp_addr,
+                )
+                .await
+                {
+                    Err(msg) => println!("{}", msg),
+                    _ => {}
+                }
+            }
+            NetworkSubcmd::Info => {
+                match get_emunet_info::mnctl_network_info(&arg.user, &emunet_name, &arg.warp_addr)
+                    .await
+                {
+                    Err(msg) => println!("{}", msg),
+                    _ => {}
+                }
+            }
+            NetworkSubcmd::Dev(dev_id) => {
+                match get_emunet_info::mnctl_network_dev(
+                    &arg.user,
+                    &emunet_name,
+                    dev_id as usize,
                     &arg.warp_addr,
                 )
                 .await
