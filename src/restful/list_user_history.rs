@@ -62,7 +62,7 @@ pub fn build_filter(
     super::filter_template("list_user_history".to_string(), connector, guard)
 }
 
-pub async fn manual_request(username: &str, warp_addr: &str) -> Result<(), String> {
+pub async fn mnctl_user_history(username: &str, warp_addr: &str) -> Result<(), String> {
     let req = Request {
         name: username.to_string(),
     };

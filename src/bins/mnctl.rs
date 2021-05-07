@@ -26,7 +26,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     match arg.subcmd {
         UserSubcmd::History => {
-            let res = list_user_history::manual_request(&arg.user, &arg.warp_addr).await;
+            let res = list_user_history::mnctl_user_history(&arg.user, &arg.warp_addr).await;
             match res {
                 Err(msg) => println!("{}", msg),
                 _ => {}

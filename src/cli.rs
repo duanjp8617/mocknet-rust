@@ -52,8 +52,6 @@ pub struct CtlArg {
 #[derive(Debug)]
 pub enum UserSubcmd {
     History,
-    Restore(u64),
-    Update(String),
     NetworkOp(String, NetworkSubcmd),
 }
 #[derive(Debug)]
@@ -64,6 +62,8 @@ pub enum NetworkSubcmd {
     Connect(u64, u64),
     Disconnect(u64, u64),
     ConnectionHistory,
+    Restore(u64),
+    Update(String),
 }
 
 const USERNAME: &str = "USERNAME";
@@ -194,22 +194,6 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
         warp_addr: matches.value_of(WARP_ADDR).unwrap().to_string(),
         subcmd: if let Some(_) = matches.subcommand_matches("history") {
             UserSubcmd::History
-        } else if let Some(matches) = matches.subcommand_matches("restore") {
-            UserSubcmd::Restore(
-                matches
-                    .value_of(HISTORYIDX)
-                    .ok_or("missing history index".to_string())?
-                    .to_string()
-                    .parse::<u64>()
-                    .map_err(|_| "history index should be a valid positive integer".to_string())?,
-            )
-        } else if let Some(matches) = matches.subcommand_matches("update") {
-            UserSubcmd::Update(
-                matches
-                    .value_of("FILEPATH")
-                    .ok_or("missing file path".to_string())?
-                    .to_string(),
-            )
         } else if let Some(matches) = matches.subcommand_matches("network") {
             let network_subcmd = if let Some(_) = matches.subcommand_matches("info") {
                 NetworkSubcmd::Info
@@ -281,6 +265,24 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
                 )
             } else if let Some(_) = matches.subcommand_matches("conn-history") {
                 NetworkSubcmd::ConnectionHistory
+            } else if let Some(matches) = matches.subcommand_matches("restore") {
+                NetworkSubcmd::Restore(
+                    matches
+                        .value_of(HISTORYIDX)
+                        .ok_or("missing history index".to_string())?
+                        .to_string()
+                        .parse::<u64>()
+                        .map_err(|_| {
+                            "history index should be a valid positive integer".to_string()
+                        })?,
+                )
+            } else if let Some(matches) = matches.subcommand_matches("update") {
+                NetworkSubcmd::Update(
+                    matches
+                        .value_of("FILEPATH")
+                        .ok_or("missing file path".to_string())?
+                        .to_string(),
+                )
             } else {
                 return Err("missing subcommand after network".to_string());
             };
