@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // LinkInfo represents an undirected edge connecting one node to another
 // LinkInfo is deserialized from the incoming HTTP message
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[allow(dead_code)]
 pub(crate) struct InputLink<T> {
     edge_id: (u64, u64),
@@ -18,7 +18,7 @@ impl<T> InputLink<T> {
 }
 
 // DeviceInfo is deserialized from the incoming HTTP message
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[allow(dead_code)]
 pub(crate) struct InputDevice<T> {
     id: u64,

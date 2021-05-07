@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use indradb_proto::ClientError;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use warp::Filter;
 
@@ -11,9 +11,9 @@ use crate::emunet::User;
 
 type RespType = HashMap<String, Uuid>;
 
-#[derive(Deserialize)]
-struct Request {
-    user: String,
+#[derive(Deserialize, Serialize)]
+pub(crate) struct Request {
+    pub(crate) user: String,
 }
 
 async fn list_emunet(req: Request, client: &mut Client) -> Result<Response<RespType>, ClientError> {

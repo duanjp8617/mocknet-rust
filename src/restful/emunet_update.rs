@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use indradb_proto::ClientError;
 use serde::{Deserialize, Serialize};
+use tokio::fs::read_to_string;
+use uuid::Uuid;
 use warp::Filter;
 
 use super::Response;
@@ -9,14 +11,14 @@ use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, MAX_DIRECTED_LINK_POWER};
 use crate::{algo::*, emunet::User};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct Request<String> {
     emunet_uuid: uuid::Uuid,        // uuid of the emunet object on the database
     devs: Vec<InputDevice<String>>, // a list of devices to be created
     links: Vec<InputLink<String>>,  // a list of links to be created
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct ResponseData {
     status: String,
 }
@@ -171,4 +173,69 @@ pub fn build_filter(
     super::filter_template("update_emunet".to_string(), connector, guard)
 }
 
-// pub async fn mnctl_user_update()
+#[derive(Deserialize)]
+struct InputNetworkGraph {
+    devs: Vec<InputDevice<String>>,
+    links: Vec<InputLink<String>>,
+}
+
+pub async fn mnctl_user_update(
+    user: &str,
+    emunet: &str,
+    input_file: &str,
+    warp_addr: &str,
+) -> Result<(), String> {
+    // read input network graph
+    let json_str = read_to_string(&input_file)
+        .await
+        .map_err(|_| format!("can't open input file at: {}", input_file))?;
+    let input_graph: InputNetworkGraph =
+        serde_json::from_str(&json_str).map_err(|_| "invalid network graph format".to_string())?;
+
+    // query emunet_uuid
+    let req = super::list_emunet::Request {
+        user: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<HashMap<String, Uuid>> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let map = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+    let emunet_uuid = map
+        .get(emunet)
+        .ok_or(format!("emunet {} does not exist", emunet))?;
+
+    // send update request
+    let req = Request {
+        emunet_uuid: emunet_uuid.clone(),
+        devs: input_graph.devs,
+        links: input_graph.links,
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/update_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<ResponseData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success == true {
+        println!("update success: {}", response.data.unwrap().status);
+        Ok(())
+    } else {
+        Err(response.message)
+    }
+}

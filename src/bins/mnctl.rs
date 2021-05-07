@@ -1,7 +1,7 @@
 use std::error::Error as StdError;
 
 use mocknet::cli::*;
-use mocknet::restful::list_user_history;
+use mocknet::restful::*;
 
 // async fn user_history(username: &str, warp_addr: &str) -> Result<(), reqwest::Error> {
 //     let req = Request { name: username.to_string() };
@@ -26,15 +26,27 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
 
     match arg.subcmd {
         UserSubcmd::History => {
-            let res = list_user_history::mnctl_user_history(&arg.user, &arg.warp_addr).await;
-            match res {
+            match list_user_history::mnctl_user_history(&arg.user, &arg.warp_addr).await {
                 Err(msg) => println!("{}", msg),
                 _ => {}
             };
         }
-        _ => {
-            println!("wtf?");
-        }
+        UserSubcmd::NetworkOp(emunet_name, subcmd) => match subcmd {
+            NetworkSubcmd::Update(input_file) => {
+                match emunet_update::mnctl_user_update(
+                    &arg.user,
+                    &emunet_name,
+                    &input_file,
+                    &arg.warp_addr,
+                )
+                .await
+                {
+                    Err(msg) => println!("{}", msg),
+                    _ => {}
+                };
+            }
+            _ => {}
+        },
     }
 
     Ok(())

@@ -142,10 +142,6 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
         );
     let conn_history = SubCommand::with_name("conn-history")
         .about("show connection history of this emulation network");
-
-    // user subcommand
-    let history =
-        SubCommand::with_name("history").about("show the history of this emulation network");
     let restore = SubCommand::with_name("restore")
         .about("restore the emulation network from a history index")
         .arg(
@@ -162,6 +158,10 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
                 .help("file path that stores the input network format")
                 .takes_value(true),
         );
+
+    // user subcommand
+    let history =
+        SubCommand::with_name("history").about("show the history of this emulation network");
     let network_op = SubCommand::with_name("network")
         .about("operations on the emulation network")
         .arg(
@@ -175,14 +175,14 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
         .subcommand(path)
         .subcommand(connect)
         .subcommand(disconnect)
-        .subcommand(conn_history);
+        .subcommand(conn_history)
+        .subcommand(restore)
+        .subcommand(update);
 
     let matches = App::new("ctl-cli")
         .arg(&username)
         .arg(&warp_addr_arg)
         .subcommand(history)
-        .subcommand(restore)
-        .subcommand(update)
         .subcommand(network_op)
         .get_matches();
 
