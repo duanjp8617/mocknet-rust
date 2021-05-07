@@ -94,7 +94,6 @@ where
     //        self.reverse_edges
     pub(crate) fn shortest_path(&self, src: Nid, dst: Nid) -> Option<Vec<Nid>> {
         let inf = 1000000;
-        let mut k = 0;
         let mut flag = Vec::<bool>::new();
         let mut dist = Vec::<usize>::new();
         let mut path = Vec::<usize>::new();
@@ -139,6 +138,7 @@ where
         flag[src_p] = true;
 
         for _i in 0..self.nodes_num() {
+            let mut k = self.nodes_num();
             let mut min = inf;
             for j in 0..self.nodes_num() {
                 if flag[j] == false && dist[j] < min {
