@@ -45,8 +45,9 @@ pub fn parse_cli_arg() -> CliArg {
 }
 #[derive(Debug)]
 pub struct CtlArg {
-    user: String,
-    subcmd: UserSubcmd,
+    pub user: String,
+    pub warp_addr: String,
+    pub subcmd: UserSubcmd,
 }
 #[derive(Debug)]
 pub enum UserSubcmd {
@@ -73,12 +74,19 @@ const HISTORYIDX: &str = "HISTORYIDX";
 const FILEPATH: &str = "FILEPATH";
 const NETWORKNAME: &str = "NETWORKNAME";
 
-pub fn parse_ctl_arg() -> CtlArg {
+pub fn parse_ctl_arg() -> Result<CtlArg, String> {
     let username = Arg::with_name(USERNAME)
         .help("user name to operate on")
         .short("u")
         .value_name(USERNAME)
         .takes_value(true);
+
+    let warp_addr_arg = Arg::with_name(WARP_ADDR)
+        .help("Warp server listening address")
+        .long("warp-addr")
+        .value_name(WARP_ADDR)
+        .takes_value(true)
+        .default_value("192.168.167.114:3030");
 
     // network subcommand
     let info = SubCommand::with_name("info").about("show information about the emulation network");
@@ -171,27 +179,37 @@ pub fn parse_ctl_arg() -> CtlArg {
 
     let matches = App::new("ctl-cli")
         .arg(&username)
+        .arg(&warp_addr_arg)
         .subcommand(history)
         .subcommand(restore)
         .subcommand(update)
         .subcommand(network_op)
         .get_matches();
 
-    CtlArg {
-        user: matches.value_of(USERNAME).expect("missing user name").to_string(),
+    let res = CtlArg {
+        user: matches
+            .value_of(USERNAME)
+            .ok_or("missing user name".to_string())?
+            .to_string(),
+        warp_addr: matches.value_of(WARP_ADDR).unwrap().to_string(),
         subcmd: if let Some(_) = matches.subcommand_matches("history") {
             UserSubcmd::History
         } else if let Some(matches) = matches.subcommand_matches("restore") {
             UserSubcmd::Restore(
                 matches
                     .value_of(HISTORYIDX)
-                    .unwrap()
+                    .ok_or("missing history index".to_string())?
                     .to_string()
                     .parse::<u64>()
-                    .unwrap(),
+                    .map_err(|_| "history index should be a valid positive integer".to_string())?,
             )
         } else if let Some(matches) = matches.subcommand_matches("update") {
-            UserSubcmd::Update(matches.value_of("FILEPATH").unwrap().to_string())
+            UserSubcmd::Update(
+                matches
+                    .value_of("FILEPATH")
+                    .ok_or("missing file path".to_string())?
+                    .to_string(),
+            )
         } else if let Some(matches) = matches.subcommand_matches("network") {
             let network_subcmd = if let Some(_) = matches.subcommand_matches("info") {
                 NetworkSubcmd::Info
@@ -199,67 +217,84 @@ pub fn parse_ctl_arg() -> CtlArg {
                 NetworkSubcmd::Dev(
                     matches
                         .value_of(DEVID)
-                        .unwrap()
+                        .ok_or("missing device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| "device id should be a valid positive integer".to_string())?,
                 )
             } else if let Some(matches) = matches.subcommand_matches("path") {
                 NetworkSubcmd::Path(
                     matches
                         .value_of(SRCID)
-                        .unwrap()
+                        .ok_or("missing souce device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "source device ID should be a valid positive integer".to_string()
+                        })?,
                     matches
                         .value_of(DSTID)
-                        .unwrap()
+                        .ok_or("missing destination device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "destination device ID should be a valid positive integer".to_string()
+                        })?,
                 )
             } else if let Some(matches) = matches.subcommand_matches("connect") {
                 NetworkSubcmd::Connect(
                     matches
                         .value_of(SRCID)
-                        .unwrap()
+                        .ok_or("missing souce device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "source device ID should be a valid positive integer".to_string()
+                        })?,
                     matches
                         .value_of(DSTID)
-                        .unwrap()
+                        .ok_or("missing destination device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "destination device ID should be a valid positive integer".to_string()
+                        })?,
                 )
             } else if let Some(matches) = matches.subcommand_matches("disconnect") {
                 NetworkSubcmd::Disconnect(
                     matches
                         .value_of(SRCID)
-                        .unwrap()
+                        .ok_or("missing souce device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "source device ID should be a valid positive integer".to_string()
+                        })?,
                     matches
                         .value_of(DSTID)
-                        .unwrap()
+                        .ok_or("missing destination device id".to_string())?
                         .to_string()
                         .parse::<u64>()
-                        .unwrap(),
+                        .map_err(|_| {
+                            "destination device ID should be a valid positive integer".to_string()
+                        })?,
                 )
             } else if let Some(_) = matches.subcommand_matches("conn-history") {
                 NetworkSubcmd::ConnectionHistory
             } else {
-                panic!("wtf is this?");
+                return Err("missing subcommand after network".to_string());
             };
             UserSubcmd::NetworkOp(
-                matches.value_of(NETWORKNAME).unwrap().to_string(),
+                matches
+                    .value_of(NETWORKNAME)
+                    .ok_or("missing network name".to_string())?
+                    .to_string(),
                 network_subcmd,
             )
         } else {
-            panic!("wtf is this");
+            return Err("missing subcommand after user".to_string());
         },
-    }
+    };
+
+    Ok(res)
 }

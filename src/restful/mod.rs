@@ -13,7 +13,7 @@ fn parse_json_body<T: DeserializeOwned + Send>(
 }
 
 #[derive(Serialize)]
-struct Response<T: Serialize> {
+pub struct Response<T: Serialize> {
     success: bool,
     data: Option<T>,
     message: String,

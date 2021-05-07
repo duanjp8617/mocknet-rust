@@ -35,6 +35,7 @@ indradb-lib = { version = "2.1.0", features = ["rocksdb-datastore", "sled-datast
 indradb-proto = { version = "2.1.0", features = ["client"] }
 lazy_static = "1.4.0"
 clap = "2.0"
+reqwest = { version = "0.11", features = ["json"] }
 
 [build-dependencies]
 tonic-build = "0.4"
