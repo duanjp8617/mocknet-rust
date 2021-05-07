@@ -6,6 +6,7 @@ use tokio::fs::read_to_string;
 use uuid::Uuid;
 use warp::Filter;
 
+use super::list_user_history::Data;
 use super::Response;
 use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Emunet, EmunetState, InputDevice, InputLink, MAX_DIRECTED_LINK_POWER};
@@ -179,7 +180,7 @@ struct InputNetworkGraph {
     links: Vec<InputLink<String>>,
 }
 
-pub async fn mnctl_user_update(
+pub async fn mnctl_network_update(
     user: &str,
     emunet: &str,
     input_file: &str,
@@ -220,6 +221,100 @@ pub async fn mnctl_user_update(
         emunet_uuid: emunet_uuid.clone(),
         devs: input_graph.devs,
         links: input_graph.links,
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/update_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<ResponseData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+
+    if response.success == true {
+        println!("update success: {}", response.data.unwrap().status);
+        Ok(())
+    } else {
+        Err(response.message)
+    }
+}
+
+pub async fn mnctl_network_restore(
+    user: &str,
+    emunet: &str,
+    restore_index: usize,
+    warp_addr: &str,
+) -> Result<(), String> {
+    // read the history
+    let req = super::list_user_history::Request {
+        name: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_user_history", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<Data> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let retired_networks = if response.success {
+        response.data.unwrap().retired_networks
+    } else {
+        return Err(response.message);
+    };
+
+    // perform an early check
+    if restore_index > retired_networks.len() {
+        return Err("invalid history index".to_string());
+    }
+
+    // query emunet_uuid
+    let req = super::list_emunet::Request {
+        user: user.to_string(),
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/list_emunet", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<HashMap<String, Uuid>> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    let map = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+    let emunet_uuid = map
+        .get(emunet)
+        .ok_or(format!("emunet {} does not exist", emunet))?;
+
+    // send update request
+    let retired_network = &retired_networks[restore_index];
+    let req = Request {
+        emunet_uuid: emunet_uuid.clone(),
+        devs: retired_network
+            .nodes
+            .iter()
+            .map(|nid| InputDevice {
+                id: *nid,
+                description: String::new(),
+            })
+            .collect(),
+        links: retired_network
+            .edges
+            .iter()
+            .map(|eid| InputLink {
+                edge_id: *eid,
+                description: String::new(),
+            })
+            .collect(),
     };
     let http_resp = reqwest::Client::new()
         .post(format!("http://{}/v1/update_emunet", warp_addr))

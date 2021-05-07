@@ -9,14 +9,14 @@ use crate::database::{helpers, Client, Connector};
 use crate::emunet::{Retired, User};
 
 #[derive(Deserialize, Serialize)]
-struct Request {
-    name: String,
+pub(crate) struct Request {
+    pub(crate) name: String,
 }
 
 #[derive(Serialize, Deserialize)]
-struct Data {
-    network_names: Vec<String>,
-    retired_networks: Vec<Retired>,
+pub(crate) struct Data {
+    pub(crate) network_names: Vec<String>,
+    pub(crate) retired_networks: Vec<Retired>,
 }
 
 async fn list_user_history(

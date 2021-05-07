@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize)]
 #[allow(dead_code)]
 pub(crate) struct InputLink<T> {
-    edge_id: (u64, u64),
-    description: T,
+    pub(crate) edge_id: (u64, u64),
+    pub(crate) description: T,
 }
 
 impl<T> InputLink<T> {
@@ -21,8 +21,8 @@ impl<T> InputLink<T> {
 #[derive(Deserialize, Serialize)]
 #[allow(dead_code)]
 pub(crate) struct InputDevice<T> {
-    id: u64,
-    description: T,
+    pub(crate) id: u64,
+    pub(crate) description: T,
 }
 
 impl<T> InputDevice<T> {

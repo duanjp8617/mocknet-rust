@@ -33,7 +33,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
         }
         UserSubcmd::NetworkOp(emunet_name, subcmd) => match subcmd {
             NetworkSubcmd::Update(input_file) => {
-                match emunet_update::mnctl_user_update(
+                match emunet_update::mnctl_network_update(
                     &arg.user,
                     &emunet_name,
                     &input_file,
@@ -44,6 +44,19 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                     Err(msg) => println!("{}", msg),
                     _ => {}
                 };
+            }
+            NetworkSubcmd::Restore(history_index) => {
+                match emunet_update::mnctl_network_restore(
+                    &arg.user,
+                    &emunet_name,
+                    history_index as usize,
+                    &arg.warp_addr,
+                )
+                .await
+                {
+                    Err(msg) => println!("{}", msg),
+                    _ => {}
+                }
             }
             _ => {}
         },
