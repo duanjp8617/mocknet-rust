@@ -310,9 +310,9 @@ pub async fn mnctl_network_path(
             Some(path) => {
                 for i in 0..path.len() {
                     if i < path.len() - 1 {
-                        print!("{}, ", i);
+                        print!("{}, ", path[i]);
                     } else {
-                        print!("{}\n", i);
+                        print!("{}\n", path[i]);
                     }
                 }
             }

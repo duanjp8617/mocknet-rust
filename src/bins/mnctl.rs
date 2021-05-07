@@ -69,7 +69,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                 }
             }
             NetworkSubcmd::Path(mut src_id, mut dst_id) => {
-                if src_id < dst_id {
+                if src_id > dst_id {
                     let temp = src_id;
                     src_id = dst_id;
                     dst_id = temp;

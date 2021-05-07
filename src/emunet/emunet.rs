@@ -366,4 +366,41 @@ impl Emunet {
         let server_map = std::mem::replace(&mut *self.servers.borrow_mut(), HashMap::new());
         server_map.into_iter().map(|(_, cs)| cs).collect()
     }
+
+    pub(crate) fn release_route_command(&self, path: Vec<u64>, is_add: bool) -> Vec<(u64, String)> {
+        if path.len() < 3 {
+            return Vec::new();
+        }
+
+        let devices_ref = self.devices.borrow();
+        let mut res = Vec::new();
+        let op = if is_add { "add" } else { "del" };
+
+        let dest = path[path.len() - 1];
+        let hop_before_dest = path[path.len() - 2];
+        let dest_links = devices_ref.get(&dest).unwrap().links();
+        let dest_ip_with_mask = &(dest_links.get(&(dest, hop_before_dest)).unwrap().meta().ip)[..];
+
+        for i in 0..(path.len() - 2) {
+            let curr = path[i];
+            let next_hop = path[i + 1];
+
+            let curr_links = devices_ref.get(&curr).unwrap().links();
+            let curr_intf = &(curr_links.get(&(curr, next_hop)).unwrap().meta().intf)[..];
+
+            let next_hop_links = devices_ref.get(&next_hop).unwrap().links();
+            let next_hop_ip = &(next_hop_links.get(&(next_hop, curr)).unwrap().meta().ip)[..];
+            let next_hop_via = &next_hop_ip[0..next_hop_ip.find("/").unwrap()];
+
+            res.push((
+                curr,
+                format!(
+                    "ip route {} {} via {} dev {}",
+                    op, dest_ip_with_mask, next_hop_via, curr_intf
+                ),
+            ));
+        }
+
+        res
+    }
 }
