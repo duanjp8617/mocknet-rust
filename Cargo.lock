@@ -864,6 +864,7 @@ dependencies = [
  "indradb-lib",
  "indradb-proto",
  "lazy_static",
+ "petgraph",
  "prost",
  "reqwest",
  "serde",
