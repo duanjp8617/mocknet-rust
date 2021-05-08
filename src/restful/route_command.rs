@@ -11,14 +11,23 @@ use crate::database::{helpers, Client, Connector};
 // use crate::emunet::{EmunetAccessInfo, OutputDevice, OutputLink};
 
 #[derive(Deserialize, Serialize)]
-struct Request {
-    emunet_uuid: Uuid,
-    source: u64,
-    destination: u64,
-    is_add: bool,
+pub(crate) struct Request {
+    pub(crate) emunet_uuid: Uuid,
+    pub(crate) source: u64,
+    pub(crate) destination: u64,
+    pub(crate) is_add: bool,
 }
 
-async fn route_command(req: Request, client: &mut Client) -> Result<Response<()>, ClientError> {
+#[derive(Deserialize, Serialize)]
+pub(crate) struct RespData {
+    pub(crate) forward_route_commands: Vec<(u64, String)>,
+    pub(crate) backward_route_commands: Vec<(u64, String)>,
+}
+
+async fn route_command(
+    req: Request,
+    client: &mut Client,
+) -> Result<Response<RespData>, ClientError> {
     let mut tran = client.guarded_tran().await?;
 
     let emunet = match helpers::get_emunet(&mut tran, req.emunet_uuid.clone()).await? {
@@ -45,19 +54,14 @@ async fn route_command(req: Request, client: &mut Client) -> Result<Response<()>
     };
 
     let forward_route_commands = emunet.release_route_command(&path[..], req.is_add);
-    println!("forward commands");
-    for e in &forward_route_commands {
-        println!("{}: {}", e.0, e.1);
-    }
 
     let reverse_path: Vec<u64> = path.into_iter().rev().collect();
     let backward_route_commands = emunet.release_route_command(&reverse_path[..], req.is_add);
-    println!("backward commands");
-    for e in &backward_route_commands {
-        println!("{}: {}", e.0, e.1);
-    }
 
-    Ok(Response::success(()))
+    Ok(Response::success(RespData {
+        forward_route_commands,
+        backward_route_commands,
+    }))
 }
 
 async fn guard(req: Request, mut client: Client) -> Result<warp::reply::Json, warp::Rejection> {

@@ -257,7 +257,7 @@ pub async fn mnctl_network_path(
     src_id: u64,
     dst_id: u64,
     warp_addr: &str,
-) -> Result<(), String> {
+) -> Result<(Option<Vec<u64>>, uuid::Uuid), String> {
     // query emunet_uuid
     let req = super::list_emunet::Request {
         user: user.to_string(),
@@ -272,13 +272,13 @@ pub async fn mnctl_network_path(
         .json()
         .await
         .map_err(|_| format!("can not parse JSON response"))?;
-    let map = if response.success {
+    let mut map = if response.success {
         response.data.unwrap()
     } else {
         return Err(response.message);
     };
     let emunet_uuid = map
-        .get(emunet)
+        .remove(emunet)
         .ok_or(format!("emunet {} does not exist", emunet))?;
 
     // get the response data from get_emunet_info
@@ -303,23 +303,65 @@ pub async fn mnctl_network_path(
         let edges: Vec<((u64, u64), ())> =
             data.links.iter().map(|olink| (olink.link_id, ())).collect();
         let graph = UndirectedGraph::new(nodes, edges).unwrap();
-        let path = graph.shortest_path(src_id, dst_id);
 
-        match path {
-            None => println!("there is no path between {} and {}", src_id, dst_id),
-            Some(path) => {
-                for i in 0..path.len() {
-                    if i < path.len() - 1 {
-                        print!("{}, ", path[i]);
-                    } else {
-                        print!("{}\n", path[i]);
-                    }
-                }
-            }
-        }
-
-        Ok(())
+        Ok((graph.shortest_path(src_id, dst_id), emunet_uuid))
     } else {
         Err(response.message)
     }
+}
+
+pub async fn mnctl_network_connect(
+    user: &str,
+    emunet: &str,
+    src_id: u64,
+    dst_id: u64,
+    is_add: bool,
+    warp_addr: &str,
+) -> Result<(), String> {
+    // compute the network path
+    let (res, emunet_uuid) = mnctl_network_path(user, emunet, src_id, dst_id, warp_addr).await?;
+    let path = res.ok_or(format!(
+        "there is no path between {} and {}",
+        src_id, dst_id
+    ))?;
+
+    // check length of the path
+    if path.len() < 3 {
+        return Err(format!("{} and {} have direct connection", src_id, dst_id));
+    }
+
+    // notify user
+    let op = if is_add { "add" } else { "delete" };
+    let mut path_string = String::new();
+    for i in 0..path.len() {
+        if i < path.len() - 1 {
+            path_string = path_string + &format!("{}, ", path[i]);
+        } else {
+            path_string = path_string + &format!("{}", path[i]);
+        }
+    }
+    println!("{} route for path: {}", op, path_string);
+
+    // retrieve the route commands
+    let req = super::route_command::Request {
+        emunet_uuid,
+        source: src_id,
+        destination: dst_id,
+        is_add,
+    };
+    let http_resp = reqwest::Client::new()
+        .post(format!("http://{}/v1/route_command", warp_addr))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+    let response: Response<super::route_command::RespData> = http_resp
+        .json()
+        .await
+        .map_err(|_| format!("can not parse JSON response"))?;
+    assert!(response.success == true);
+    let route_commands = response.data.unwrap();
+
+    
+    Ok(())
 }

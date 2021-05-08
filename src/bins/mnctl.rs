@@ -84,7 +84,18 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
                 .await
                 {
                     Err(msg) => println!("{}", msg),
-                    _ => {}
+                    Ok((path, _)) => match path {
+                        None => println!("there is no path between {} and {}", src_id, dst_id),
+                        Some(path) => {
+                            for i in 0..path.len() {
+                                if i < path.len() - 1 {
+                                    print!("{}, ", path[i]);
+                                } else {
+                                    print!("{}\n", path[i]);
+                                }
+                            }
+                        }
+                    },
                 }
             }
             _ => {}

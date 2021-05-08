@@ -159,6 +159,14 @@ impl Mocknet for MockServer {
 
         Ok(Response::new(reply))
     }
+
+    async fn exec(&self, request: Request<ExecReq>) -> Result<Response<ExecResp>, Status> {
+        let inner = request.into_inner();
+        println!("---------Got a new exec request---------");
+        println!("executing command '{}' on pod {}", inner.cmd, inner.pod_name);
+
+        Ok(Response::new(ExecResp {std_out: String::new()}))
+    }
 }
 
 #[tokio::main]
