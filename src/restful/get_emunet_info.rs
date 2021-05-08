@@ -391,10 +391,12 @@ pub async fn mnctl_network_connect(
             .send()
             .await
             .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+        println!("get http_resp");
         let response: Response<String> = http_resp
             .json()
             .await
             .map_err(|_| format!("can not parse JSON response"))?;
+        println!("get response");
         if response.success == false {
             return Err(response.message);
         }
@@ -414,10 +416,12 @@ pub async fn mnctl_network_connect(
             .send()
             .await
             .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+        println!("get http_resp");
         let response: Response<String> = http_resp
             .json()
             .await
             .map_err(|_| format!("can not parse JSON response"))?;
+        println!("get response");
         if response.success == false {
             return Err(response.message);
         }
