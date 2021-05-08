@@ -170,7 +170,7 @@ pub async fn mnctl_network_info(user: &str, emunet: &str, warp_addr: &str) -> Re
 pub async fn mnctl_network_dev(
     user: &str,
     emunet: &str,
-    dev_id: usize,
+    dev_id: u64,
     warp_addr: &str,
 ) -> Result<(), String> {
     // query emunet_uuid
@@ -213,7 +213,18 @@ pub async fn mnctl_network_dev(
 
     if response.success {
         let data = response.data.unwrap();
-        let dev = &data.devices[dev_id];
+        let mut dev_map = HashMap::new();
+        let _: Vec<_> = data
+            .devices
+            .iter()
+            .map(|odev| {
+                assert!(dev_map.insert(odev.id, odev).is_none() == true);
+            })
+            .collect();
+
+        let dev = *dev_map
+            .get(&dev_id)
+            .ok_or(format!("device {} does not exist", dev_id))?;
 
         println!(
             "login ip: {}",
@@ -344,7 +355,7 @@ pub async fn mnctl_network_connect(
 
     // retrieve the route commands
     let req = super::route_command::Request {
-        emunet_uuid,
+        emunet_uuid: emunet_uuid.clone(),
         path,
         is_add,
     };
@@ -366,10 +377,70 @@ pub async fn mnctl_network_connect(
     };
 
     // now apply the forward and backward commands
-    let forward_commands = route_commands.forward_route_commands;
-    let backward_commands = route_commands.backward_route_commands;
-    
+    for (dev_idx, cmd) in route_commands.forward_route_commands {
+        println!("device {}: {}", dev_idx, &cmd);
+        let req = super::execute_command::Request {
+            emunet_uuid: emunet_uuid.clone(),
+            dev_idx,
+            cmd,
+            api_server_addr: route_commands.api_server_addr.clone(),
+        };
+        let http_resp = reqwest::Client::new()
+            .post(format!("http://{}/v1/execute_command", warp_addr))
+            .json(&req)
+            .send()
+            .await
+            .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+        let response: Response<String> = http_resp
+            .json()
+            .await
+            .map_err(|_| format!("can not parse JSON response"))?;
+        if response.success == false {
+            return Err(response.message);
+        }
+        println!("{}", response.data.unwrap());
+    }
+    for (dev_idx, cmd) in route_commands.backward_route_commands {
+        println!("device {}: {}", dev_idx, &cmd);
+        let req = super::execute_command::Request {
+            emunet_uuid: emunet_uuid.clone(),
+            dev_idx,
+            cmd,
+            api_server_addr: route_commands.api_server_addr.clone(),
+        };
+        let http_resp = reqwest::Client::new()
+            .post(format!("http://{}/v1/execute_command", warp_addr))
+            .json(&req)
+            .send()
+            .await
+            .map_err(|_| format!("can not send HTTP request to {}", warp_addr))?;
+        let response: Response<String> = http_resp
+            .json()
+            .await
+            .map_err(|_| format!("can not parse JSON response"))?;
+        if response.success == false {
+            return Err(response.message);
+        }
+        println!("{}", response.data.unwrap());
+    }
 
+    if req.is_add {
+        println!(
+            "device {}:{} <--> device{}:{}",
+            route_commands.src_idx,
+            route_commands.src_ip,
+            route_commands.dest_idx,
+            route_commands.dest_ip
+        );
+    } else {
+        println!(
+            "device {}:{} <-\\-> device{}:{}",
+            route_commands.src_idx,
+            route_commands.src_ip,
+            route_commands.dest_idx,
+            route_commands.dest_ip
+        );
+    }
 
     Ok(())
 }

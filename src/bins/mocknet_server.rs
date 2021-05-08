@@ -56,6 +56,7 @@ pub async fn main() -> Result<(), Box<dyn StdError>> {
     let routes = routes.or(clear_garbage_servers::build_filter(connector.clone()));
     let routes = routes.or(list_user_history::build_filter(connector.clone()));
     let routes = routes.or(route_command::build_filter(connector.clone()));
+    let routes = routes.or(execute_command::build_filter(connector.clone()));
 
     warp::serve(routes).run(warp_socket_addr).await;
     Ok(())

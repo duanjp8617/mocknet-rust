@@ -82,14 +82,15 @@ pub mod emunet_creation;
 pub mod emunet_deletion;
 pub mod emunet_init;
 pub mod emunet_update;
+pub mod execute_command;
 pub mod get_emunet_info;
 pub mod get_emunet_state;
 pub mod list_all;
 pub mod list_emunet;
 pub mod list_user_history;
+pub mod route_command;
 pub mod user_deletion;
 pub mod user_registration;
-pub mod route_command;
 
 pub mod server_ping;
 

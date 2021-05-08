@@ -289,6 +289,13 @@ impl Emunet {
         pods
     }
 
+    pub(crate) fn get_pod_name(&self, dev_idx: u64) -> Option<String> {
+        self.devices
+            .borrow()
+            .get(&dev_idx)
+            .map(|dev| dev.meta().pod_name().to_string())
+    }
+
     pub(crate) fn update_device_login_info(&self, device_infos: &Vec<k8s_api::DeviceInfo>) {
         let mut podname_map = HashMap::new();
         let devices_borrow = self.devices.borrow();
