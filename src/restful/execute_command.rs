@@ -52,6 +52,7 @@ async fn execute_command(
             )))
         }
     };
+    println!("to work on pod {}", &pod_name);
 
     // run the grpc command
     let mut k8s_api_client =
@@ -64,6 +65,7 @@ async fn execute_command(
                 )));
             }
         };
+    println!("connect with grpc client");
     let grpc_req = tonic::Request::new(ExecReq {
         pod_name: pod_name,
         cmd: req.cmd.clone(),
@@ -77,6 +79,7 @@ async fn execute_command(
             )));
         }
     };
+    println!("get the response");
 
     Ok(Response::success(response.std_out))
 }
