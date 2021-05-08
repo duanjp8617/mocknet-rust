@@ -15,6 +15,7 @@ struct Request {
     emunet_uuid: Uuid,
     source: u64,
     destination: u64,
+    is_add: bool,
 }
 
 async fn route_command(req: Request, client: &mut Client) -> Result<Response<()>, ClientError> {
@@ -33,18 +34,26 @@ async fn route_command(req: Request, client: &mut Client) -> Result<Response<()>
     let nodes: Vec<(u64, ())> = devs.iter().map(|odev| (odev.id, ())).collect();
     let edges: Vec<((u64, u64), ())> = links.iter().map(|olink| (olink.link_id, ())).collect();
     let graph = UndirectedGraph::new(nodes, edges).unwrap();
-    let path = graph.shortest_path(req.source, req.destination).unwrap();
+    let path = match graph.shortest_path(req.source, req.destination) {
+        Some(inner) => inner,
+        None => {
+            return Ok(Response::fail(format!(
+                "there is no path between {} and {}",
+                req.source, req.destination
+            )))
+        }
+    };
 
-    let forward_route_commands = emunet.release_route_command(&path[..], true);
+    let forward_route_commands = emunet.release_route_command(&path[..], req.is_add);
     println!("forward commands");
-    for e in forward_route_commands {
+    for e in &forward_route_commands {
         println!("{}: {}", e.0, e.1);
     }
 
     let reverse_path: Vec<u64> = path.into_iter().rev().collect();
-    let backward_route_commands = emunet.release_route_command(&reverse_path[..], true);
+    let backward_route_commands = emunet.release_route_command(&reverse_path[..], req.is_add);
     println!("backward commands");
-    for e in backward_route_commands {
+    for e in &backward_route_commands {
         println!("{}: {}", e.0, e.1);
     }
 

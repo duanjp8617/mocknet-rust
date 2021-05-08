@@ -94,8 +94,8 @@ where
             pg.add_edge(src_idx, dst_idx, 1);
         }
 
-        let start = *nid_map.get(&src).unwrap();
-        let goal = *nid_map.get(&dst).unwrap();
+        let start = *nid_map.get(&src)?;
+        let goal = *nid_map.get(&dst)?;
         let res =
             petgraph::algo::astar(&pg, start, |finish| finish == goal, |e| *e.weight(), |_| 0);
 
