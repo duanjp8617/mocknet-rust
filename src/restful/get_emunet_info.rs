@@ -345,8 +345,7 @@ pub async fn mnctl_network_connect(
     // retrieve the route commands
     let req = super::route_command::Request {
         emunet_uuid,
-        source: src_id,
-        destination: dst_id,
+        path,
         is_add,
     };
     let http_resp = reqwest::Client::new()
@@ -359,9 +358,18 @@ pub async fn mnctl_network_connect(
         .json()
         .await
         .map_err(|_| format!("can not parse JSON response"))?;
-    assert!(response.success == true);
-    let route_commands = response.data.unwrap();
 
+    let route_commands = if response.success {
+        response.data.unwrap()
+    } else {
+        return Err(response.message);
+    };
+
+    // now apply the forward and backward commands
+    let forward_commands = route_commands.forward_route_commands;
+    let backward_commands = route_commands.backward_route_commands;
     
+
+
     Ok(())
 }

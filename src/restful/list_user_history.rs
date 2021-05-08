@@ -79,7 +79,7 @@ pub async fn mnctl_user_history(username: &str, warp_addr: &str) -> Result<(), S
         .map_err(|_| format!("can not parse JSON response"))?;
 
     if response.success == false {
-        println!("{}", response.message);
+        Err(response.message)
     } else {
         let data = response.data.unwrap();
         println!("Active networks:");
@@ -97,7 +97,7 @@ pub async fn mnctl_user_history(username: &str, warp_addr: &str) -> Result<(), S
                 retired.edges.len()
             );
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
