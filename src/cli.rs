@@ -86,7 +86,7 @@ pub fn parse_ctl_arg() -> Result<CtlArg, String> {
         .long("warp-addr")
         .value_name(WARP_ADDR)
         .takes_value(true)
-        .default_value("192.168.167.114:3030");
+        .default_value("192.168.102.132:3030");
 
     // network subcommand
     let info = SubCommand::with_name("info").about("show information about the emulation network");
