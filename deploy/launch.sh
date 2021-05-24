@@ -1,11 +1,11 @@
-MOCKNET_SERVER_DIR=/home/djp/Rust/mocknet-rust/target/debug
-INDRADB_SERVER_DIR=/home/djp/Rust/indradb/target/debug
+MOCKNET_SERVER_DIR=/home/pengyang/repo/mocknet-rust/target/debug
+INDRADB_SERVER_DIR=/home/pengyang/repo/indradb/target/debug
 
 IP=172.21.103.147
 MOCKNETPORT=3030
 INDRADBPORT=3031
 SERVERCHECKPORT=4040
-IMAGE=ubuntu:20.04
+IMAGE=ubuntu:20.10
 
 # launch indradb
 sudo docker run \
