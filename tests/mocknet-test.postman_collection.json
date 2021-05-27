@@ -12,7 +12,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\"user\": \"fuck\"}",
+					"raw": "{\"user\": \"user2\"}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -20,9 +20,9 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/list_emunet",
+					"raw": "vm:3030/v1/list_emunet",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
@@ -40,7 +40,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"user\": \"fuck\",\n    \"emunet\": \"fuck1\",\n    \"capacity\": 20\n}",
+					"raw": "{\n    \"user\": \"suppppppppppppppppppppppppppppppperlongusername\",\n    \"emunet\": \"emunetttttttttttttttttttttttttttttttttttttttttttttt\",\n    \"capacity\": 5\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -48,9 +48,9 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/create_emunet",
+					"raw": "vm:3030/v1/create_emunet",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
@@ -68,7 +68,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\"\n}",
+					"raw": "{\n    \"emunet_uuid\": \"c46025a1-9a98-11eb-8001-000000000000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -76,9 +76,9 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/get_emunet_info",
+					"raw": "vm:3030/v1/get_emunet_info",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
@@ -96,7 +96,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"name\": \"fuck\"\n}",
+					"raw": "{\n    \"name\": \"suppppppppppppppppppppppppppppppperlongusername\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -104,9 +104,9 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/register_user",
+					"raw": "vm:3030/v1/register_user",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
@@ -124,7 +124,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 1, \"description\": \"fuck\"}, {\"id\": 2, \"description\": \"fuck\"}, {\"id\": 3, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [1, 2], \"description\": \"fuck\"}, {\"edge_id\": [1, 3], \"description\": \"fuck\"}]\n}",
+					"raw": "{\n    \"emunet_uuid\": \"84a5ec4a-affc-11eb-8000-000000000000\",\n    \"devs\": [\n        {\"id\": 0, \"description\": \"0\"}, \n        {\"id\": 1, \"description\": \"1\"}, \n        {\"id\": 2, \"description\": \"2\"}, \n        {\"id\": 3, \"description\": \"3\"}, \n        {\"id\": 4, \"description\": \"4\"}\n    ],\n    \"links\": [\n        {\"edge_id\": [0, 1], \"description\": \"1\"}, \n        {\"edge_id\": [0, 2], \"description\": \"2\"},\n        {\"edge_id\": [1, 3], \"description\": \"3\"},\n        {\"edge_id\": [2, 4], \"description\": \"4\"}\n    ]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -132,70 +132,14 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/init_emunet",
+					"raw": "mcs:3030/v1/init_emunet",
 					"host": [
-						"localhost"
+						"mcs"
 					],
 					"port": "3030",
 					"path": [
 						"v1",
 						"init_emunet"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "localhost:3030/v1/get_emunet_topo",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"5c5b604c-596e-11eb-8004-000000000000\"\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "localhost:3030/v1/get_emunet_topo",
-					"host": [
-						"localhost"
-					],
-					"port": "3030",
-					"path": [
-						"v1",
-						"get_emunet_topo"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "localhost:3030/v1/destruct_emunet",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"9a945ec4-6aa1-11eb-8004-000000000000\"\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "localhost:3030/v1/destruct_emunet",
-					"host": [
-						"localhost"
-					],
-					"port": "3030",
-					"path": [
-						"v1",
-						"destruct_emunet"
 					]
 				}
 			},
@@ -208,7 +152,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"f027f5ba-6abc-11eb-8004-000000000000\"\n}",
+					"raw": "{\n    \"emunet_uuid\": \"c46025a1-9a98-11eb-8001-000000000000\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -216,9 +160,9 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/delete_emunet",
+					"raw": "vm:3030/v1/delete_emunet",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
@@ -236,30 +180,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"name\": \"fuck\"\n}"
-				},
-				"url": {
-					"raw": "localhost:3030/v1/delete_user",
-					"host": [
-						"localhost"
-					],
-					"port": "3030",
-					"path": [
-						"v1",
-						"delete_user"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "localhost:3030/v1/update_emunet",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\n    \"emunet_uuid\": \"b7acf6de-7cc0-11eb-8004-000000000000\",\n    \"devs\": [{\"id\": 4, \"description\": \"fuck\"}, {\"id\": 5, \"description\": \"fuck\"}, {\"id\": 6, \"description\": \"fuck\"}, {\"id\":7, \"description\": \"fuck\"}],\n    \"links\": [{\"edge_id\": [4, 5], \"description\": \"fuck\"}, {\"edge_id\": [4, 6], \"description\": \"fuck\"}, {\"edge_id\": [4, 7], \"description\": \"fuck\"}]\n}",
+					"raw": "{\n    \"name\": \"user2\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -267,14 +188,14 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3030/v1/update_emunet",
+					"raw": "vm:3030/v1/delete_user",
 					"host": [
-						"localhost"
+						"vm"
 					],
 					"port": "3030",
 					"path": [
 						"v1",
-						"update_emunet"
+						"delete_user"
 					]
 				}
 			},
@@ -287,7 +208,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"server_ip\": \"172.18.19.23\"\n}",
+					"raw": "{\n    \"server_ips\": [\"172.18.19.23\", \"192.168.7.2\"]\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -295,14 +216,192 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3031/v1/server_ping",
+					"raw": "vm:4040/v1/server_ping",
 					"host": [
-						"localhost"
+						"vm"
 					],
-					"port": "3031",
+					"port": "4040",
 					"path": [
 						"v1",
 						"server_ping"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/list_all",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "mcs:3030/v1/list_all",
+					"host": [
+						"mcs"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"list_all"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/get_emunet_state",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"emunet_uuid\": \"1b6f4b38-96bd-11eb-8000-000000000000\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/get_emunet_state",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"get_emunet_state"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/emunet_update",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"emunet_uuid\": \"53de6d75-98f2-11eb-8001-000000000000\",\r\n    \"devs\": [\r\n        {\"id\": 1, \"description\": \"fuck\"}, \r\n        {\"id\": 2, \"description\": \"fuck\"}, \r\n        {\"id\": 3, \"description\": \"fuck\"}, \r\n        {\"id\": 0, \"description\": \"fuck\"}\r\n    ],\r\n    \"links\": [\r\n        {\"edge_id\": [0, 1], \"description\": \"fuck\"}, \r\n        {\"edge_id\": [0, 2], \"description\": \"fuck\"}\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/update_emunet",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"update_emunet"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/add_nodes",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"k8s_nodes\": [\r\n        {\r\n            \"node_name\": \"node4\",\r\n            \"max_capacity\": 5\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/add_nodes",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"add_nodes"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/clear_garbage_servers",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "vm:3030/v1/clear_garbage_servers",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"clear_garbage_servers"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/list_user_history",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"test\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/list_user_history",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"list_user_history"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "vm:3030/v1/route_command",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"emunet_uuid\": \"b53b05e2-afa1-11eb-8000-000000000000\",\r\n    \"source\": 21,\r\n    \"destination\": 22\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "vm:3030/v1/route_command",
+					"host": [
+						"vm"
+					],
+					"port": "3030",
+					"path": [
+						"v1",
+						"route_command"
 					]
 				}
 			},

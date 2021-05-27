@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
-
-import sys
-import time
 import requests
 import json
 from argparse import ArgumentParser
-from os import name, system
+from os import system
 
 
 MOCKNET_SERVER_DIR='/home/pengyang/repo/mocknet-rust/target/debug'
@@ -155,9 +151,9 @@ parser_emuinit.add_argument(
 # subparser for register user
 parser_register = subparsers.add_parser('register', help = 'register as a user')
 parser_register.add_argument(
-    'user_name', action = 'store', type = str,
+    '-n', '--user_name', action = 'store', type = str, required = True,
     default = None,
-    help = 'register in the server'
+    help = 'the name you want to register in the server'
 )
 
 # subparser for create emunet
@@ -176,26 +172,14 @@ parser_create.add_argument(
 )
 
 # subparser for get emunet infomation
-parser_emuinfo = subparsers.add_parser('netinfo', help = 'get all information of a emunet')
-parser_emuinfo.add_argument(
-    'uuid', action = 'store', type = str, default = None,
-    help = 'the details of given emunet'
-)
+parser_emuinfo = subparsers.add_parser('listall', help = 'get the global information')
 
 # subparser for get emunet list
 parser_emulist = subparsers.add_parser('netlist', help = 'get emunet list of a user')
 parser_emulist.add_argument(
     '-u', '--user', action = 'store', type = str, default = None, required = True,
     dest = 'user_name',
-    help = 'get emunet lists of given user'
-)
-
-# subparser for get emunet topology
-parser_emutopo = subparsers.add_parser('nettopo', help = 'get the topology of a emunet')
-parser_emutopo.add_argument(
-    '-u', '--uuid', action = 'store', type = str, default = None, required = True,
-    dest = 'uuid',
-    help = 'get topology of given emunet'
+    help = 'the user name that you want to list out'
 )
 
 # subparser for delete emunet
@@ -203,7 +187,14 @@ parser_emudel = subparsers.add_parser('netdel', help = 'delete a emunet')
 parser_emudel.add_argument(
     '-u', '--uuid', action = 'store', type = str, default = None, required = True,
     dest = 'uuid',
-    help = 'delete given emunet'
+    help = 'the uuid of emunet that you want to delete'
+)
+
+# subparser for delete user
+parser_usrdel = subparsers.add_parser('usrdel', help = 'delete a user')
+parser_usrdel.add_argument(
+    '-n', '--name', action = 'store', type = str, default = None, required = True,
+    help = 'the user name you want to delete'
 )
 
 # subparser for update emunet
@@ -221,6 +212,20 @@ parser_netupdate.add_argument(
     '--links', action = 'store', type = str, dest = 'links', required = True,
     nargs = '+', metavar = 'ID1, ID2, DESCRIPTION',
     help = 'the links information of emunet that you want update'
+)
+
+# subparser for get specified emunet information
+parser_netinfo = subparsers.add_parser('netinfo', help = 'get information of a emunet')
+parser_netinfo.add_argument(
+    '-u', '--uuid', action = 'store', type = str, default = None, required = True, 
+    help = 'the emunet uuid you want to delete'
+)
+
+# subparser for get specified emunet state
+parser_netstate = subparsers.add_parser('netstat', help = 'get state of a emunet')
+parser_netstate.add_argument(
+    '-u', '--uuid', action = 'store', type = str, default = None, required = True, 
+    help = 'the emunet uuid you want to get state for'
 )
 
 # opreation functions
@@ -256,13 +261,10 @@ def init_emunet(url, info):
     )
     return response
 
-def get_net_info(url, uuid):
-    body = {
-        'emunet_uuid': uuid
-    }
+def get_net_info(url):
     response = requests.post(
         url = url,
-        data = json.dumps(body),
+        data = None,
         headers = POST_HEADER
     )
     return response
@@ -278,48 +280,18 @@ def emunet_list(url, name):
     )
     return response
 
-def print_info(response):
-    print('*** ------------------overview-----------------')
-    print('emunet_info: ')
-    print('    emunet_id: %s' % response['data']['emunet_info']['emunet_id'])
-    print('    emunet_name: %s' % response['data']['emunet_info']['emunet_name'])
-    print('    emunet_uuid: %s' % response['data']['emunet_info']['emunet_uuid'])
-    print('    max_capacity: %s' % response['data']['emunet_info']['max_capacity'])
-    print('    user_name: %s' % response['data']['emunet_info']['user_name'])
-    print('    access_info: ')
-    print('        login_server_addr: %s' % response['data']['emunet_info']['access_info']['login_server_addr'])
-    print('        login_server_user: %s' % response['data']['emunet_info']['access_info']['login_server_user'])
-    print('        login_server_pwd: %s' % response['data']['emunet_info']['access_info']['login_server_pwd'])
-    print('    state: %s' % response['data']['emunet_info']['state'])
-    print('    dev_count: %s' % response['data']['emunet_info']['dev_count'])
-    print('*** -------------------details-----------------')
-    print('devices: ')
-    for device in response['data']['devices']:
-        print('    id: %s' % device['id'])
-        print('    k8s_node_name: %s' % device['k8s_node_name'])
-        print('    k8s_pod_name: %s' % device['k8s_pod_name'])
-        print('    pod_login_ip: %s' % device['pod_login_ip'])
-        print('    pod_login_user: %s' % device['pod_login_user'])
-        print('    pod_login_pwd: %s' % device['pod_login_pwd'])
-        print('    links: ')
-        for link in device['links']:
-            print('        dest_dev_id: %s' % link['dest_dev_id'])
-            print('        intf_name: %s' % link['intf_name'])
-            print('        ip: %s' % link['ip'])
-        print('')
-    print('')
-    print('links: ')
-    for link in response['data']['links']:
-        print('    link_id: %s' % link['link_id'])
-        print('    details: ')
-        for node in link['details']:
-            print('        %s: ' % node)
-            print('            dest_dev_id: %s' % link['details'][node]['dest_dev_id'])
-            print('            intf_name: %s' % link['details'][node]['intf_name'])
-            print('            ip: %s' % link['details'][node]['ip'])
-        print('')
+def delete_user(url, name):
+    body = {
+        'name': name
+    }
+    response = requests.post(
+        url = url,
+        data = json.dumps(body),
+        headers = POST_HEADER
+    )
+    return response
 
-def emunet_topology(url, uuid):
+def get_emunet_info(url, uuid):
     body = {
         'emunet_uuid': uuid
     }
@@ -380,11 +352,13 @@ while True:
             else:
                 print("error! the message is: %s" % response_json['message'])
 
-        if args_op.CmdType == 'netinfo':
-            response = get_net_info(url='http://localhost:3030/v1/get_emunet_info', uuid=args_op.uuid)
+        if args_op.CmdType == 'listall':
+            response = get_net_info(url='http://localhost:3030/v1/list_all')
             response_json = response.json()
+            response_data = response_json['data']
+            fmt_data = json.dumps(response_data, sort_keys=True, indent=4,separators=(',',':'))
             if response_json['success'] == True:
-                print_info(response_json)
+                print(fmt_data)
             else:
                 print("error! the message is: %s" % response_json['message'])
 
@@ -397,19 +371,11 @@ while True:
             else:
                 print("error! the message is: %s" % response_json['message'])
 
-        if args_op.CmdType == 'nettopo':
-            response = emunet_topology(url='http://localhost:3030/v1/get_emunet_topo', uuid=args_op.uuid)
-            response_json = response.json()
-            if response_json['success'] == True:
-                print('get successfully!')
-            else:
-                print("error! the message is: %s" % response_json['message'])
-
         if args_op.CmdType == 'netdel':
-            response = emunet_topology(url='http://localhost:3030/v1/delete_emunet', uuid=args_op.uuid)
+            response = delete_user(url='http://localhost:3030/v1/delete_emunet', name=args_op.name)
             response_json = response.json()
             if response_json['success'] == True:
-                print('successfully delete emunet whose uuid is: %s', args_op.uuid)
+                print('successfully delete user: %s', args_op.name)
             else:
                 print("error! the message is: %s" % response_json['message'])
 
@@ -426,6 +392,34 @@ while True:
             response_json = response.json()
             if response_json['success'] == True:
                 print('successfullt update the emunet, now it\'s working!')
+            else:
+                print("error! the message is: %s" % response_json['message'])
+
+        if args_op.CmdType == 'usrdel':
+            response = get_net_info(url='http://localhost:3030/v1/delete_user', uuid=args_op.uuid)
+            response_json = response.json()
+            if response_json['success'] == True:
+                print("suscessfully delete the emunet!")
+            else:
+                print("error! the message is: %s" % response_json['message'])
+
+        if args_op.CmdType == 'netinfo':
+            response = get_emunet_info(url='http://localhost:3030/v1/get_emunet_info', uuid=args_op.uuid)
+            response_json = response.json()
+            response_data = response_json['data']
+            fmt_data = json.dumps(response_data, sort_keys=True, indent=4,separators=(',',':'))
+            if response_json['success'] == True:
+                print(fmt_data)
+            else:
+                print("error! the message is: %s" % response_json['message'])
+
+        if args_op.CmdType == 'netstat':
+            response = get_emunet_info(url='http://localhost:3030/v1/get_emunet_state', uuid=args_op.uuid)
+            response_json = response.json()
+            response_data = response_json['data']
+            fmt_data = json.dumps(response_data, sort_keys=True, indent=4,separators=(',',':'))
+            if response_json['success'] == True:
+                print(fmt_data)
             else:
                 print("error! the message is: %s" % response_json['message'])
 
