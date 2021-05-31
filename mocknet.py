@@ -120,11 +120,11 @@ while True:
         break
 
 # present run server on local
-system("gnome-terminal -e '" + args_init.indradb_dir + '/indradb-server' + "'")
-system("gnome-terminal -e '" + args_init.mocknet_dir + '/api_mockserver' + "'")
-system("gnome-terminal -e '" + args_init.mocknet_dir + '/mocknet_server' + 
+system("gnome-terminal -- '" + args_init.indradb_dir + '/indradb-server' + "'")
+system("gnome-terminal -- '" + args_init.mocknet_dir + '/api_mockserver' + "'")
+system("gnome-terminal -- " + args_init.mocknet_dir + '/mocknet_server' + 
        ' --cluster-config ' + args_init.config_file
-       + "'") 
+       ) 
 print("*** successfully initialize the mocknet server")
 
 # parser that deal with operation commands
