@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use tonic::{transport::Server, Request, Response, Status};
@@ -7,13 +8,13 @@ use mocknet::k8s_api::*;
 
 #[derive(Debug)]
 pub struct MockServer {
-    pods: Mutex<Vec<(String, String)>>,
+    pods: Mutex<HashMap<String, String>>,
 }
 
 impl MockServer {
     pub fn new() -> Self {
         Self {
-            pods: Mutex::new(Vec::new()),
+            pods: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -26,16 +27,15 @@ impl Mocknet for MockServer {
         println!("{:?}", &inner);
 
         let mut guard = self.pods.lock().unwrap();
-        let reply = if guard.len() > 0 {
-            EmunetResp { status: false }
-        } else {
+        let reply = {
             let mut ip_addr: u32 = std::net::Ipv4Addr::from([10, 0, 0, 0]).into();
             let pods = inner.pods;
             for pod in pods {
-                guard.push((
+                let res = guard.insert(
                     pod.metadata.unwrap().name,
                     std::net::Ipv4Addr::from(ip_addr).to_string(),
-                ));
+                );
+                assert_eq!(res, None);
                 ip_addr += 1
             }
 
@@ -49,38 +49,20 @@ impl Mocknet for MockServer {
         let inner = request.into_inner();
         println!("---------Got a new delete request---------");
         println!("{:?}", &inner);
-        // tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
 
         let mut guard = self.pods.lock().unwrap();
-        let reply = if guard.len() == 0 {
-            EmunetResp { status: false }
-        } else if guard.len() != inner.pods.len() {
-            EmunetResp { status: false }
-        } else {
-            let mut hashset = std::collections::HashSet::new();
-            let _: Vec<_> = inner
+        let reply = {
+            let res: Option<Vec<_>> = inner
                 .pods
                 .into_iter()
-                .map(|pod| hashset.insert(pod.metadata.unwrap().name))
-                .collect();
-
-            let res: Option<Vec<_>> = guard
-                .iter()
-                .map(|(pod_name, _)| {
-                    if hashset.get(pod_name).is_some() {
-                        Some(())
-                    } else {
-                        None
-                    }
+                .map(|pod| {
+                    let podname = pod.metadata.unwrap().name;
+                    guard.remove(&podname)
                 })
                 .collect();
-            match res {
-                Some(_) => {
-                    guard.clear();
-                    EmunetResp { status: true }
-                }
-                _ => EmunetResp { status: false },
-            }
+            assert_eq!(res.is_some(), true);
+
+            EmunetResp { status: false }
         };
 
         Ok(Response::new(reply))
@@ -163,9 +145,14 @@ impl Mocknet for MockServer {
     async fn exec(&self, request: Request<ExecReq>) -> Result<Response<ExecResp>, Status> {
         let inner = request.into_inner();
         println!("---------Got a new exec request---------");
-        println!("executing command '{}' on pod {}", inner.cmd, inner.pod_name);
+        println!(
+            "executing command '{}' on pod {}",
+            inner.cmd, inner.pod_name
+        );
 
-        Ok(Response::new(ExecResp {std_out: String::new()}))
+        Ok(Response::new(ExecResp {
+            std_out: String::new(),
+        }))
     }
 }
 
